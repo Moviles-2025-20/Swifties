@@ -14,15 +14,6 @@
 		EA7DFB302E779BD1008FBD3A /* SwiftiesAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB2F2E779BD1008FBD3A /* SwiftiesAppTests.swift */; };
 		EA7DFB3A2E779BD1008FBD3A /* SwiftiesAppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */; };
 		EA7DFB3C2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */; };
-		EA94F3462E7E567700EFD98E /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA94F3452E7E567700EFD98E /* ProfileView.swift */; };
-		EA94F3492E7E572F00EFD98E /* CustomTopBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA94F3482E7E572F00EFD98E /* CustomTopBar.swift */; };
-		EA94F34C2E7E57E800EFD98E /* ProfileHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA94F34B2E7E57E800EFD98E /* ProfileHeader.swift */; };
-		EA94F34E2E7E581F00EFD98E /* PreferencesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA94F34D2E7E581F00EFD98E /* PreferencesSection.swift */; };
-		EA94F3512E7E586F00EFD98E /* ActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA94F3502E7E586F00EFD98E /* ActionButton.swift */; };
-		EA94F3542E7E589D00EFD98E /* CustomTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA94F3532E7E589D00EFD98E /* CustomTabBar.swift */; };
-		EA94F3562E7E58C100EFD98E /* TabBarButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA94F3552E7E58C100EFD98E /* TabBarButton.swift */; };
-		EA94F35A2E7E5EF900EFD98E /* TagChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA94F3592E7E5EF900EFD98E /* TagChip.swift */; };
-		FE3821722E7E06160019E1E2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3821712E7E06100019E1E2 /* RootView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,15 +45,6 @@
 		EA7DFB352E779BD1008FBD3A /* SwiftiesAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftiesAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITests.swift; sourceTree = "<group>"; };
 		EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		EA94F3452E7E567700EFD98E /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProfileView.swift; path = SwiftiesApp/ProfileView.swift; sourceTree = SOURCE_ROOT; };
-		EA94F3482E7E572F00EFD98E /* CustomTopBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomTopBar.swift; sourceTree = "<group>"; };
-		EA94F34B2E7E57E800EFD98E /* ProfileHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileHeader.swift; sourceTree = "<group>"; };
-		EA94F34D2E7E581F00EFD98E /* PreferencesSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesSection.swift; sourceTree = "<group>"; };
-		EA94F3502E7E586F00EFD98E /* ActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButton.swift; sourceTree = "<group>"; };
-		EA94F3532E7E589D00EFD98E /* CustomTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomTabBar.swift; sourceTree = "<group>"; };
-		EA94F3552E7E58C100EFD98E /* TabBarButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarButton.swift; sourceTree = "<group>"; };
-		EA94F3592E7E5EF900EFD98E /* TagChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagChip.swift; sourceTree = "<group>"; };
-		FE3821712E7E06100019E1E2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -115,7 +97,6 @@
 			children = (
 				EA94F3422E7E52E400EFD98E /* Components */,
 				EA94F3412E7E52DB00EFD98E /* Screens */,
-				FE3821712E7E06100019E1E2 /* RootView.swift */,
 				EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */,
 				EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */,
 				EA7DFB212E779BD1008FBD3A /* Assets.xcassets */,
@@ -153,7 +134,6 @@
 		EA94F3412E7E52DB00EFD98E /* Screens */ = {
 			isa = PBXGroup;
 			children = (
-				EA94F3452E7E567700EFD98E /* ProfileView.swift */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -161,47 +141,8 @@
 		EA94F3422E7E52E400EFD98E /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				EA94F3522E7E588700EFD98E /* TabBar */,
-				EA94F34F2E7E586000EFD98E /* Buttons */,
-				EA94F34A2E7E57D600EFD98E /* Profile */,
-				EA94F3472E7E570500EFD98E /* TopBar */,
 			);
 			path = Components;
-			sourceTree = "<group>";
-		};
-		EA94F3472E7E570500EFD98E /* TopBar */ = {
-			isa = PBXGroup;
-			children = (
-				EA94F3482E7E572F00EFD98E /* CustomTopBar.swift */,
-				EA94F3552E7E58C100EFD98E /* TabBarButton.swift */,
-			);
-			path = TopBar;
-			sourceTree = "<group>";
-		};
-		EA94F34A2E7E57D600EFD98E /* Profile */ = {
-			isa = PBXGroup;
-			children = (
-				EA94F34B2E7E57E800EFD98E /* ProfileHeader.swift */,
-				EA94F34D2E7E581F00EFD98E /* PreferencesSection.swift */,
-				EA94F3592E7E5EF900EFD98E /* TagChip.swift */,
-			);
-			path = Profile;
-			sourceTree = "<group>";
-		};
-		EA94F34F2E7E586000EFD98E /* Buttons */ = {
-			isa = PBXGroup;
-			children = (
-				EA94F3502E7E586F00EFD98E /* ActionButton.swift */,
-			);
-			path = Buttons;
-			sourceTree = "<group>";
-		};
-		EA94F3522E7E588700EFD98E /* TabBar */ = {
-			isa = PBXGroup;
-			children = (
-				EA94F3532E7E589D00EFD98E /* CustomTabBar.swift */,
-			);
-			path = TabBar;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -334,17 +275,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EA94F3462E7E567700EFD98E /* ProfileView.swift in Sources */,
-				EA94F35A2E7E5EF900EFD98E /* TagChip.swift in Sources */,
-				EA94F3492E7E572F00EFD98E /* CustomTopBar.swift in Sources */,
-				EA94F34E2E7E581F00EFD98E /* PreferencesSection.swift in Sources */,
-				EA94F3562E7E58C100EFD98E /* TabBarButton.swift in Sources */,
-				EA94F34C2E7E57E800EFD98E /* ProfileHeader.swift in Sources */,
-				EA94F3542E7E589D00EFD98E /* CustomTabBar.swift in Sources */,
 				EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */,
 				EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */,
-				FE3821722E7E06160019E1E2 /* RootView.swift in Sources */,
-				EA94F3512E7E586F00EFD98E /* ActionButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

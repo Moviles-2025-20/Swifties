@@ -12,11 +12,7 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if isLoading {
-                LoadingView()
-            } else {
-                ContentView()
-            }
+            ContentView()
         }
         .task {
             // Simulate async work (e.g., configuration, network warmup)

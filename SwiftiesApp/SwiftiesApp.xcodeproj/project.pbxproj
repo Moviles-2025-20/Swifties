@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		88E03DDC2E7E8255002087F4 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E03DDB2E7E824B002087F4 /* NotificationsView.swift */; };
 		EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */; };
 		EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */; };
 		EA7DFB222E779BD1008FBD3A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EA7DFB212E779BD1008FBD3A /* Assets.xcassets */; };
@@ -35,6 +36,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		88E03DDB2E7E824B002087F4 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		EA7DFB1A2E779BCF008FBD3A /* SwiftiesApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftiesApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppApp.swift; sourceTree = "<group>"; };
 		EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -97,6 +99,7 @@
 		EA7DFB1C2E779BCF008FBD3A /* SwiftiesApp */ = {
 			isa = PBXGroup;
 			children = (
+				88E03DDB2E7E824B002087F4 /* NotificationsView.swift */,
 				FE3821712E7E06100019E1E2 /* RootView.swift */,
 				EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */,
 				EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */,
@@ -265,6 +268,7 @@
 				EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */,
 				EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */,
 				FE3821722E7E06160019E1E2 /* RootView.swift in Sources */,
+				88E03DDC2E7E8255002087F4 /* NotificationsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -424,7 +428,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftiesApp/Preview Content\"";
-				DEVELOPMENT_TEAM = U29M6594W6;
+				DEVELOPMENT_TEAM = WGPSL5WBS8;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -462,7 +466,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftiesApp/Preview Content\"";
-				DEVELOPMENT_TEAM = U29M6594W6;
+				DEVELOPMENT_TEAM = WGPSL5WBS8;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;

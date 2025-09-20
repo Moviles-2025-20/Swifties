@@ -17,6 +17,7 @@
 		FE7E32CF2E7E812C0028BF93 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E32CE2E7E812C0028BF93 /* HomeView.swift */; };
 		FE7E33682E7E9E350028BF93 /* DetailEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E33662E7E9E350028BF93 /* DetailEvent.swift */; };
 		FE7E33692E7E9E350028BF93 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E33672E7E9E350028BF93 /* ProfileView.swift */; };
+    88E03EBA2E7E9DE4002087F4 /* NotificationsEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E03EB92E7E9DD4002087F4 /* NotificationsEvents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,6 +52,7 @@
 		FE7E32CE2E7E812C0028BF93 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = SwiftiesApp/HomeView.swift; sourceTree = SOURCE_ROOT; };
 		FE7E33662E7E9E350028BF93 /* DetailEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DetailEvent.swift; path = SwiftiesApp/DetailEvent.swift; sourceTree = SOURCE_ROOT; };
 		FE7E33672E7E9E350028BF93 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProfileView.swift; path = SwiftiesApp/ProfileView.swift; sourceTree = SOURCE_ROOT; };
+    88E03EB92E7E9DD4002087F4 /* NotificationsEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsEvents.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -116,6 +118,7 @@
 				EA7DFB212E779BD1008FBD3A /* Assets.xcassets */,
 				EA7DFB232E779BD1008FBD3A /* SwiftiesApp.entitlements */,
 				EA7DFB242E779BD1008FBD3A /* Preview Content */,
+        88E03EB92E7E9DD4002087F4 /* NotificationsEvents.swift */,
 			);
 			path = SwiftiesApp;
 			sourceTree = "<group>";
@@ -307,6 +310,7 @@
 				FE7E32CF2E7E812C0028BF93 /* HomeView.swift in Sources */,
 				EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */,
 				EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */,
+        88E03EBA2E7E9DE4002087F4 /* NotificationsEvents.swift in Sources */,
 				FE7E33682E7E9E350028BF93 /* DetailEvent.swift in Sources */,
 				FE7E33692E7E9E350028BF93 /* ProfileView.swift in Sources */,
 			);

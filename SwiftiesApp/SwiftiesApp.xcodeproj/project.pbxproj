@@ -15,8 +15,6 @@
 		EA7DFB3A2E779BD1008FBD3A /* SwiftiesAppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */; };
 		EA7DFB3C2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */; };
 		FE3821722E7E06160019E1E2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3821712E7E06100019E1E2 /* RootView.swift */; };
-		FE3821742E7E06450019E1E2 /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3821732E7E06420019E1E2 /* LoadingView.swift */; };
-		FE3821782E7E0F480019E1E2 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3821772E7E0F430019E1E2 /* Constants.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,8 +47,6 @@
 		EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITests.swift; sourceTree = "<group>"; };
 		EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		FE3821712E7E06100019E1E2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		FE3821732E7E06420019E1E2 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
-		FE3821772E7E0F430019E1E2 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,8 +97,6 @@
 		EA7DFB1C2E779BCF008FBD3A /* SwiftiesApp */ = {
 			isa = PBXGroup;
 			children = (
-				FE3821772E7E0F430019E1E2 /* Constants.swift */,
-				FE3821732E7E06420019E1E2 /* LoadingView.swift */,
 				FE3821712E7E06100019E1E2 /* RootView.swift */,
 				EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */,
 				EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */,
@@ -269,10 +263,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */,
-				FE3821742E7E06450019E1E2 /* LoadingView.swift in Sources */,
 				EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */,
 				FE3821722E7E06160019E1E2 /* RootView.swift in Sources */,
-				FE3821782E7E0F480019E1E2 /* Constants.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

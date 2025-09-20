@@ -8,9 +8,11 @@
 import SwiftUI
 
 struct DetailEvent: View {
+    @State private var selectedTab = 0
+    
     var body: some View {
         VStack(spacing: 0) {
-            // Banner superior azul con bordes inferiores redondeados
+  
             HStack {
                 Spacer()
                 Text("Event Details")

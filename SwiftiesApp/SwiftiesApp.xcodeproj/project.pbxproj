@@ -3,11 +3,11 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		88E03DDC2E7E8255002087F4 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E03DDB2E7E824B002087F4 /* NotificationsView.swift */; };
+		88D89DA42E7E4C5200F26AEF /* DetailEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88D89DA32E7E4C4700F26AEF /* DetailEvent.swift */; };
 		EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */; };
 		EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */; };
 		EA7DFB222E779BD1008FBD3A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EA7DFB212E779BD1008FBD3A /* Assets.xcassets */; };
@@ -15,7 +15,7 @@
 		EA7DFB302E779BD1008FBD3A /* SwiftiesAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB2F2E779BD1008FBD3A /* SwiftiesAppTests.swift */; };
 		EA7DFB3A2E779BD1008FBD3A /* SwiftiesAppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */; };
 		EA7DFB3C2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */; };
-		FE3821722E7E06160019E1E2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3821712E7E06100019E1E2 /* RootView.swift */; };
+		FE7E32CF2E7E812C0028BF93 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E32CE2E7E812C0028BF93 /* HomeView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,7 +36,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		88E03DDB2E7E824B002087F4 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
+		88D89DA32E7E4C4700F26AEF /* DetailEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailEvent.swift; sourceTree = "<group>"; };
 		EA7DFB1A2E779BCF008FBD3A /* SwiftiesApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftiesApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppApp.swift; sourceTree = "<group>"; };
 		EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -48,8 +48,16 @@
 		EA7DFB352E779BD1008FBD3A /* SwiftiesAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftiesAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITests.swift; sourceTree = "<group>"; };
 		EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		FE3821712E7E06100019E1E2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		FE7E32CE2E7E812C0028BF93 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = SwiftiesApp/HomeView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		FE7E32D12E7E84F50028BF93 /* Buttons */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Buttons; sourceTree = "<group>"; };
+		FE7E32D52E7E84F50028BF93 /* Profile */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Profile; sourceTree = "<group>"; };
+		FE7E32D72E7E84F50028BF93 /* TabBar */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = TabBar; sourceTree = "<group>"; };
+		FE7E32DC2E7E84F50028BF93 /* TopBar */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = TopBar; sourceTree = "<group>"; };
+		FE7E32E62E7E8A7B0028BF93 /* Events */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Events; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		EA7DFB172E779BCF008FBD3A /* Frameworks */ = {
@@ -99,8 +107,9 @@
 		EA7DFB1C2E779BCF008FBD3A /* SwiftiesApp */ = {
 			isa = PBXGroup;
 			children = (
-				88E03DDB2E7E824B002087F4 /* NotificationsView.swift */,
-				FE3821712E7E06100019E1E2 /* RootView.swift */,
+				88D89DA32E7E4C4700F26AEF /* DetailEvent.swift */,
+				EA94F3422E7E52E400EFD98E /* Components */,
+				EA94F3412E7E52DB00EFD98E /* Screens */,
 				EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */,
 				EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */,
 				EA7DFB212E779BD1008FBD3A /* Assets.xcassets */,
@@ -135,6 +144,26 @@
 			path = SwiftiesAppUITests;
 			sourceTree = "<group>";
 		};
+		EA94F3412E7E52DB00EFD98E /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				FE7E32CE2E7E812C0028BF93 /* HomeView.swift */,
+			);
+			path = Screens;
+			sourceTree = "<group>";
+		};
+		EA94F3422E7E52E400EFD98E /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				FE7E32E62E7E8A7B0028BF93 /* Events */,
+				FE7E32D12E7E84F50028BF93 /* Buttons */,
+				FE7E32D52E7E84F50028BF93 /* Profile */,
+				FE7E32D72E7E84F50028BF93 /* TabBar */,
+				FE7E32DC2E7E84F50028BF93 /* TopBar */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -149,6 +178,13 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FE7E32D12E7E84F50028BF93 /* Buttons */,
+				FE7E32D52E7E84F50028BF93 /* Profile */,
+				FE7E32D72E7E84F50028BF93 /* TabBar */,
+				FE7E32DC2E7E84F50028BF93 /* TopBar */,
+				FE7E32E62E7E8A7B0028BF93 /* Events */,
 			);
 			name = SwiftiesApp;
 			productName = SwiftiesApp;
@@ -265,10 +301,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE7E32CF2E7E812C0028BF93 /* HomeView.swift in Sources */,
 				EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */,
+				88D89DA42E7E4C5200F26AEF /* DetailEvent.swift in Sources */,
 				EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */,
-				FE3821722E7E06160019E1E2 /* RootView.swift in Sources */,
-				88E03DDC2E7E8255002087F4 /* NotificationsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

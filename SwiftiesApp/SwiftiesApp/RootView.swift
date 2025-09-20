@@ -13,9 +13,12 @@ struct RootView: View {
     var body: some View {
         Group {
             if isLoading {
-                LoadingView()
+                //LoadingView()
+                Color("appBeige").ignoresSafeArea()
             } else {
                 ContentView()
+                Color("appBeige").ignoresSafeArea()
+
             }
         }
         .task {

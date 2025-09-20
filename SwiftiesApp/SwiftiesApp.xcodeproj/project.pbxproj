@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -46,6 +46,13 @@
 		EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITests.swift; sourceTree = "<group>"; };
 		EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITestsLaunchTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		FE7E32EB2E7E932F0028BF93 /* Buttons */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Buttons; sourceTree = "<group>"; };
+		FE7E32EF2E7E932F0028BF93 /* Profile */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Profile; sourceTree = "<group>"; };
+		FE7E32F12E7E932F0028BF93 /* TabBar */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = TabBar; sourceTree = "<group>"; };
+		FE7E32F62E7E932F0028BF93 /* TopBar */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = TopBar; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		EA7DFB172E779BCF008FBD3A /* Frameworks */ = {
@@ -141,6 +148,10 @@
 		EA94F3422E7E52E400EFD98E /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				FE7E32EB2E7E932F0028BF93 /* Buttons */,
+				FE7E32EF2E7E932F0028BF93 /* Profile */,
+				FE7E32F12E7E932F0028BF93 /* TabBar */,
+				FE7E32F62E7E932F0028BF93 /* TopBar */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -159,6 +170,12 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FE7E32EB2E7E932F0028BF93 /* Buttons */,
+				FE7E32EF2E7E932F0028BF93 /* Profile */,
+				FE7E32F12E7E932F0028BF93 /* TabBar */,
+				FE7E32F62E7E932F0028BF93 /* TopBar */,
 			);
 			name = SwiftiesApp;
 			productName = SwiftiesApp;

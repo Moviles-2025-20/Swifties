@@ -15,7 +15,6 @@
 		EA7DFB302E779BD1008FBD3A /* SwiftiesAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB2F2E779BD1008FBD3A /* SwiftiesAppTests.swift */; };
 		EA7DFB3A2E779BD1008FBD3A /* SwiftiesAppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */; };
 		EA7DFB3C2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */; };
-		FE3821722E7E06160019E1E2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3821712E7E06100019E1E2 /* RootView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,7 +47,6 @@
 		EA7DFB352E779BD1008FBD3A /* SwiftiesAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftiesAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITests.swift; sourceTree = "<group>"; };
 		EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		FE3821712E7E06100019E1E2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,7 +98,6 @@
 			isa = PBXGroup;
 			children = (
 				88D89DA32E7E4C4700F26AEF /* DetailEvent.swift */,
-				FE3821712E7E06100019E1E2 /* RootView.swift */,
 				EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */,
 				EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */,
 				EA7DFB212E779BD1008FBD3A /* Assets.xcassets */,
@@ -268,7 +265,6 @@
 				EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */,
 				88D89DA42E7E4C5200F26AEF /* DetailEvent.swift in Sources */,
 				EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */,
-				FE3821722E7E06160019E1E2 /* RootView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

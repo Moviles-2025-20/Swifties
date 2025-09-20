@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -16,6 +16,7 @@
 		EA7DFB3C2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */; };
 		FEAE2F0E2E7E5B4B00203D5C /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAE2F0D2E7E5B4B00203D5C /* LoadingView.swift */; };
 		FEAE2F102E7E5CD400203D5C /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAE2F0F2E7E5CD400203D5C /* LoginView.swift */; };
+		FE7E338B2E7EA7530028BF93 /* ScreensCyclerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E338A2E7EA7530028BF93 /* ScreensCyclerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,7 +50,17 @@
 		EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		FEAE2F0D2E7E5B4B00203D5C /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LoadingView.swift; path = SwiftiesApp/LoadingView.swift; sourceTree = SOURCE_ROOT; };
 		FEAE2F0F2E7E5CD400203D5C /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LoginView.swift; path = SwiftiesApp/LoginView.swift; sourceTree = SOURCE_ROOT; };
+		FE7E338A2E7EA7530028BF93 /* ScreensCyclerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreensCyclerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		FE7E32D12E7E84F50028BF93 /* Buttons */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Buttons; sourceTree = "<group>"; };
+		FE7E32D52E7E84F50028BF93 /* Profile */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Profile; sourceTree = "<group>"; };
+		FE7E32D72E7E84F50028BF93 /* TabBar */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = TabBar; sourceTree = "<group>"; };
+		FE7E32DC2E7E84F50028BF93 /* TopBar */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = TopBar; sourceTree = "<group>"; };
+		FE7E32E62E7E8A7B0028BF93 /* Events */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Events; sourceTree = "<group>"; };
+		FE7E33852E7EA6750028BF93 /* Screens */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Screens; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		EA7DFB172E779BCF008FBD3A /* Frameworks */ = {
@@ -99,13 +110,14 @@
 		EA7DFB1C2E779BCF008FBD3A /* SwiftiesApp */ = {
 			isa = PBXGroup;
 			children = (
+				FE7E33852E7EA6750028BF93 /* Screens */,
 				EA94F3422E7E52E400EFD98E /* Components */,
-				EA94F3412E7E52DB00EFD98E /* Screens */,
 				EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */,
 				EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */,
 				EA7DFB212E779BD1008FBD3A /* Assets.xcassets */,
 				EA7DFB232E779BD1008FBD3A /* SwiftiesApp.entitlements */,
 				EA7DFB242E779BD1008FBD3A /* Preview Content */,
+				FE7E338A2E7EA7530028BF93 /* ScreensCyclerView.swift */,
 			);
 			path = SwiftiesApp;
 			sourceTree = "<group>";
@@ -147,6 +159,11 @@
 		EA94F3422E7E52E400EFD98E /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				FE7E32E62E7E8A7B0028BF93 /* Events */,
+				FE7E32D12E7E84F50028BF93 /* Buttons */,
+				FE7E32D52E7E84F50028BF93 /* Profile */,
+				FE7E32D72E7E84F50028BF93 /* TabBar */,
+				FE7E32DC2E7E84F50028BF93 /* TopBar */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -165,6 +182,14 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FE7E32D12E7E84F50028BF93 /* Buttons */,
+				FE7E32D52E7E84F50028BF93 /* Profile */,
+				FE7E32D72E7E84F50028BF93 /* TabBar */,
+				FE7E32DC2E7E84F50028BF93 /* TopBar */,
+				FE7E32E62E7E8A7B0028BF93 /* Events */,
+				FE7E33852E7EA6750028BF93 /* Screens */,
 			);
 			name = SwiftiesApp;
 			productName = SwiftiesApp;
@@ -281,6 +306,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE7E338B2E7EA7530028BF93 /* ScreensCyclerView.swift in Sources */,
 				EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */,
 				EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */,
 				FEAE2F102E7E5CD400203D5C /* LoginView.swift in Sources */,
@@ -455,6 +481,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -463,8 +490,8 @@
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -473,7 +500,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.swiftiesgroup.SwiftiesApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -496,6 +524,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -504,8 +533,8 @@
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -514,7 +543,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.swiftiesgroup.SwiftiesApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

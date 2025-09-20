@@ -14,6 +14,7 @@
 		EA7DFB302E779BD1008FBD3A /* SwiftiesAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB2F2E779BD1008FBD3A /* SwiftiesAppTests.swift */; };
 		EA7DFB3A2E779BD1008FBD3A /* SwiftiesAppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */; };
 		EA7DFB3C2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */; };
+		FE7E338B2E7EA7530028BF93 /* ScreensCyclerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E338A2E7EA7530028BF93 /* ScreensCyclerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +46,7 @@
 		EA7DFB352E779BD1008FBD3A /* SwiftiesAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftiesAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITests.swift; sourceTree = "<group>"; };
 		EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		FE7E338A2E7EA7530028BF93 /* ScreensCyclerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreensCyclerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -111,6 +113,7 @@
 				EA7DFB212E779BD1008FBD3A /* Assets.xcassets */,
 				EA7DFB232E779BD1008FBD3A /* SwiftiesApp.entitlements */,
 				EA7DFB242E779BD1008FBD3A /* Preview Content */,
+				FE7E338A2E7EA7530028BF93 /* ScreensCyclerView.swift */,
 			);
 			path = SwiftiesApp;
 			sourceTree = "<group>";
@@ -290,6 +293,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE7E338B2E7EA7530028BF93 /* ScreensCyclerView.swift in Sources */,
 				EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */,
 				EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */,
 			);

@@ -11,7 +11,16 @@ import SwiftUI
 struct SwiftiesAppApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if ProcessInfo.processInfo.arguments.contains("--cycleScreens") || ProcessInfo.processInfo.environment["CYCLE_SCREENS"] == "1" {
+                ScreensCyclerView(screens: [
+                    AnyView(DetailEvent()),
+                    AnyView(HomeView()),
+                    AnyView(NotificationsView()),
+                    AnyView(ProfileView())
+                ])
+            } else {
+                ContentView()
+            }
         }
     }
 }

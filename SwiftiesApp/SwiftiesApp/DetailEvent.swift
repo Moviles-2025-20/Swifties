@@ -10,7 +10,7 @@ import SwiftUI
 struct DetailEvent: View {
     var body: some View {
         VStack(spacing: 0) {
-            // Banner superior azul
+            // Banner superior azul con bordes inferiores redondeados
             HStack {
                 Spacer()
                 Text("Event Details")
@@ -23,38 +23,71 @@ struct DetailEvent: View {
                         .foregroundColor(.white)
                         .font(.title3)
                 }
+                .buttonStyle(PlainButtonStyle())
             }
             .padding()
-            .background(Color("appBlue"))
+            .background(
+                Color("appBlue")
+                    .clipShape(
+                        .rect(
+                            topLeadingRadius: 0,
+                            bottomLeadingRadius: 30,
+                            bottomTrailingRadius: 30,
+                            topTrailingRadius: 0
+                        )
+                    )
+            )
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     
-                    // Barra de búsqueda y filtro
+                    // Barra de búsqueda
                     HStack {
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.gray)
-                            Text("Search…")
-                                .foregroundColor(.gray)
-                            Spacer()
-                        }
-                        .padding(8)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(10)
-                        
-                        Spacer()
-                        
-                        Text("Map view")
+                        Image(systemName: "magnifyingglass")
                             .foregroundColor(.gray)
-                            .font(.subheadline)
+                        Text("Search…")
+                            .foregroundColor(.gray)
+                        Spacer()
                     }
+                    .padding(8)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(10)
                     .padding(.horizontal)
                     .padding(.top, 16)
                     
+                    // Map view y filtros
+                    HStack {
+                        // Botón Filter
+                        Button(action: {}) {
+                            HStack(spacing: 6) {
+                                Text("Filter")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        Spacer()
+                        
+                        // Map view con toggle
+                        HStack(spacing: 8) {
+                            Text("Map view")
+                                .foregroundColor(.gray)
+                                .font(.subheadline)
+                            
+                            Toggle("", isOn: .constant(false))
+                                .toggleStyle(SwitchToggleStyle(tint: Color("appBlue")))
+                                .scaleEffect(0.8)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    
                     // Tarjeta del evento
                     VStack(alignment: .leading, spacing: 8) {
-                        Image("logo")
+                        Image("detail_image")
                             .resizable()
                             .scaledToFill()
                             .frame(height: 160)

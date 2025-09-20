@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct HomeView: View {
+    @State private var selectedTab = 0
+    
     var body: some View {
         ZStack {
             Color("appPrimary")
@@ -136,7 +138,9 @@ struct HomeView: View {
                         .padding()
                     }
                 }
+                CustomTabBar(selectedTab: $selectedTab)
             }
+            .ignoresSafeArea(.all, edges: .bottom)
         }
     }
 }

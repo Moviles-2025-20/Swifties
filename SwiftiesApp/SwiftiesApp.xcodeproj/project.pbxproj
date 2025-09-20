@@ -97,6 +97,8 @@
 		EA7DFB1C2E779BCF008FBD3A /* SwiftiesApp */ = {
 			isa = PBXGroup;
 			children = (
+				EA94F3422E7E52E400EFD98E /* Components */,
+				EA94F3412E7E52DB00EFD98E /* Screens */,
 				FE3821712E7E06100019E1E2 /* RootView.swift */,
 				EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */,
 				EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */,
@@ -130,6 +132,20 @@
 				EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */,
 			);
 			path = SwiftiesAppUITests;
+			sourceTree = "<group>";
+		};
+		EA94F3412E7E52DB00EFD98E /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Screens;
+			sourceTree = "<group>";
+		};
+		EA94F3422E7E52E400EFD98E /* Components */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

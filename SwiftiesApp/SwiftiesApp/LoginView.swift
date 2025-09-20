@@ -19,14 +19,36 @@ struct LoginView: View {
                 Image("Logo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 256, height: 256)
+                    .frame(width: 128, height: 128)
                     .accessibilityHidden(true)
                 
                 Spacer()
                 
                 HStack(spacing: 12) {
-                    Button("Log In") {}
-                    Button("Register") {}
+                    Button {
+                        print("Logging In...")
+                    } label: {
+                        Text("Log In")
+                            .frame(width: 100, height:40)
+                            .background(Color("appOchre"))
+                            .font(.system(size: 15,
+                                          weight: .semibold,
+                                          design: .default))
+                            .cornerRadius(10)
+                            .foregroundStyle(.black)
+                    }
+                    Button {
+                        print("Registering...")
+                    } label: {
+                        Text("Register")
+                            .frame(width: 100, height:40)
+                            .background(Color("appRed"))
+                            .font(.system(size: 15,
+                                          weight: .semibold,
+                                          design: .default))
+                            .cornerRadius(10)
+                            .foregroundStyle(.black)
+                    }
                 }
             }
         }

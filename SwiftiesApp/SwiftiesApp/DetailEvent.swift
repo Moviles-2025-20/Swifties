@@ -11,220 +11,201 @@ struct DetailEvent: View {
     @State private var selectedTab = 0
     
     var body: some View {
-        VStack(spacing: 0) {
-  
-            HStack {
-                Spacer()
-                Text("Event Details")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                Spacer()
-                Button(action: {}) {
-                    Image(systemName: "bell")
-                        .foregroundColor(.white)
-                        .font(.title3)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding()
-            .background(
-                Color("appBlue")
-                    .clipShape(
-                        .rect(
-                            topLeadingRadius: 0,
-                            bottomLeadingRadius: 30,
-                            bottomTrailingRadius: 30,
-                            topTrailingRadius: 0
-                        )
-                    )
-            )
+        ZStack {
+            Color("appPrimary")
+                .ignoresSafeArea()
             
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    
-                    // Barra de búsqueda
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
-                        Text("Search…")
-                            .foregroundColor(.gray)
-                        Spacer()
-                    }
-                    .padding(8)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(10)
-                    .padding(.horizontal)
-                    .padding(.top, 16)
-                    
-                    // Map view y filtros
-                    HStack {
-                        // Botón Filter
-                        Button(action: {}) {
-                            HStack(spacing: 6) {
-                                Text("Filter")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                                Image(systemName: "line.3.horizontal.decrease.circle")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .buttonStyle(PlainButtonStyle())
+            VStack {
+                CustomTopBar(title: "Hi, Juliana!", showNotificationButton: true) {
+                    print("Notifications tapped")
+                }
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
                         
-                        Spacer()
-                        
-                        // Map view con toggle
-                        HStack(spacing: 8) {
-                            Text("Map view")
-                                .foregroundColor(.gray)
-                                .font(.subheadline)
-                            
-                            Toggle("", isOn: .constant(false))
-                                .toggleStyle(SwitchToggleStyle(tint: Color("appBlue")))
-                                .scaleEffect(0.8)
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    
-                    // Tarjeta del evento
-                    VStack(alignment: .leading, spacing: 8) {
-                        Image("detail_image")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(height: 160)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .overlay(
-                                VStack {
-                                    Spacer()
-                                    HStack {
-                                        Text("Food Fest")
-                                            .font(.subheadline)
-                                            .fontWeight(.bold)
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 4)
-                                            .background(Color("appOcher"))
-                                            .foregroundColor(.white)
-                                            .clipShape(Capsule())
-                                        Spacer()
-                                    }
-                                    .padding(8)
-                                }
-                            )
-                        
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Image(systemName: "mappin.and.ellipse")
-                                    .foregroundColor(.gray)
-                                Text("El bobo")
-                                    .font(.subheadline)
-                            }
-                            
-                            HStack {
-                                Image(systemName: "clock")
-                                    .foregroundColor(.gray)
-                                Text("Hoy 6:00 pm")
-                                    .font(.subheadline)
-                            }
-                            
-                            HStack {
-                                Image(systemName: "figure.walk")
-                                    .foregroundColor(.gray)
-                                Text("2 min")
-                                    .font(.subheadline)
-                            }
-                            
-                            Text("In Centro de Japón, there is an Asian food festival where you can try typical dishes from different countries, sharing flavors and traditions in one place.")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
-                                .padding(.top, 4)
-                        }
-                        .padding(.horizontal, 4)
-                    }
-                    .padding()
-                    .background(Color.white)
-                    .cornerRadius(16)
-                    .shadow(color: .gray.opacity(0.2), radius: 6, x: 0, y: 4)
-                    .padding(.horizontal)
-                    
-                    // Rating
-                    VStack(alignment: .leading, spacing: 8) {
+                        // Barra de búsqueda
                         HStack {
-                            Text("4.5")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-                            VStack(alignment: .leading) {
-                                HStack(spacing: 2) {
-                                    ForEach(0..<5) { index in
-                                        Image(systemName: index < 4 ? "star.fill" : "star")
-                                            .foregroundColor(Color("appOcher"))
-                                    }
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.black)
+                            Text("Search…")
+                                .foregroundColor(.gray)
+                            Spacer()
+                        }
+                        .padding(8)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(10)
+                        .padding(.horizontal)
+                        .padding(.top, 16)
+                        
+                        // Map view y filtros
+                        HStack {
+                            // Botón Filter
+                            Button(action: {}) {
+                                HStack(spacing: 6) {
+                                    Text("Filter")
+                                        .font(.subheadline)
+                                        .foregroundColor(.black)
+                                    Image(systemName: "line.3.horizontal.decrease.circle")
+                                        .foregroundColor(.black)
                                 }
-                                Text("125 reviews")
-                                    .font(.footnote)
-                                    .foregroundColor(.gray)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            Spacer()
+                            
+                            // Map view con toggle
+                            HStack(spacing: 8) {
+                                Text("Map view")
+                                    .foregroundColor(.black)
+                                    .font(.subheadline)
+                                
+                                Toggle("", isOn: .constant(false))
+                                    .toggleStyle(SwitchToggleStyle(tint: Color("appBlue")))
+                                    .scaleEffect(0.8)
                             }
                         }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
                         
-                        // Barras de calificación
-                        VStack(alignment: .leading, spacing: 6) {
-                            RatingRow(stars: 5, percent: 40, color: Color("appOcher"))
-                            RatingRow(stars: 4, percent: 30, color: Color("appOcher"))
-                            RatingRow(stars: 3, percent: 15, color: Color("appOcher"))
-                            RatingRow(stars: 2, percent: 10, color: Color("appOcher"))
-                            RatingRow(stars: 1, percent: 5, color: Color("appOcher"))
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Sección de comentarios - SIMPLE
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Comments")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .padding(.horizontal)
-                        
-                        // Un solo comentario
-                        HStack(spacing: 12) {
-                            Circle()
-                                .fill(Color.gray.opacity(0.3))
-                                .frame(width: 40, height: 40)
+                        // Tarjeta del evento
+                        VStack(alignment: .leading, spacing: 8) {
+                            Image("detail_image")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(height: 160)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
                                 .overlay(
-                                    Image(systemName: "person.fill")
-                                        .foregroundColor(.white)
+                                    VStack {
+                                        Spacer()
+                                        HStack {
+                                            Text("Food Fest")
+                                                .font(.subheadline)
+                                                .fontWeight(.bold)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 4)
+                                                .background(Color("appOcher"))
+                                                .foregroundColor(.white)
+                                                .clipShape(Capsule())
+                                            Spacer()
+                                        }
+                                        .padding(8)
+                                    }
                                 )
                             
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: 6) {
                                 HStack {
-                                    Text("@maria_foodie")
+                                    Image(systemName: "mappin.and.ellipse")
+                                        .foregroundColor(.gray)
+                                    Text("El bobo")
                                         .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    Spacer()
-                                    HStack(spacing: 2) {
-                                        ForEach(0..<5) { _ in
-                                            Image(systemName: "star.fill")
-                                                .foregroundColor(Color("appOcher"))
-                                                .font(.caption)
-                                        }
-                                    }
                                 }
                                 
-                                Text("Amazing variety of Asian cuisines! The ramen booth was my favorite.")
+                                HStack {
+                                    Image(systemName: "clock")
+                                        .foregroundColor(.gray)
+                                    Text("Today, 6:00 pm")
+                                        .font(.subheadline)
+                                }
+                                
+                                HStack {
+                                    Image(systemName: "figure.walk")
+                                        .foregroundColor(.gray)
+                                    Text("2 min")
+                                        .font(.subheadline)
+                                }
+                                
+                                Text("In Centro de Japón, there is an Asian food festival where you can try typical dishes from different countries, sharing flavors and traditions in one place.")
                                     .font(.footnote)
                                     .foregroundColor(.secondary)
+                                    .padding(.top, 4)
                             }
+                            .padding(.horizontal, 4)
                         }
                         .padding()
                         .background(Color.white)
-                        .cornerRadius(12)
-                        .shadow(color: .gray.opacity(0.2), radius: 4, x: 0, y: 2)
+                        .cornerRadius(16)
+                        .shadow(color: .gray.opacity(0.2), radius: 6, x: 0, y: 4)
                         .padding(.horizontal)
+                        
+                        // Rating
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("4.5")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+                                VStack(alignment: .leading) {
+                                    HStack(spacing: 2) {
+                                        ForEach(0..<5) { index in
+                                            Image(systemName: index < 4 ? "star.fill" : "star")
+                                                .foregroundColor(Color("appOcher"))
+                                        }
+                                    }
+                                    Text("125 reviews")
+                                        .font(.footnote)
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            
+                            // Barras de calificación
+                            VStack(alignment: .leading, spacing: 6) {
+                                RatingRow(stars: 5, percent: 40, color: Color("appOcher"))
+                                RatingRow(stars: 4, percent: 30, color: Color("appOcher"))
+                                RatingRow(stars: 3, percent: 15, color: Color("appOcher"))
+                                RatingRow(stars: 2, percent: 10, color: Color("appOcher"))
+                                RatingRow(stars: 1, percent: 5, color: Color("appOcher"))
+                            }
+                        }
+                        .padding(.horizontal)
+                        
+                        // Sección de comentarios - SIMPLE
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Comments")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .padding(.horizontal)
+                            
+                            // Un solo comentario
+                            HStack(spacing: 12) {
+                                Circle()
+                                    .fill(Color.gray.opacity(0.3))
+                                    .frame(width: 40, height: 40)
+                                    .overlay(
+                                        Image(systemName: "person.fill")
+                                            .foregroundColor(.white)
+                                    )
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text("@maria_foodie")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                        Spacer()
+                                        HStack(spacing: 2) {
+                                            ForEach(0..<5) { _ in
+                                                Image(systemName: "star.fill")
+                                                    .foregroundColor(Color("appOcher"))
+                                                    .font(.caption)
+                                            }
+                                        }
+                                    }
+                                    
+                                    Text("Amazing variety of Asian cuisines! The ramen booth was my favorite.")
+                                        .font(.footnote)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding()
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            .shadow(color: .gray.opacity(0.2), radius: 4, x: 0, y: 2)
+                            .padding(.horizontal)
+                        }
+                        
+                        Spacer()
                     }
-                    
-                    Spacer()
                 }
+                CustomTabBar(selectedTab: $selectedTab)
             }
-            .background(Color.gray.opacity(0.1).ignoresSafeArea())
         }
     }
 }

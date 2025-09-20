@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		88D89DA42E7E4C5200F26AEF /* DetailEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88D89DA32E7E4C4700F26AEF /* DetailEvent.swift */; };
 		EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */; };
 		EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */; };
 		EA7DFB222E779BD1008FBD3A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EA7DFB212E779BD1008FBD3A /* Assets.xcassets */; };
@@ -16,6 +15,8 @@
 		EA7DFB3A2E779BD1008FBD3A /* SwiftiesAppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */; };
 		EA7DFB3C2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */; };
 		FE7E32CF2E7E812C0028BF93 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E32CE2E7E812C0028BF93 /* HomeView.swift */; };
+		FE7E33682E7E9E350028BF93 /* DetailEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E33662E7E9E350028BF93 /* DetailEvent.swift */; };
+		FE7E33692E7E9E350028BF93 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E33672E7E9E350028BF93 /* ProfileView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,7 +37,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		88D89DA32E7E4C4700F26AEF /* DetailEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailEvent.swift; sourceTree = "<group>"; };
 		EA7DFB1A2E779BCF008FBD3A /* SwiftiesApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftiesApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppApp.swift; sourceTree = "<group>"; };
 		EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -49,6 +49,8 @@
 		EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITests.swift; sourceTree = "<group>"; };
 		EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		FE7E32CE2E7E812C0028BF93 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = SwiftiesApp/HomeView.swift; sourceTree = SOURCE_ROOT; };
+		FE7E33662E7E9E350028BF93 /* DetailEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DetailEvent.swift; path = SwiftiesApp/DetailEvent.swift; sourceTree = SOURCE_ROOT; };
+		FE7E33672E7E9E350028BF93 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProfileView.swift; path = SwiftiesApp/ProfileView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -107,7 +109,6 @@
 		EA7DFB1C2E779BCF008FBD3A /* SwiftiesApp */ = {
 			isa = PBXGroup;
 			children = (
-				88D89DA32E7E4C4700F26AEF /* DetailEvent.swift */,
 				EA94F3422E7E52E400EFD98E /* Components */,
 				EA94F3412E7E52DB00EFD98E /* Screens */,
 				EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */,
@@ -147,6 +148,8 @@
 		EA94F3412E7E52DB00EFD98E /* Screens */ = {
 			isa = PBXGroup;
 			children = (
+				FE7E33662E7E9E350028BF93 /* DetailEvent.swift */,
+				FE7E33672E7E9E350028BF93 /* ProfileView.swift */,
 				FE7E32CE2E7E812C0028BF93 /* HomeView.swift */,
 			);
 			path = Screens;
@@ -303,8 +306,9 @@
 			files = (
 				FE7E32CF2E7E812C0028BF93 /* HomeView.swift in Sources */,
 				EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */,
-				88D89DA42E7E4C5200F26AEF /* DetailEvent.swift in Sources */,
 				EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */,
+				FE7E33682E7E9E350028BF93 /* DetailEvent.swift in Sources */,
+				FE7E33692E7E9E350028BF93 /* ProfileView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -464,7 +468,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftiesApp/Preview Content\"";
-				DEVELOPMENT_TEAM = WGPSL5WBS8;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -502,7 +506,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftiesApp/Preview Content\"";
-				DEVELOPMENT_TEAM = WGPSL5WBS8;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;

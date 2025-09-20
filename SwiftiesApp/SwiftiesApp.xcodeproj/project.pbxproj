@@ -14,9 +14,9 @@
 		EA7DFB302E779BD1008FBD3A /* SwiftiesAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB2F2E779BD1008FBD3A /* SwiftiesAppTests.swift */; };
 		EA7DFB3A2E779BD1008FBD3A /* SwiftiesAppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */; };
 		EA7DFB3C2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */; };
+		FE7E338B2E7EA7530028BF93 /* ScreensCyclerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E338A2E7EA7530028BF93 /* ScreensCyclerView.swift */; };
 		FEAE2F0E2E7E5B4B00203D5C /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAE2F0D2E7E5B4B00203D5C /* LoadingView.swift */; };
 		FEAE2F102E7E5CD400203D5C /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAE2F0F2E7E5CD400203D5C /* LoginView.swift */; };
-		FE7E338B2E7EA7530028BF93 /* ScreensCyclerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7E338A2E7EA7530028BF93 /* ScreensCyclerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,9 +48,9 @@
 		EA7DFB352E779BD1008FBD3A /* SwiftiesAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftiesAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA7DFB392E779BD1008FBD3A /* SwiftiesAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITests.swift; sourceTree = "<group>"; };
 		EA7DFB3B2E779BD1008FBD3A /* SwiftiesAppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		FE7E338A2E7EA7530028BF93 /* ScreensCyclerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreensCyclerView.swift; sourceTree = "<group>"; };
 		FEAE2F0D2E7E5B4B00203D5C /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LoadingView.swift; path = SwiftiesApp/LoadingView.swift; sourceTree = SOURCE_ROOT; };
 		FEAE2F0F2E7E5CD400203D5C /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LoginView.swift; path = SwiftiesApp/LoginView.swift; sourceTree = SOURCE_ROOT; };
-		FE7E338A2E7EA7530028BF93 /* ScreensCyclerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreensCyclerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -94,6 +94,7 @@
 				EA7DFB2E2E779BD1008FBD3A /* SwiftiesAppTests */,
 				EA7DFB382E779BD1008FBD3A /* SwiftiesAppUITests */,
 				EA7DFB1B2E779BCF008FBD3A /* Products */,
+				FE7E33C42E7EB1D80028BF93 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -147,15 +148,6 @@
 			path = SwiftiesAppUITests;
 			sourceTree = "<group>";
 		};
-		EA94F3412E7E52DB00EFD98E /* Screens */ = {
-			isa = PBXGroup;
-			children = (
-				FEAE2F0D2E7E5B4B00203D5C /* LoadingView.swift */,
-				FEAE2F0F2E7E5CD400203D5C /* LoginView.swift */,
-			);
-			path = Screens;
-			sourceTree = "<group>";
-		};
 		EA94F3422E7E52E400EFD98E /* Components */ = {
 			isa = PBXGroup;
 			children = (
@@ -166,6 +158,15 @@
 				FE7E32DC2E7E84F50028BF93 /* TopBar */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		FE7E33C42E7EB1D80028BF93 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				FEAE2F0F2E7E5CD400203D5C /* LoginView.swift */,
+				FEAE2F0D2E7E5B4B00203D5C /* LoadingView.swift */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

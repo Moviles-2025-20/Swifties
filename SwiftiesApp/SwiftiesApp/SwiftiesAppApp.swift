@@ -16,7 +16,9 @@ struct SwiftiesAppApp: App {
                     AnyView(DetailEvent()),
                     AnyView(HomeView()),
                     AnyView(NotificationsView()),
-                    AnyView(ProfileView())
+                    AnyView(ProfileView()),
+                    AnyView(LoginView()),
+                    AnyView(LoadingView()),
                 ])
             } else {
                 ContentView()

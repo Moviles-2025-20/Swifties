@@ -78,6 +78,8 @@ extension ScreensCyclerView {
         AnyView(DetailEvent()),
         AnyView(HomeView()),
         AnyView(NotificationsView()),
-        AnyView(ProfileView())
+        AnyView(ProfileView()),
+        AnyView(LoadingView()),
+        AnyView(LoginView())
     ])
 }

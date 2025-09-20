@@ -1,18 +1,21 @@
-//
-//  SearchBarComponent.swift
-//  SwiftiesApp
-//
-//  Created by Natalia Villegas Calderón on 20/09/25.
-//
-
 import SwiftUI
 
 struct SearchBarComponent: View {
+    @Binding var searchText: String
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.gray)
+                .padding(.leading, 12)
+            
+            TextField("Search...", text: $searchText)
+                .textFieldStyle(PlainTextFieldStyle())
+                .padding(.vertical, 12)
+        }
+        .background(Color.white)
+        .cornerRadius(25)
+        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .padding(.horizontal, 16)
     }
-}
-
-#Preview {
-    SearchBarComponent()
 }

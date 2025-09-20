@@ -17,7 +17,7 @@ struct LoadingView: View {
                 Image("Logo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 256, height: 256)
+                    .frame(width: 384, height: 384)
                     .accessibilityHidden(true)
                 
                 Text("Parchandes")

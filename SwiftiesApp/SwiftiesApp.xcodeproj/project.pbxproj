@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		88D89DA42E7E4C5200F26AEF /* DetailEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88D89DA32E7E4C4700F26AEF /* DetailEvent.swift */; };
+		88E03EBA2E7E9DE4002087F4 /* NotificationsEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E03EB92E7E9DD4002087F4 /* NotificationsEvents.swift */; };
 		EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */; };
 		EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */; };
 		EA7DFB222E779BD1008FBD3A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EA7DFB212E779BD1008FBD3A /* Assets.xcassets */; };
@@ -37,6 +38,7 @@
 
 /* Begin PBXFileReference section */
 		88D89DA32E7E4C4700F26AEF /* DetailEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailEvent.swift; sourceTree = "<group>"; };
+		88E03EB92E7E9DD4002087F4 /* NotificationsEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsEvents.swift; sourceTree = "<group>"; };
 		EA7DFB1A2E779BCF008FBD3A /* SwiftiesApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftiesApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA7DFB1D2E779BCF008FBD3A /* SwiftiesAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftiesAppApp.swift; sourceTree = "<group>"; };
 		EA7DFB1F2E779BCF008FBD3A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -107,6 +109,7 @@
 		EA7DFB1C2E779BCF008FBD3A /* SwiftiesApp */ = {
 			isa = PBXGroup;
 			children = (
+				88E03EB92E7E9DD4002087F4 /* NotificationsEvents.swift */,
 				88D89DA32E7E4C4700F26AEF /* DetailEvent.swift */,
 				EA94F3422E7E52E400EFD98E /* Components */,
 				EA94F3412E7E52DB00EFD98E /* Screens */,
@@ -305,6 +308,7 @@
 				EA7DFB202E779BCF008FBD3A /* ContentView.swift in Sources */,
 				88D89DA42E7E4C5200F26AEF /* DetailEvent.swift in Sources */,
 				EA7DFB1E2E779BCF008FBD3A /* SwiftiesAppApp.swift in Sources */,
+				88E03EBA2E7E9DE4002087F4 /* NotificationsEvents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

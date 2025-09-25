@@ -20,4 +20,3 @@ jobs:
             echo "❌ Only 'develop' may be merged into 'main'. Current head: '${{ github.head_ref }}'."
             exit 1
           fi
-

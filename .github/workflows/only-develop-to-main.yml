@@ -1,0 +1,23 @@
+name: Enforce develop → main only
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  gate:
+    name: Branch gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block if head branch is not develop
+        run: |
+          echo "Base: ${{ github.base_ref }}"
+          echo "Head: ${{ github.head_ref }}"
+          if [ "${{ github.head_ref }}" != "develop" ]; then
+            echo "❌ Only 'develop' may be merged into 'main'. Current head: '${{ github.head_ref }}'."
+            echo "👉 To merge your changes, please create a pull request from your feature branch to 'develop' first, then merge 'develop' into 'main'."
+            exit 1
+          fi

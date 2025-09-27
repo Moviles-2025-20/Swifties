@@ -6,14 +6,43 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		E1E5F4FD2E885E800095FBC4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E1A16D452E84BD9A003D5B39 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E1A16D4C2E84BD9A003D5B39;
+			remoteInfo = Swifties;
+		};
+		E1E5F50C2E885E9F0095FBC4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E1A16D452E84BD9A003D5B39 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E1A16D4C2E84BD9A003D5B39;
+			remoteInfo = Swifties;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		E1A16D4D2E84BD9A003D5B39 /* Swifties.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Swifties.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1544D252E885ABB00B3320D /* Swifties.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Swifties.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1E5F4F92E885E800095FBC4 /* SwiftiesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftiesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1E5F5062E885E9F0095FBC4 /* SwiftiesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftiesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E1A16D4F2E84BD9A003D5B39 /* Swifties */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Swifties;
+			sourceTree = "<group>";
+		};
+		E1E5F4FA2E885E800095FBC4 /* SwiftiesTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SwiftiesTests;
+			sourceTree = "<group>";
+		};
+		E1E5F5072E885E9F0095FBC4 /* SwiftiesUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SwiftiesUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -26,23 +55,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1E5F4F62E885E800095FBC4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1E5F5032E885E9F0095FBC4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		E1A16D442E84BD9A003D5B39 = {
 			isa = PBXGroup;
 			children = (
+				E1544D252E885ABB00B3320D /* Swifties.app */,
 				E1A16D4F2E84BD9A003D5B39 /* Swifties */,
-				E1A16D4E2E84BD9A003D5B39 /* Products */,
+				E1E5F4F92E885E800095FBC4 /* SwiftiesTests.xctest */,
+				E1E5F4FA2E885E800095FBC4 /* SwiftiesTests */,
+				E1E5F5062E885E9F0095FBC4 /* SwiftiesUITests.xctest */,
+				E1E5F5072E885E9F0095FBC4 /* SwiftiesUITests */,
 			);
-			sourceTree = "<group>";
-		};
-		E1A16D4E2E84BD9A003D5B39 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				E1A16D4D2E84BD9A003D5B39 /* Swifties.app */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -67,8 +106,54 @@
 			packageProductDependencies = (
 			);
 			productName = Swifties;
-			productReference = E1A16D4D2E84BD9A003D5B39 /* Swifties.app */;
+			productReference = E1544D252E885ABB00B3320D /* Swifties.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E1E5F4F82E885E800095FBC4 /* SwiftiesTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E1E5F5012E885E800095FBC4 /* Build configuration list for PBXNativeTarget "SwiftiesTests" */;
+			buildPhases = (
+				E1E5F4F52E885E800095FBC4 /* Sources */,
+				E1E5F4F62E885E800095FBC4 /* Frameworks */,
+				E1E5F4F72E885E800095FBC4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E1E5F4FE2E885E800095FBC4 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				E1E5F4FA2E885E800095FBC4 /* SwiftiesTests */,
+			);
+			name = SwiftiesTests;
+			packageProductDependencies = (
+			);
+			productName = SwiftiesTests;
+			productReference = E1E5F4F92E885E800095FBC4 /* SwiftiesTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		E1E5F5052E885E9F0095FBC4 /* SwiftiesUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E1E5F50E2E885E9F0095FBC4 /* Build configuration list for PBXNativeTarget "SwiftiesUITests" */;
+			buildPhases = (
+				E1E5F5022E885E9F0095FBC4 /* Sources */,
+				E1E5F5032E885E9F0095FBC4 /* Frameworks */,
+				E1E5F5042E885E9F0095FBC4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E1E5F50D2E885E9F0095FBC4 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				E1E5F5072E885E9F0095FBC4 /* SwiftiesUITests */,
+			);
+			name = SwiftiesUITests;
+			packageProductDependencies = (
+			);
+			productName = SwiftiesUITests;
+			productReference = E1E5F5062E885E9F0095FBC4 /* SwiftiesUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
@@ -82,6 +167,15 @@
 				TargetAttributes = {
 					E1A16D4C2E84BD9A003D5B39 = {
 						CreatedOnToolsVersion = 26.0.1;
+						LastSwiftMigration = 2600;
+					};
+					E1E5F4F82E885E800095FBC4 = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = E1A16D4C2E84BD9A003D5B39;
+					};
+					E1E5F5052E885E9F0095FBC4 = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = E1A16D4C2E84BD9A003D5B39;
 					};
 				};
 			};
@@ -95,17 +189,33 @@
 			mainGroup = E1A16D442E84BD9A003D5B39;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = E1A16D4E2E84BD9A003D5B39 /* Products */;
+			productRefGroup = E1A16D442E84BD9A003D5B39;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				E1A16D4C2E84BD9A003D5B39 /* Swifties */,
+				E1E5F4F82E885E800095FBC4 /* SwiftiesTests */,
+				E1E5F5052E885E9F0095FBC4 /* SwiftiesUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		E1A16D4B2E84BD9A003D5B39 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1E5F4F72E885E800095FBC4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1E5F5042E885E9F0095FBC4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +232,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1E5F4F52E885E800095FBC4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1E5F5022E885E9F0095FBC4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E1E5F4FE2E885E800095FBC4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E1A16D4C2E84BD9A003D5B39 /* Swifties */;
+			targetProxy = E1E5F4FD2E885E800095FBC4 /* PBXContainerItemProxy */;
+		};
+		E1E5F50D2E885E9F0095FBC4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E1A16D4C2E84BD9A003D5B39 /* Swifties */;
+			targetProxy = E1E5F50C2E885E9F0095FBC4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		E1A16D562E84BD9B003D5B39 /* Debug */ = {
@@ -246,6 +383,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = Y2RSVM78BU;
@@ -278,6 +416,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
@@ -290,6 +429,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = Y2RSVM78BU;
@@ -329,6 +469,98 @@
 			};
 			name = Release;
 		};
+		E1E5F4FF2E885E800095FBC4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Y2RSVM78BU;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = moviles202520.SwiftiesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Swifties.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Swifties";
+			};
+			name = Debug;
+		};
+		E1E5F5002E885E800095FBC4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Y2RSVM78BU;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = moviles202520.SwiftiesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Swifties.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Swifties";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		E1E5F50F2E885E9F0095FBC4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Y2RSVM78BU;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = moviles202520.SwiftiesUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Swifties;
+			};
+			name = Debug;
+		};
+		E1E5F5102E885E9F0095FBC4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Y2RSVM78BU;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = moviles202520.SwiftiesUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Swifties;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -346,6 +578,24 @@
 			buildConfigurations = (
 				E1A16D592E84BD9B003D5B39 /* Debug */,
 				E1A16D5A2E84BD9B003D5B39 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E1E5F5012E885E800095FBC4 /* Build configuration list for PBXNativeTarget "SwiftiesTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E1E5F4FF2E885E800095FBC4 /* Debug */,
+				E1E5F5002E885E800095FBC4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E1E5F50E2E885E9F0095FBC4 /* Build configuration list for PBXNativeTarget "SwiftiesUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E1E5F50F2E885E9F0095FBC4 /* Debug */,
+				E1E5F5102E885E9F0095FBC4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

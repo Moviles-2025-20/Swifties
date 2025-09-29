@@ -62,9 +62,12 @@ struct LoginView: View {
                     
                 }
                 
-                Text("Skip it for now")
-                    .font(.title3.weight(.semibold))
-                
+                Button {
+                    print("Skipping login for now...")
+                } label: {
+                    Text("Skip it for now")
+                        .font(.title3.weight(.semibold))
+                }
                 Spacer()
             }
         }

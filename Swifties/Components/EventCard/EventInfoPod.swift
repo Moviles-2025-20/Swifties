@@ -85,7 +85,7 @@ struct EventInfoPod: View {
                 .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
         )
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .frame(width: 350)
+        .frame(maxWidth: 350)
     }
 
     // MARK: - Image loader helper

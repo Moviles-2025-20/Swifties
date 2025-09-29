@@ -21,28 +21,17 @@ struct HomeView: View {
                 }
                 
                 ScrollView {
-                    VStack (spacing: 10) {
+                    VStack (spacing: 0) {
                         HStack {
                             Text("What's on your mind today?")
                                 .font(.title3)
                                 .fontWeight(.semibold)
                                 .padding()
-                                .frame(height: 15)
+                                .frame(minHeight: 10)
                             
                             Spacer()
                         }
-                        .padding(.top, 20)
-                        
-                        HStack {
-                            Text("Choose what fits you best!")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .padding()
-                                .frame(height: 15)
-                            
-                            Spacer()
-                        }
-                        .padding(.bottom, 20)
+                        .padding(.bottom, 10)
                         
                         HStack (spacing: 15) {
                             Button {
@@ -67,6 +56,7 @@ struct HomeView: View {
                             .buttonStyle(.borderedProminent)
                             .tint(Color("appRed"))
                         }
+                        .padding(.bottom, 10)
                         
                         HStack (spacing: 15) {
                             Button {
@@ -97,7 +87,7 @@ struct HomeView: View {
                                 .font(.title3)
                                 .fontWeight(.semibold)
                                 .padding()
-                                .frame(height: 15)
+                                .frame(minHeight: 10)
                             
                             Spacer()
                         }
@@ -109,17 +99,17 @@ struct HomeView: View {
                                      description: "Have a blast with us on our daily marathon!",
                                      timeText: "Today, 10am",
                                      walkingMinutes: 8)
-                        .padding()
                         
                         HStack {
                             Text("Close to you")
                                 .font(.title3)
                                 .fontWeight(.semibold)
                                 .padding()
-                                .frame(height: 15)
+                                .frame(minHeight: 10)
                             
                             Spacer()
                         }
+                        .padding(.top, 20)
                         
                         EventInfoPod(imagePath: "evento",
                                      title: "Kaldivia",
@@ -127,7 +117,7 @@ struct HomeView: View {
                                      description: "Have a cup of coffee during your free period!",
                                      timeText: "Today, all-day",
                                      walkingMinutes: 6)
-                        .padding()
+                        .padding(.bottom)
                         
                         EventInfoPod(imagePath: "evento",
                                      title: "Cívico Pets",
@@ -135,7 +125,7 @@ struct HomeView: View {
                                      description: "Bring your pets to the Civic Center",
                                      timeText: "Tomorrow, 8-10am",
                                      walkingMinutes: 4)
-                        .padding()
+                        .padding(.bottom)
                     }
                 }
                 CustomTabBar(selectedTab: $selectedTab)

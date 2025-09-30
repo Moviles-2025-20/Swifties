@@ -11,7 +11,7 @@ import SwiftUI
 struct SwiftiesApp: App {
     var body: some Scene {
         WindowGroup {
-            ProfileView()
+            HomeView()
         }
     }
 }

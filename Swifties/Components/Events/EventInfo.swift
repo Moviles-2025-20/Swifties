@@ -79,19 +79,18 @@ struct EventInfo: View {
                         }
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                     
-                        // Second row: Location (if provided)
-                        if let location = location {
-                            HStack(spacing: 4) {
-                                Image(systemName: "location.fill")
-                                    .imageScale(.small)
-                                Text(location)
-                                    .lineLimit(1)
-                                    .font(Font.caption.bold())
-                            }
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    }
+                    // Second row: Location (if provided)
+                    if let location = location {
+                        HStack(spacing: 4) {
+                            Image(systemName: "location.fill")
+                                .imageScale(.small)
+                            Text(location)
+                                .lineLimit(1)
+                                .font(Font.caption.bold())
                         }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
                 }
             }

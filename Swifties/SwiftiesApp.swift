@@ -11,11 +11,7 @@ import SwiftUI
 struct SwiftiesApp: App {
     var body: some Scene {
         WindowGroup {
-            ProfileView();
-            EventsListView();
-            HomeView();
-            LoginView();
-            LoadingView();
+            HomeView()
         }
     }
 }

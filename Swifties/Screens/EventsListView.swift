@@ -45,7 +45,7 @@ struct EventsListView: View {
                             
                             // Events list
                             VStack(spacing: 12) {
-                                EventInfoPod(
+                                EventInfo(
                                     imagePath: "theater_event",
                                     title: "Obra de teatro",
                                     titleColor: Color.orange,
@@ -55,7 +55,7 @@ struct EventsListView: View {
                                     location: "El bobo"
                                 )
                                 
-                                EventInfoPod(
+                                EventInfo(
                                     imagePath: "theater_event",
                                     title: "TITLE",
                                     titleColor: Color.orange,
@@ -65,7 +65,7 @@ struct EventsListView: View {
                                     location: "Plaza LI"
                                 )
                                 
-                                EventInfoPod(
+                                EventInfo(
                                     imagePath: "theater_event",
                                     title: "TITLE",
                                     titleColor: Color.orange,
@@ -75,7 +75,7 @@ struct EventsListView: View {
                                     location: "C Block"
                                 )
                                 
-                                EventInfoPod(
+                                EventInfo(
                                     imagePath: "theater_event",
                                     title: "TITLE",
                                     titleColor: Color.orange,

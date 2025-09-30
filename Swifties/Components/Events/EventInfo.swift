@@ -16,7 +16,7 @@ import SwiftUI
 ///   - timeText: A formatted time string (e.g., "Today, 5:30 PM").
 ///   - walkingMinutes: Walking distance in minutes.
 
-struct EventInfoPod: View {
+struct EventInfo: View {
     let imagePath: String
     let title: String
     let titleColor: Color
@@ -65,6 +65,7 @@ struct EventInfoPod: View {
                                 .imageScale(.small)
                             Text(timeText)
                                 .lineLimit(1)
+                                .font(Font.caption.bold())
                         }
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -74,21 +75,23 @@ struct EventInfoPod: View {
                             Image(systemName: "figure.walk")
                                 .imageScale(.small)
                             Text("\(walkingMinutes) min")
+                                .font(Font.caption.bold())
                         }
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    }
-                    
-                    // Second row: Location (if provided)
-                    if let location = location {
-                        HStack(spacing: 4) {
-                            Image(systemName: "location.fill")
-                                .imageScale(.small)
-                            Text(location)
-                                .lineLimit(1)
+                     
+                        // Second row: Location (if provided)
+                        if let location = location {
+                            HStack(spacing: 4) {
+                                Image(systemName: "location.fill")
+                                    .imageScale(.small)
+                                Text(location)
+                                    .lineLimit(1)
+                                    .font(Font.caption.bold())
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                     }
                 }
             }

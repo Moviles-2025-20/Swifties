@@ -12,7 +12,10 @@ struct SwiftiesApp: App {
     var body: some Scene {
         WindowGroup {
             ProfileView();
-            EventsListView()
+            EventsListView();
+            HomeView();
+            LoginView();
+            LoadingView();
         }
     }
 }

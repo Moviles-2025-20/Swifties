@@ -93,12 +93,14 @@ struct HomeView: View {
                         }
                         .padding(.top, 20)
                         
-                        EventInfoPod(imagePath: "evento",
+                        EventInfo(imagePath: "evento",
                                      title: "Daily Marathon",
                                      titleColor: Color("appOcher"),
                                      description: "Have a blast with us on our daily marathon!",
                                      timeText: "Today, 10am",
-                                     walkingMinutes: 8)
+                                     walkingMinutes: 8,
+                                     location: "Lleras"
+                        ).padding(.horizontal, 16)
                         
                         HStack {
                             Text("Close to you")
@@ -111,21 +113,24 @@ struct HomeView: View {
                         }
                         .padding(.top, 20)
                         
-                        EventInfoPod(imagePath: "evento",
+                        EventInfo(imagePath: "evento",
                                      title: "Kaldivia",
                                      titleColor: Color("appBlue"),
                                      description: "Have a cup of coffee during your free period!",
                                      timeText: "Today, all-day",
-                                     walkingMinutes: 6)
+                                     walkingMinutes: 6,
+                                     location: "S1")
                         .padding(.bottom)
-                        
-                        EventInfoPod(imagePath: "evento",
+                        .padding(.horizontal, 16)
+                        EventInfo(imagePath: "evento",
                                      title: "Cívico Pets",
                                      titleColor: Color("appOcher"),
                                      description: "Bring your pets to the Civic Center",
                                      timeText: "Tomorrow, 8-10am",
-                                     walkingMinutes: 4)
+                                     walkingMinutes: 4,
+                                     location: "RGD")
                         .padding(.bottom)
+                        .padding(.horizontal, 16)
                     }
                 }
                 CustomTabBar(selectedTab: $selectedTab)

@@ -11,6 +11,13 @@ struct LoginView: View {
     @EnvironmentObject var viewModel: AuthViewModel
     @Environment(\.colorScheme) var colorScheme
     @State private var hasRedirected = false
+    @State private var shouldNavigate = false
+    @State private var navigationDestination: NavigationDestination?
+    
+    enum NavigationDestination {
+        case home
+        case onboarding
+    }
     
     // MARK: - Login with Google
     private func signInWithGoogle() {
@@ -20,19 +27,35 @@ struct LoginView: View {
     }
     
     var body: some View {
-        ZStack {
-            Color("appPrimary")
-                .ignoresSafeArea()
-            
-            if viewModel.isAuthenticated {
-                authenticatedView
-            } else {
-                loginView
+        NavigationStack {
+            ZStack {
+                Color("appPrimary")
+                    .ignoresSafeArea()
+                
+                if viewModel.isAuthenticated {
+                    authenticatedView
+                } else {
+                    loginView
+                }
             }
-        }
-        .onChange(of: viewModel.isAuthenticated) { _, isAuth in
-            if isAuth {
-                handleRedirect()
+            .onChange(of: viewModel.isAuthenticated) { _, isAuth in
+                if isAuth {
+                    handleRedirect()
+                }
+            }
+            .navigationDestination(isPresented: $shouldNavigate) {
+                if let destination = navigationDestination {
+                    switch destination {
+                    case .home:
+                        HomeView()
+                            .environmentObject(viewModel)
+                            .navigationBarBackButtonHidden(true)
+                    case .onboarding:
+                        OnboardingView()
+                            .environmentObject(viewModel)
+                            .navigationBarBackButtonHidden(true)
+                    }
+                }
             }
         }
     }
@@ -198,27 +221,12 @@ struct LoginView: View {
                 .foregroundColor(.gray)
             
             // Countdown progress
-            CountdownView()
-            
-            Spacer().frame(height: 30)
-            
-            Button {
+            CountdownView(onComplete: {
                 handleImmediateNavigation()
-            } label: {
-                Text("Continue")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(.appRed)
-                    .cornerRadius(12)
-            }
-            .padding(.horizontal, 32)
-            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            }).padding(.horizontal,40)
             
             Spacer()
         }
-        .padding(.horizontal, 24)
     }
     
     // MARK: - Helper Views
@@ -243,26 +251,25 @@ struct LoginView: View {
     private func handleRedirect() {
         guard !hasRedirected else { return }
         hasRedirected = true
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            handleImmediateNavigation()
-        }
+        // Auto-redirect happens in CountdownView after 3 seconds
     }
     
     private func handleImmediateNavigation() {
         if viewModel.isFirstTimeUser {
             print("Navigating to onboarding...")
-            // TODO: NavigationStack or coordinator pattern
+            navigationDestination = .onboarding
         } else {
             print("Navigating to home...")
-            // TODO: NavigationStack or coordinator pattern
+            navigationDestination = .home
         }
+        shouldNavigate = true
     }
 }
 
 // MARK: - Countdown View
 struct CountdownView: View {
     @State private var countdown = 3
+    let onComplete: () -> Void
     
     var body: some View {
         VStack(spacing: 10) {
@@ -286,6 +293,7 @@ struct CountdownView: View {
                 countdown -= 1
             } else {
                 timer.invalidate()
+                onComplete()
             }
         }
     }

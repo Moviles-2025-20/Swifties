@@ -63,7 +63,19 @@ struct StartView: View {
                 }
                 
                 Spacer()
-                
+                Button {
+                    Task {
+                        await authViewModel.logout()
+                    }
+                } label: {
+                    Text("Logout")
+                        .frame(width: 120, height: 45)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.black)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color("appSecondary"))
+            
             }
         }
     }

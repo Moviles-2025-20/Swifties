@@ -132,7 +132,7 @@ class AuthService {
                     if let authResult = authResult {
                         let firebaseUser = authResult.user
                         let providerId = credential.provider
-                        print("User \(firebaseUser.uid) signed in with GitHub email \(firebaseUser.email ?? "no email")")
+                        print("User \(firebaseUser.uid) signed in with GitHub")
                         continuation.resume(returning: (firebaseUser, providerId))
                     } else {
                         continuation.resume(throwing: AuthenticationError.tokenError(message: "No auth result from GitHub"))
@@ -156,11 +156,10 @@ class AuthService {
                         print("GitHub session cleared (handled by Firebase)")
                     }
                 }
-                
-                // Sign out from Firebase (clears all providers)
-                try Auth.auth().signOut()
-                print("User signed out successfully from Firebase")
             }
+            // Sign out from Firebase (clears all providers)
+            try Auth.auth().signOut()
+            print("User signed out successfully from Firebase")
         } catch {
             print("Sign out error: \(error.localizedDescription)")
             throw AuthenticationError.unknown(error)

@@ -57,7 +57,7 @@ class EventListViewModel: ObservableObject {
                           let category = data["category"] as? String,
                           let active = data["active"] as? Bool else {
                         print("Documento incompleto: \(doc.documentID)")
-                        return nil // esto filtra documentos incompletos
+                        return nil // this filters incomplete documents
                     }
 
                     return Event(

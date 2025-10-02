@@ -4,20 +4,6 @@
 //
 //  Created by Natalia Villegas Calderón on 1/10/25.
 //
-//
-//  AuthService.swift
-//  Swifties
-//
-//  Created on 01/10/25.
-//
-
-//
-//  AuthService.swift
-//  Swifties
-//
-//  Created on 01/10/25.
-//
-
 import Foundation
 import FirebaseAuth
 import FirebaseCore

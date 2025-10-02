@@ -288,22 +288,17 @@ struct CountdownView: View {
                 .tint(.appRed)
                 .frame(height: 4)
         }
-        .onAppear {
-            startCountdown()
-        }
-    }
-    
-    private func startCountdown() {
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+        .onReceive(
+            Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
+        ) { _ in
             if countdown > 0 {
                 countdown -= 1
-            } else {
-                timer.invalidate()
-                onComplete()
+                if countdown == 0 {
+                    onComplete()
+                }
             }
         }
     }
-}
 
 #Preview {
     LoginView()

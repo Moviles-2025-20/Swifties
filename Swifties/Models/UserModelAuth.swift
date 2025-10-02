@@ -1,5 +1,5 @@
 //
-//  User.swift
+//  UserModelAuth.swift
 //  Swifties
 //
 //  Created by Natalia Villegas Calderón on 1/10/25.

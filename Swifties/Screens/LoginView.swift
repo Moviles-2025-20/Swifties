@@ -3,7 +3,6 @@
 //  Swifties
 //
 //  Created by Juan Esteban Vasquez Parra on 29/09/25.
-//
 
 import SwiftUI
 

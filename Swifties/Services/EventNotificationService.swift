@@ -36,7 +36,7 @@ class EventNotificationService {
         let calendar = Calendar.current
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
-        formatter.locale = Locale(identifier: "es_ES") // porque tienes los días en español
+        formatter.locale = Locale(identifier: "es_ES") // because you have days in Spanish
 
         // 1. Parsear la hora
         guard let timeDate = formatter.date(from: time) else { return nil }

@@ -60,7 +60,13 @@ final class UserProfileRepository {
             return 0
         }()
 
-        let personality = profile["indoor_outdoor_score"] as? String ?? "Unknown"
+        let personality: Int = {
+            if let v = profile["indoor_outdoor_score"] as? Int { return v }
+            if let v = profile["indoor_outdoor_score"] as? NSNumber { return v.intValue }
+            if let v = profile["indoor_outdoor_score"] as? Double { return Int(v) }
+            return 0
+        }()
+        
         let preferences = profile["favorite_categories"] as? [String] ?? ["Unknown"]
 
         // Image resolution priority: imageURL (absolute) -> imagePath (resolve via Storage)

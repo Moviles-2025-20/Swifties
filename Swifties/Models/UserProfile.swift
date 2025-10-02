@@ -15,6 +15,6 @@ struct UserProfile: Identifiable, Equatable {
     let avatar_url: String?
     let major: String
     let age: Int
-    let indoor_outdoor_score: String
+    let indoor_outdoor_score: Int
     let preferences: [String]
 }

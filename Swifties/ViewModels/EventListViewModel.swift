@@ -68,7 +68,7 @@ class EventListViewModel: ObservableObject {
                         type: type,
                         category: category,
                         active: active,
-                        eventType: [], // completa con default o tu data real
+                        eventType: [], // complete with default or your real data
                         location: Event.Location(city: "", type: "", address: "", coordinates: []),
                         schedule: Event.Schedule(days: [], times: []),
                         metadata: Event.Metadata(imageUrl: "", tags: [], durationMinutes: 0, cost: ""),

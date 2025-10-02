@@ -7,36 +7,45 @@
 
 import SwiftUI
 import FirebaseCore
+import UserNotifications
 
-class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication,
-                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+// MARK: - AppDelegate
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        
+        // Inicializar Firebase
         FirebaseApp.configure()
+        
+        // Configurar notificaciones
+        UNUserNotificationCenter.current().delegate = self
+        NotificationManager.shared.requestAuthorization()
+        
         return true
+    }
+    
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .badge])
     }
 }
 
+// MARK: - Main App
 @main
 struct SwiftiesApp: App {
+    
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    @State private var isLoading = true
     
     var body: some Scene {
         WindowGroup {
-            if isLoading {
-                LoadingView()
-                    .onAppear {
-                        // Cambiar a EventListView después de 2 segundos
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                            withAnimation {
-                                isLoading = false
-                            }
-                        }
-                    }
-            } else {
-                HomeView()
-                //EventListView(viewModel: EventListViewModel())
-            }
+            MainView() 
         }
     }
 }
+

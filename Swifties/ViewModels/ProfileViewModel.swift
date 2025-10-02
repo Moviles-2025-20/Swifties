@@ -64,8 +64,8 @@ final class UserProfileRepository {
         let preferences = profile["favorite_categories"] as? [String] ?? ["Unknown"]
 
         // Image resolution priority: imageURL (absolute) -> imagePath (resolve via Storage)
-        var resolvedImageURL: String? = profile["avatar_url"] as? String
-        if resolvedImageURL == nil, let imagePath = profile["avatar_url"] as? String {
+        var resolvedImageURL: String?
+        if let imagePath = profile["avatar_url"] as? String {
             do {
                 let ref = storage.reference(withPath: imagePath)
                 let url = try await ref.downloadURL()
@@ -73,6 +73,8 @@ final class UserProfileRepository {
             } catch {
                 resolvedImageURL = nil // Don't fail whole fetch for image resolution issues
             }
+        } else {
+            resolvedImageURL = nil
         }
 
         return UserProfile(

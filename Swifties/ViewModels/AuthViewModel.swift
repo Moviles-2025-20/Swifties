@@ -73,7 +73,6 @@ class AuthViewModel: ObservableObject {
         do {
             let result = try await authService.loginWithGoogle()
             self.user = UserModel.fromFirebase(result.user, providerId: result.providerId)
-            self.error = nil
         } catch let authError as AuthenticationError {
             self.error = authError.localizedDescription
             self.user = nil
@@ -95,7 +94,6 @@ class AuthViewModel: ObservableObject {
         do {
             let result = try await authService.loginWithGitHub()
             self.user = UserModel.fromFirebase(result.user, providerId: result.providerId)
-            self.error = nil
         } catch let authError as AuthenticationError {
             self.error = authError.localizedDescription
             self.user = nil

@@ -54,7 +54,15 @@ class EventNotificationService {
             "miércoles": 4,
             "jueves": 5,
             "viernes": 6,
-            "sábado": 7
+            "sábado": 7,
+            // English equivalents
+            "sunday": 1,
+            "monday": 2,
+            "tuesday": 3,
+            "wednesday": 4,
+            "thursday": 5,
+            "friday": 6,
+            "saturday": 7
         ]
         
         guard let targetWeekday = weekdays[day.lowercased()] else { return nil }

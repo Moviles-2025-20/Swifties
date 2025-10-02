@@ -2,15 +2,8 @@
 //  FirestoreTest.swift
 //  Swifties
 //
-//  Created by Imac  on 2/10/25.
+//  Created by Imac on 2/10/25.
 //
-
-//  FirestoreTest.swift
-//  Swifties
-//
-//  Created by Carol on 2/10/25.
-//
-
 import Foundation
 import FirebaseCore
 import FirebaseFirestore

@@ -77,15 +77,38 @@ class AuthViewModel: ObservableObject {
         } catch let authError as AuthenticationError {
             self.error = authError.localizedDescription
             self.user = nil
-            print("Login error: \(authError.localizedDescription)")
+            print("Google login error: \(authError.localizedDescription)")
         } catch {
             self.error = error.localizedDescription
             self.user = nil
-            print("Unexpected error: \(error.localizedDescription)")
+            print("Unexpected Google login error: \(error.localizedDescription)")
         }
         
         isLoading = false
     }
+    
+    // MARK: - Login with GitHub
+    func loginWithGitHub() async {
+        isLoading = true
+        error = nil
+        
+        do {
+            let result = try await authService.loginWithGitHub()
+            self.user = UserModel.fromFirebase(result.user, providerId: result.providerId)
+            self.error = nil
+        } catch let authError as AuthenticationError {
+            self.error = authError.localizedDescription
+            self.user = nil
+            print("GitHub login error: \(authError.localizedDescription)")
+        } catch {
+            self.error = error.localizedDescription
+            self.user = nil
+            print("Unexpected GitHub login error: \(error.localizedDescription)")
+        }
+        
+        isLoading = false
+    }
+
     
     // MARK: - Logout
     func logout() async {

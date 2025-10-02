@@ -6,10 +6,14 @@
 //
 
 import SwiftUI
+import Combine
+import FirebaseAnalytics
+
 
 struct LoginView: View {
     @EnvironmentObject var viewModel: AuthViewModel
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
     @State private var hasRedirected = false
     @State private var shouldNavigate = false
     @State private var navigationDestination: NavigationDestination?
@@ -26,6 +30,7 @@ struct LoginView: View {
         }
     }
     
+    // MARK: View
     var body: some View {
         NavigationStack {
             ZStack {
@@ -73,6 +78,7 @@ struct LoginView: View {
             
             // Google Login Button
             Button(action: signInWithGoogle) {
+                
                 HStack(spacing: 12) {
                     // Use SF Symbol as fallback if image doesn't load
                     Group {

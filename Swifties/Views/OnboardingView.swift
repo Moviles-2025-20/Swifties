@@ -6,12 +6,6 @@
 //
 
 
-//
-//  OnboardingView.swift
-//  Swifties
-//
-//  Example of how to save user data after onboarding
-//
 
 import SwiftUI
 

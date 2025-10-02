@@ -5,9 +5,6 @@
 //  Created by Imac  on 2/10/25.
 //
 
-//  EventNotificationService.swift
-//  Swifties
-
 import Foundation
 
 class EventNotificationService {

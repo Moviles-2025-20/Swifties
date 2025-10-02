@@ -4,6 +4,7 @@
 //
 //  Created by Natalia Villegas Calderón on 1/10/25.
 //
+
 import Foundation
 import FirebaseAuth
 import FirebaseCore
@@ -108,16 +109,7 @@ class AuthService {
     // MARK: - GitHub Sign In
     func loginWithGitHub() async throws -> (user: User, providerId: String) {
         let provider = OAuthProvider(providerID: "github.com")
-        
-        // Optional: add scopes if you need email, profile, etc.
-        provider.scopes = ["user:email"]
-        
-        // Get the root view controller
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first,
-              let _ = window.rootViewController else {
-            throw AuthenticationError.noRootViewController
-        }
+        // provider.scopes = ["read:user"] TODO: Check if necessary
         
         return try await withCheckedThrowingContinuation { continuation in
             provider.getCredentialWith(nil) { credential, error in
@@ -154,21 +146,21 @@ class AuthService {
     // MARK: - Logout
     func logout() async throws {
         do {
-            // Sign out from Google if signed in
-            if let providerID = Auth.auth().currentUser?.providerData.first?.providerID {
-                if providerID == "google.com" {
-                    GIDSignIn.sharedInstance.signOut()
-                    print("Google session signed out")
+            if let providers = Auth.auth().currentUser?.providerData {
+                for provider in providers {
+                    if provider.providerID == "google.com" {
+                        GIDSignIn.sharedInstance.signOut()
+                        print("Google session signed out")
+                    }
+                    else if provider.providerID == "github.com" {
+                        print("GitHub session cleared (handled by Firebase)")
+                    }
                 }
-                else if providerID == "github.com" {
-                    print("GitHub session cleared (handled by Firebase)")
-                }
+                
+                // Sign out from Firebase (clears all providers)
+                try Auth.auth().signOut()
+                print("User signed out successfully from Firebase")
             }
-            
-            // Sign out from Firebase (clears all providers)
-            try Auth.auth().signOut()
-            print("User signed out successfully from Firebase")
-            
         } catch {
             print("Sign out error: \(error.localizedDescription)")
             throw AuthenticationError.unknown(error)

@@ -107,7 +107,7 @@ class AuthViewModel: ObservableObject {
     func markAsReturningUser() {
         guard let user = user else { return }
         
-        let key = "user\(user.uid)_has_logged_in"
+        let key = "user_\(user.uid)_has_loggedin"
         UserDefaults.standard.set(true, forKey: key)
         isFirstTimeUser = false
     }

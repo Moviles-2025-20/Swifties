@@ -70,14 +70,18 @@ final class FirebaseUserProfileRepository: UserProfileRepository {
         let preferences = profile["favorite_categories"] as? [String] ?? ["Unknown"]
 
         // Image resolution priority: imageURL (absolute) -> imagePath (resolve via Storage)
-        var resolvedImageURL: String? = profile["avatar_url"] as? String
-        if resolvedImageURL == nil, let imagePath = profile["avatar_url"] as? String {
-            do {
-                let ref = storage.reference(withPath: imagePath)
-                let url = try await ref.downloadURL()
-                resolvedImageURL = url.absoluteString
-            } catch {
-                resolvedImageURL = nil // Don't fail whole fetch for image resolution issues
+        var resolvedImageURL: String? = nil
+        if let avatarValue = profile["avatar_url"] as? String {
+            if avatarValue.lowercased().hasPrefix("http") {
+                resolvedImageURL = avatarValue
+            } else {
+                do {
+                    let ref = storage.reference(withPath: avatarValue)
+                    let url = try await ref.downloadURL()
+                    resolvedImageURL = url.absoluteString
+                } catch {
+                    resolvedImageURL = nil // Don't fail whole fetch for image resolution issues
+                }
             }
         }
 

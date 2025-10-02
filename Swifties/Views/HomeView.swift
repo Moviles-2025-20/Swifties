@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct HomeView: View {
+    @EnvironmentObject var viewModel: AuthViewModel
     @State private var selectedTab = 0
     
     var body: some View {
@@ -16,7 +17,10 @@ struct HomeView: View {
                 .ignoresSafeArea()
             
             VStack {
-                CustomTopBar(title: "Hi, Juliana!", showNotificationButton: true) {
+                CustomTopBar(
+                    title: "Hi, \(getUserFirstName())!",
+                    showNotificationButton: true
+                ) {
                     print("Notifications tapped")
                 }
                 
@@ -138,8 +142,20 @@ struct HomeView: View {
             .ignoresSafeArea(.all, edges: .bottom)
         }
     }
+    
+    // MARK: - Helper Function
+    private func getUserFirstName() -> String {
+        guard let displayName = viewModel.user?.displayName else {
+            return "User"
+        }
+        
+        // Extract first name from full name
+        let components = displayName.components(separatedBy: " ")
+        return components.first ?? displayName
+    }
 }
 
 #Preview {
     HomeView()
+        .environmentObject(AuthViewModel())
 }

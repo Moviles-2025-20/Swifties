@@ -12,10 +12,8 @@ import UserNotifications
 // MARK: - AppDelegate
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
-    ) -> Bool {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         
         // Inicializar Firebase
         FirebaseApp.configure()
@@ -27,11 +25,16 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         return true
     }
     
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
+    // Restringir la app a modo retrato
+    func application(_ application: UIApplication,
+                     supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        return .portrait
+    }
+    
+    // Mostrar notificaciones aunque la app esté en primer plano
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound, .badge])
     }
 }
@@ -39,17 +42,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 // MARK: - Main App
 @main
 struct SwiftiesApp: App {
-    
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    
-
-    @StateObject var authViewModel = AuthViewModel()
+    @StateObject private var authViewModel = AuthViewModel()
     
     var body: some Scene {
         WindowGroup {
-    
             MainView()
                 .environmentObject(authViewModel)
         }
     }
 }
+

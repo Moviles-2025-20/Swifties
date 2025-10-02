@@ -78,7 +78,6 @@
 				E1822BFA2E8C4CF6008FC420 /* FirebaseStorage in Frameworks */,
 				E1822BF22E8C4CF6008FC420 /* FirebaseAI in Frameworks */,
 				8846AB7B2E8F0999007B32CB /* FirebaseFirestoreCombine-Community in Frameworks */,
-				8846AB812E8F0999007B32CB /* FirebaseInAppMessaging-Beta in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

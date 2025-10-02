@@ -65,20 +65,20 @@ class EventNotificationService {
         components.hour = hour
         components.minute = minute
         
-        // Avanzar hasta que el weekday coincida
-        while calendar.component(.weekday, from: calendar.date(from: components)!) != targetWeekday {
-            components.day! += 1
+        // Avanzar hasta que el weekday coincida, usando Date y date(byAdding:)
+        guard var candidateDate = calendar.date(from: components) else { return nil }
+        while calendar.component(.weekday, from: candidateDate) != targetWeekday {
+            guard let nextCandidate = calendar.date(byAdding: .day, value: 1, to: candidateDate) else { return nil }
+            candidateDate = nextCandidate
         }
-        
-        var eventDate = calendar.date(from: components)!
         
         // 4. Si la fecha ya pasó, buscar la próxima semana
-        if eventDate < Date() {
-            components.day! += 7
-            eventDate = calendar.date(from: components)!
+        if candidateDate < Date() {
+            guard let nextWeek = calendar.date(byAdding: .day, value: 7, to: candidateDate) else { return nil }
+            candidateDate = nextWeek
         }
         
-        return eventDate
+        return candidateDate
     }
 
 }

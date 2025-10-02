@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-
+import UIKit
 /// A reusable event pod/card with image, colored title, description, time and walking distance.
 /// - **Parameters**:
 ///   - imagePath: Local asset name or file path for the event photo.

@@ -14,12 +14,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         FirebaseApp.configure()
         return true
     }
-    
     // Restrict the app to portrait mode only
     func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         return .portrait
     }
-}
+
 
 @main
 struct SwiftiesApp: App {
@@ -32,6 +31,26 @@ struct SwiftiesApp: App {
                 StartView()
             }
             .environmentObject(authViewModel)
+    // BEFORE
+    //@State private var isLoading = true
+    
+    //var body: some Scene {
+        //WindowGroup {
+            //if isLoading {
+                //LoadingView()
+                    //.onAppear {
+                        // Cambiar a EventListView después de 2 segundos
+                        //DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            //withAnimation {
+                            //    isLoading = false
+                            //}
+                        //}
+                    //}
+            //} else {
+                //HomeView()
+                //EventListView(viewModel: EventListViewModel())
+            //}
+
         }
     }
 }

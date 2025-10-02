@@ -262,10 +262,10 @@ struct LoginView: View {
     
     private func handleImmediateNavigation() {
         if viewModel.isFirstTimeUser {
-            print("Navigating to onboarding...")
+            print("Navigating to onboarding....")
             navigationDestination = .onboarding
         } else {
-            print("Navigating to home...")
+            print("Navigating to home....")
             navigationDestination = .home
         }
         shouldNavigate = true

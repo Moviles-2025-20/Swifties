@@ -9,23 +9,55 @@ import SwiftUI
 
 // Profile Header Component
 struct ProfileHeader: View {
-    let imageName: String
+    let avatar_url: String?
     let name: String
     let major: String
     let age: Int
-    let personality: String
+    let indoor_outdoor_score: String
     
     var body: some View {
         HStack(spacing: 20) {
             // Profile Image
-            Image(systemName: "person.circle.fill") // Replace with actual image
-                .font(.system(size: 80))
-                .foregroundColor(.gray)
-                .background(
-                    Circle()
-                        .fill(Color.pink.opacity(0.3))
+            Group {
+                if let avatar_url, let url = URL(string: avatar_url) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(width: 90, height: 90)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 90, height: 90)
+                                .clipShape(Circle())
+                        case .failure:
+                            Image(systemName: "person.circle.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 90, height: 90)
+                                .foregroundColor(.gray)
+                        @unknown default:
+                            Image(systemName: "person.circle.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 90, height: 90)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                } else {
+                    Image(systemName: "person.circle.fill")
+                        .resizable()
+                        .scaledToFit()
                         .frame(width: 90, height: 90)
-                )
+                        .foregroundColor(.gray)
+                }
+            }
+            .background(
+                Circle()
+                    .fill(Color.pink.opacity(0.3))
+                    .frame(width: 90, height: 90)
+            )
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)
@@ -40,7 +72,7 @@ struct ProfileHeader: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                Text("Personality - \(personality)")
+                Text("Personality score - \(indoor_outdoor_score)")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -51,4 +83,3 @@ struct ProfileHeader: View {
         .padding(.vertical, 20)
     }
 }
-

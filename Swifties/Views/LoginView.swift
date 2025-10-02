@@ -299,6 +299,7 @@ struct CountdownView: View {
             }
         }
     }
+}
 
 #Preview {
     LoginView()

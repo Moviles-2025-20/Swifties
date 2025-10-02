@@ -137,7 +137,7 @@ struct HomeView: View {
                         .padding(.horizontal, 16)
                     }
                 }
-                CustomTabBar(selectedTab: $selectedTab)
+     
             }
             .ignoresSafeArea(.all, edges: .bottom)
         }

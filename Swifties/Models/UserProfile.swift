@@ -12,9 +12,9 @@ import Foundation
 struct UserProfile: Identifiable, Equatable {
     let id: String
     let name: String
-    let imageURL: String?
+    let avatar_url: String?
     let major: String
     let age: Int
-    let personality: String
+    let indoor_outdoor_score: String
     let preferences: [String]
 }

@@ -17,7 +17,7 @@ protocol UserProfileRepository {
     func loadProfile(userID: String) async throws -> UserProfile
 }
 
-/// Errors that can occur when loading a user profile
+/// Errors that can occur when loading a user profile using two possible cases
 enum UserProfileRepositoryError: LocalizedError {
     case notFound
     case decoding
@@ -33,7 +33,7 @@ enum UserProfileRepositoryError: LocalizedError {
 }
 
 /// Firebase-backed implementation of `UserProfileRepository` that reads from Firestore
-/// and optionally resolves a Firebase Storage path into a public download URL.
+/// and resolves a Firebase Storage path into a public download URL to be used in-app.
 final class FirebaseUserProfileRepository: UserProfileRepository {
     private let db: Firestore
     private let storage: Storage
@@ -49,33 +49,45 @@ final class FirebaseUserProfileRepository: UserProfileRepository {
             throw UserProfileRepositoryError.notFound
         }
 
-        // Parse fields with safe fallbacks
-        let name = data["name"] as? String ?? "Unknown"
-        let major = data["major"] as? String ?? "—"
-        let age = (data["age"] as? Int) ?? (data["age"] as? NSNumber)?.intValue ?? 0
-        let personality = data["personality"] as? String ?? "—"
-        let preferences = data["preferences"] as? [String] ?? []
+        // Extract the nested "profile" map
+        guard let profile = data["profile"] as? [String: Any] else {
+            throw UserProfileRepositoryError.decoding
+        }
+
+        // Safely parse fields from "profile"
+        let name = profile["name"] as? String ?? "Unknown"
+        let major = profile["major"] as? String ?? "Unknown"
+
+        // Firestore numbers can be Int, Int64, Double, or NSNumber. Normalize to Int.
+        let age: Int = {
+            if let v = profile["age"] as? Int { return v }
+            if let v = profile["age"] as? NSNumber { return v.intValue }
+            if let v = profile["age"] as? Double { return Int(v) }
+            return 0
+        }()
+
+        let personality = profile["indoor_outdoor_score"] as? String ?? "Unknown"
+        let preferences = profile["favorite_categories"] as? [String] ?? ["Unknown"]
 
         // Image resolution priority: imageURL (absolute) -> imagePath (resolve via Storage)
-        var resolvedImageURL: String? = data["imageURL"] as? String
-        if resolvedImageURL == nil, let imagePath = data["imagePath"] as? String {
+        var resolvedImageURL: String? = profile["avatar_url"] as? String
+        if resolvedImageURL == nil, let imagePath = profile["avatar_url"] as? String {
             do {
                 let ref = storage.reference(withPath: imagePath)
                 let url = try await ref.downloadURL()
                 resolvedImageURL = url.absoluteString
             } catch {
-                // If resolving fails, keep image as nil rather than failing whole profile fetch
-                resolvedImageURL = nil
+                resolvedImageURL = nil // Don't fail whole fetch for image resolution issues
             }
         }
 
         return UserProfile(
             id: userID,
             name: name,
-            imageURL: resolvedImageURL,
+            avatar_url: resolvedImageURL,
             major: major,
             age: age,
-            personality: personality,
+            indoor_outdoor_score: personality,
             preferences: preferences
         )
     }

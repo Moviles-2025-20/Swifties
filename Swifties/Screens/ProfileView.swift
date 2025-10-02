@@ -42,11 +42,11 @@ struct ProfileView: View {
                         } else if let profile = viewModel.profile {
                             // Profile Header
                             ProfileHeader(
-                                imageURL: profile.imageURL,
+                                avatar_url: profile.avatar_url,
                                 name: profile.name,
                                 major: profile.major,
                                 age: profile.age,
-                                personality: profile.personality
+                                indoor_outdoor_score: profile.indoor_outdoor_score
                             )
 
                             // Preferences Section
@@ -93,7 +93,7 @@ struct ProfileView: View {
                             .padding(.horizontal, 20)
 
                             // Bottom spacing for tab bar
-                            Spacer(minLength: 80)
+                            Spacer()
                         } else {
                             // No profile available
                             Text("No profile data available.")

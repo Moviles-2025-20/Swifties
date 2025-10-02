@@ -9,17 +9,17 @@ import SwiftUI
 
 // Profile Header Component
 struct ProfileHeader: View {
-    let imageURL: String?
+    let avatar_url: String?
     let name: String
     let major: String
     let age: Int
-    let personality: String
+    let indoor_outdoor_score: String
     
     var body: some View {
         HStack(spacing: 20) {
             // Profile Image
             Group {
-                if let imageURL, let url = URL(string: imageURL) {
+                if let avatar_url, let url = URL(string: avatar_url) {
                     AsyncImage(url: url) { phase in
                         switch phase {
                         case .empty:
@@ -72,7 +72,7 @@ struct ProfileHeader: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                Text("Personality - \(personality)")
+                Text("Personality score - \(indoor_outdoor_score)")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }

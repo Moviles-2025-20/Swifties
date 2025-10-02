@@ -131,7 +131,7 @@ private struct BipolarProgressBar: View {
                 Circle()
                     .fill(Color.black.opacity(0.6))
                     .frame(width: height, height: height)
-                    .offset(x: mid + floatValue)
+                    .offset(x: mid * (1 + floatValue), y: height/2)
             }
         }
         .frame(height: height)

@@ -86,11 +86,13 @@ class AuthViewModel: ObservableObject {
     enum AuthProvider {
         case google
         case github
+        case twitter
         
         var displayName: String {
             switch self {
             case .google: return "Google"
             case .github: return "GitHub"
+            case .twitter: return "Twitter"
             }
         }
     }
@@ -109,6 +111,8 @@ class AuthViewModel: ObservableObject {
                 result = try await authService.loginWithGoogle()
             case .github:
                 result = try await authService.loginWithGitHub()
+            case .twitter:
+                result = try await authService.loginWithTwitter()
             }
             self.user = UserAuthModel.fromFirebase(result.user, providerId: result.providerId)
         } catch let authError as AuthenticationError {
@@ -133,7 +137,11 @@ class AuthViewModel: ObservableObject {
     func loginWithGitHub() async {
         await login(with: .github)
     }
-
+    // MARK: - Login with Twitter
+    @MainActor
+    func loginWithTwitter() async {
+        await login(with: .twitter)
+    }
     
     // MARK: - Logout
     func logout() async {

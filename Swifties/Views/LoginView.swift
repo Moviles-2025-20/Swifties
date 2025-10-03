@@ -135,21 +135,23 @@ struct LoginView: View {
             .disabled(viewModel.isLoading)
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
-            // Facebook Login Button (disabled)
-            Button(action: {}) {
+            // Twitter Login Button
+            Button(action: {
+                Task { await viewModel.loginWithTwitter() }
+            }) {
                 HStack(spacing: 12) {
                     Group {
-                        if let _ = UIImage(named: "Facebook") {
-                            Image("Facebook")
+                        if let _ = UIImage(named: "Twitter") {
+                            Image("Twitter")
                                 .resizable()
                                 .frame(width: 24, height: 24)
                         } else {
-                            Image(systemName: "f.circle.fill")
+                            Image(systemName: "bird.fill")
                                 .font(.system(size: 24))
                         }
                     }
                     
-                    Text("Login with Facebook")
+                    Text("Login with Twitter")
                         .font(.system(size: 16, weight: .semibold))
                         .frame(maxWidth: .infinity)
                 }
@@ -157,11 +159,10 @@ struct LoginView: View {
                 .padding(.vertical, 16)
                 .padding(.horizontal, 20)
                 .frame(maxWidth: .infinity)
-                .background(.appBlue)
+                .background(.blue)
                 .cornerRadius(12)
             }
-            .disabled(true)
-            .opacity(0.5)
+            .disabled(viewModel.isLoading)
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
             Spacer().frame(height: 30)

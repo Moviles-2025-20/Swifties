@@ -51,7 +51,7 @@ struct ProfileView: View {
                             )
 
                             // Preferences Section
-                            PreferencesSection(preferences: profile.preferences)
+                            PreferencesSection(preferences: profile.preferences.favoriteCategories)
 
                             // Divider
                             Divider()

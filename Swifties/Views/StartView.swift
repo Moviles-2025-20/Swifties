@@ -15,7 +15,7 @@ struct StartView: View {
             Color("appPrimary")
                 .ignoresSafeArea(.all)
             
-            shapeView(size: 400,
+            shapeView(size: 420,
                       color: Color("appOcher"))
             .offset(x: 200, y: 100)
             

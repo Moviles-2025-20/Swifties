@@ -100,7 +100,7 @@ private struct BipolarProgressBar: View {
     var body: some View {
         GeometryReader { geo in
             let mid = geo.size.width / 2
-            let floatValue = (CGFloat(value) - 50.0) / 100.0
+            let floatValue = (CGFloat(value) - 50.0) / 50.0
             let magnitude = min(max(abs(floatValue), 0), 1)
             let fillW = mid * magnitude
             ZStack(alignment: .leading) {

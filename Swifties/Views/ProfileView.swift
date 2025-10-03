@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
+    
     @State private var selectedTab = 3 // Profile tab selected
     
     var body: some View {
@@ -42,11 +43,11 @@ struct ProfileView: View {
                         } else if let profile = viewModel.profile {
                             // Profile Header
                             ProfileHeader(
-                                avatar_url: profile.avatar_url,
-                                name: profile.name,
-                                major: profile.major,
-                                age: profile.age,
-                                indoor_outdoor_score: profile.indoor_outdoor_score
+                                avatar_url: profile.profile.avatarURL,
+                                name: profile.profile.name,
+                                major: profile.profile.major,
+                                age: profile.profile.age,
+                                indoor_outdoor_score: profile.preferences.indoorOutdoorScore
                             )
 
                             // Preferences Section

@@ -95,7 +95,7 @@ struct Magic8BallView: View {
                             .font(.caption2)
                             .foregroundColor(.gray)
 
-                        Label(event.metadata?.cost ?? "N/A", systemImage: "dollarsign.circle")
+                        Label(event.metadata?.cost.formatted ?? "N/A", systemImage: "dollarsign.circle")
                             .font(.caption2)
                             .foregroundColor(.gray)
                     }
@@ -190,7 +190,7 @@ struct Magic8BallView: View {
                     type: "Concert",
                     category: "Music",
                     active: true,
-                    eventType: ["Music", "Concert"],
+                    eventType: "Music",
                     location: Event.Location(
                         city: "Bogotá",
                         type: "Indoor",
@@ -205,7 +205,7 @@ struct Magic8BallView: View {
                         imageUrl: "",
                         tags: ["rock", "live"],
                         durationMinutes: 120,
-                        cost: "$50"
+                        cost: Event.Cost(amount: 50, currency: "USD")
                     ),
                     stats: Event.EventStats(
                         popularity: 85,
@@ -223,7 +223,7 @@ struct Magic8BallView: View {
                     type: "Exhibition",
                     category: "Art",
                     active: true,
-                    eventType: ["Art", "Exhibition"],
+                    eventType: "Art",
                     location: Event.Location(
                         city: "Bogotá",
                         type: "Indoor",
@@ -238,7 +238,7 @@ struct Magic8BallView: View {
                         imageUrl: "",
                         tags: ["art", "modern"],
                         durationMinutes: 90,
-                        cost: "Free"
+                        cost: Event.Cost(amount: 0, currency: "FREE")
                     ),
                     stats: Event.EventStats(
                         popularity: 70,
@@ -253,3 +253,4 @@ struct Magic8BallView: View {
         }
     }
 }
+

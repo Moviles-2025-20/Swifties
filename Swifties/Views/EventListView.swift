@@ -13,7 +13,7 @@ struct EventListView: View {
     @State private var searchText = ""
     @State private var isMapView = false
 
-    // Filtrar eventos según búsqueda
+    // Filter events by search
     var filteredEvents: [Event] {
         if searchText.isEmpty {
             return viewModel.events
@@ -26,95 +26,96 @@ struct EventListView: View {
         }
     }
 
-
     var body: some View {
-        ZStack {
-            Color("appPrimary").ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                Color("appPrimary").ignoresSafeArea()
 
-            VStack(spacing: 0) {
-
-                CustomTopBar(title: "Events", showNotificationButton: true) {
-                    print("Notification tapped")
-                }
-
-                // Contenido principal
-                if viewModel.isLoading {
-                    Spacer()
-                    ProgressView("Cargando eventos…")
-                        .foregroundColor(.primary)
-                    Spacer()
-                } else if let error = viewModel.errorMessage {
-                    Spacer()
-                    VStack(spacing: 16) {
-                        Text("⚠️")
-                            .font(.system(size: 50))
-                        Text(error)
-                            .foregroundColor(.red)
-                            .multilineTextAlignment(.center)
-                            .padding()
-                        Button("Reintentar") {
-                            viewModel.loadEvents()
-                        }
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                VStack(spacing: 0) {
+                    CustomTopBar(title: "Events", showNotificationButton: true) {
+                        print("Notification tapped")
                     }
-                    Spacer()
-                } else {
-                    ScrollView {
+
+                    // Main content
+                    if viewModel.isLoading {
+                        Spacer()
+                        ProgressView("Loading events…")
+                            .foregroundColor(.primary)
+                        Spacer()
+                    } else if let error = viewModel.errorMessage {
+                        Spacer()
                         VStack(spacing: 16) {
+                            Text("⚠️")
+                                .font(.system(size: 50))
+                            Text(error)
+                                .foregroundColor(.red)
+                                .multilineTextAlignment(.center)
+                                .padding()
+                            Button("Retry") {
+                                viewModel.loadEvents()
+                            }
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                        }
+                        Spacer()
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 16) {
+                                SearchBar(searchText: $searchText)
+                                    .padding(.top, 16)
 
-                            SearchBar(searchText: $searchText)
-                                .padding(.top, 16)
+                                // Filters and switch to map view
+                                FilterToggle(isMapView: $isMapView)
 
-                            // Filtros y cambio a vista mapa
-                            FilterToggle(isMapView: $isMapView)
-
-
-                            VStack(alignment: .leading, spacing: 16) {
-                                HStack {
-                                    Text("Activities")
-                                        .font(.title2)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 16)
-
-                                if filteredEvents.isEmpty {
-                                    Text(searchText.isEmpty ? "No hay eventos disponibles" : "No se encontraron eventos")
-                                        .foregroundColor(.secondary)
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                } else {
-                                    VStack(spacing: 12) {
-                                        ForEach(filteredEvents) { event in
-                                            EventInfo(
-                                                imagePath: "theater_event",
-                                                title: event.name,
-                                                titleColor: Color.orange,
-                                                description: event.description,
-                                                timeText: "Tomorrow 6:00 pm",
-                                                walkingMinutes: 5,
-                                                location: event.category
-                                            )
-                                        }
+                                VStack(alignment: .leading, spacing: 16) {
+                                    HStack {
+                                        Text("Activities")
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.primary)
+                                        Spacer()
                                     }
                                     .padding(.horizontal, 16)
+
+                                    if filteredEvents.isEmpty {
+                                        Text(searchText.isEmpty ? "No events available" : "No events found")
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                    } else {
+                                        VStack(spacing: 12) {
+                                            ForEach(filteredEvents) { event in
+                                                NavigationLink(destination: EventDetailView(event: event)) {
+                                                    EventInfo(
+                                                        imagePath: "theater_event",
+                                                        title: event.name,
+                                                        titleColor: Color.orange,
+                                                        description: event.description,
+                                                        timeText: event.schedule.times.first ?? "Time TBD",
+                                                        walkingMinutes: 5,
+                                                        location: event.location?.address ?? event.category
+                                                    )
+                                                }
+                                                .buttonStyle(PlainButtonStyle())
+                                            }
+                                        }
+                                        .padding(.horizontal, 16)
+                                    }
                                 }
+                                Spacer(minLength: 80)
                             }
-                            Spacer(minLength: 80)
                         }
+                        .background(Color("appPrimary"))
                     }
-                    .background(Color("appPrimary"))
                 }
             }
-        }
-        .onAppear {
-            // Evitar recarga en el preview
-            if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
-                viewModel.loadEvents()
+            .onAppear {
+                // Avoid reloading in preview
+                if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+                    viewModel.loadEvents()
+                }
             }
         }
     }
@@ -122,20 +123,20 @@ struct EventListView: View {
 
 #Preview {
     let mockVM = EventListViewModel()
-    mockVM.events = [
+    let mockEvents: [Event] = [
         Event(
             id: "1",
             title: "Rock Fest",
-            name: "Concierto",
-            description: "Música en vivo",
+            name: "Concert",
+            description: "Live music",
             type: "Concert",
-            category: "Música",
+            category: "Music",
             active: true,
-            eventType: ["Music", "Concert"],
+            eventType: "Music",
             location: Event.Location(
                 city: "Bogotá",
                 type: "Indoor",
-                address: "Calle 123",
+                address: "123 Street",
                 coordinates: [4.6097, -74.0817]
             ),
             schedule: Event.Schedule(
@@ -146,7 +147,7 @@ struct EventListView: View {
                 imageUrl: "https://example.com/image.jpg",
                 tags: ["rock", "live"],
                 durationMinutes: 120,
-                cost: "$50"
+                cost: Event.Cost(amount: 50, currency: "USD")
             ),
             stats: Event.EventStats(
                 popularity: 85,
@@ -159,16 +160,16 @@ struct EventListView: View {
         Event(
             id: "2",
             title: "Art Expo",
-            name: "Exposición",
-            description: "Arte moderno",
+            name: "Exhibition",
+            description: "Modern art",
             type: "Exhibition",
-            category: "Arte",
+            category: "Art",
             active: true,
-            eventType: ["Art", "Exhibition"],
+            eventType: "Art",
             location: Event.Location(
                 city: "Bogotá",
                 type: "Indoor",
-                address: "Carrera 7",
+                address: "7th Avenue",
                 coordinates: [4.6533, -74.0836]
             ),
             schedule: Event.Schedule(
@@ -179,7 +180,7 @@ struct EventListView: View {
                 imageUrl: "https://example.com/art.jpg",
                 tags: ["art", "modern"],
                 durationMinutes: 90,
-                cost: "Free"
+                cost: Event.Cost(amount: 0, currency: "FREE")
             ),
             stats: Event.EventStats(
                 popularity: 70,
@@ -190,5 +191,7 @@ struct EventListView: View {
             created: Timestamp(date: Date())
         )
     ]
+    mockVM.events = mockEvents
     return EventListView(viewModel: mockVM)
 }
+

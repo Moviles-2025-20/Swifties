@@ -146,7 +146,7 @@ struct LoginView: View {
                                 .resizable()
                                 .frame(width: 24, height: 24)
                         } else {
-                            Image(systemName: "bird.fill") 
+                            Image(systemName: "bird.fill")
                                 .font(.system(size: 24))
                         }
                     }

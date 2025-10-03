@@ -24,8 +24,10 @@ struct MainView: View {
     
     // MARK: - Private Views
     @ViewBuilder
-    private func contentView(for tab: Int) -> some View {
+    private func contentView(for tab: Int) ->
+    some View {
         switch tab {
+            
         case 0:
             HomeView()
         case 1:

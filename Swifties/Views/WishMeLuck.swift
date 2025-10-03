@@ -167,7 +167,12 @@ struct Magic8BallView: View {
 
             Task { @MainActor in
                 self.events = docs.compactMap { doc -> Event? in
-                    try? doc.data(as: Event.self)
+                    do {
+                        return try doc.data(as: Event.self)
+                    } catch {
+                        print("Failed to decode Event from Firestore document \(doc.documentID): \(error)")
+                        return nil
+                    }
                 }
             }
         }

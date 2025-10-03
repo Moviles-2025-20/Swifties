@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
-    @StateObject private var authViewModel = AuthViewModel()
+    
     @State private var selectedTab = 3 // Profile tab selected
     
     var body: some View {

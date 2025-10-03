@@ -70,8 +70,24 @@ final class UserProfileRepository {
         let free_time_slots = notifications["free_time_slots"] as? [String] ?? ["Unknown"]
         
         // Parse Dates
-        let created = profile["created"] as? Date ?? Date()
-        let last_active = profile["last_active"] as? Date ?? Date()
+        let created: Date = {
+            if let ts = stats["created"] as? Timestamp {
+                return ts.dateValue()
+            } else if let date = stats["created"] as? Date {
+                return date
+            } else {
+                return Date()
+            }
+        }()
+        let last_active: Date = {
+            if let ts = stats["last_active"] as? Timestamp {
+                return ts.dateValue()
+            } else if let date = stats["last_active"] as? Date {
+                return date
+            } else {
+                return Date()
+            }
+        }()
         let last_wish_me_luck: Date = {
             if let ts = stats["last_wish_me_luck"] as? Timestamp {
                 return ts.dateValue()

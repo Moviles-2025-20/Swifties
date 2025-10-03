@@ -42,7 +42,7 @@ struct SwiftiesApp: App {
         WindowGroup {
             NavigationStack {
                 if Auth.auth().currentUser != nil {
-                    HomeView()
+                    MainView()
                 }else{
                     StartView()
                 }

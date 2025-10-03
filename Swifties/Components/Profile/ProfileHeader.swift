@@ -1,8 +1,5 @@
 //
 //
-//  ProfileHeader.swift
-//  Swifties
-//
 //  Created by Natalia Villegas Calderón on 27/09/25.
 //
 

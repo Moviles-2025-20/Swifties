@@ -8,7 +8,6 @@
 import SwiftUI
 import FirebaseFirestore
 import MapKit
-import MapKit
 
 struct EventListView: View {
     @StateObject var viewModel: EventListViewModel

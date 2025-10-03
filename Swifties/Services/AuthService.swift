@@ -143,7 +143,41 @@ class AuthService {
         }
     }
 
-    
+    // MARK: - Twitter Sign In
+    func loginWithTwitter() async throws -> (user: User, providerId: String) {
+        let provider = OAuthProvider(providerID: "twitter.com")
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            provider.getCredentialWith(nil) { credential, error in
+                if let error = error {
+                    continuation.resume(throwing: AuthenticationError.unknown(error))
+                    return
+                }
+                
+                guard let credential = credential else {
+                    continuation.resume(throwing: AuthenticationError.tokenError(message: "No Twitter credential"))
+                    return
+                }
+                
+                Auth.auth().signIn(with: credential) { authResult, error in
+                    if let error = error {
+                        continuation.resume(throwing: AuthenticationError.unknown(error))
+                        return
+                    }
+                    
+                    if let authResult = authResult {
+                        let firebaseUser = authResult.user
+                        let providerId = credential.provider
+                        print("Usuario \(firebaseUser.uid) inició sesión con Twitter")
+                        continuation.resume(returning: (firebaseUser, providerId))
+                    } else {
+                        continuation.resume(throwing: AuthenticationError.tokenError(message: "No auth result from Twitter"))
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Logout
     func logout() async throws {
         do {

@@ -7,6 +7,7 @@
 
 import Foundation
 import FirebaseAuth
+import FirebaseFirestore
 import SwiftUI
 import Combine
 
@@ -20,7 +21,8 @@ class AuthViewModel: ObservableObject {
     
     // AuthService singleton
     private let authService = AuthService.shared
-    
+    let db = Firestore.firestore(database: "default")
+
     // Task for auth listener
     private var authListenerTask: Task<Void, Never>?
     
@@ -50,18 +52,33 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Check First Time User
+    // MARK: - Check First Time User (FIXED)
     private func checkFirstTimeUser() async {
         guard let user = user else { return }
         
-        let key = "user_\(user.uid)_has_loggedin"
-        let hasLoggedInBefore = UserDefaults.standard.bool(forKey: key)
-        
-        isFirstTimeUser = !hasLoggedInBefore
-        
-        if isFirstTimeUser {
-            // Mark user as having logged in
-            UserDefaults.standard.set(true, forKey: key)
+        do {
+            // Check if user document exists in Firestore
+            let document = try await db.collection("users").document(user.uid).getDocument()
+            
+            // User is first-time if document doesn't exist OR doesn't have profile data
+            if !document.exists {
+                print("First time user - no Firestore document found")
+                isFirstTimeUser = true
+            } else if let data = document.data(),
+                      let profile = data["profile"] as? [String: Any],
+                      profile["name"] != nil {
+                // Document exists and has profile data - returning user
+                print("Returning user - profile found in Firestore")
+                isFirstTimeUser = false
+            } else {
+                // Document exists but incomplete - treat as first time
+                print("⚠️ Incomplete profile - treating as first time user")
+                isFirstTimeUser = true
+            }
+        } catch {
+            print("❌ Error checking user document: \(error.localizedDescription)")
+            // On error, assume first time user to be safe
+            isFirstTimeUser = true
         }
     }
     
@@ -134,13 +151,17 @@ class AuthViewModel: ObservableObject {
         isLoading = false
     }
     
-    // MARK: - Mark as Returning User (optional)
+    // MARK: - Mark as Returning User
+    // Call this after successful registration
     func markAsReturningUser() {
-        guard let user = user else { return }
-        
-        let key = "user_\(user.uid)_has_loggedin"
-        UserDefaults.standard.set(true, forKey: key)
         isFirstTimeUser = false
+        print("User marked as returning user")
+    }
+    
+    // MARK: - Refresh User Status
+    // Call this to manually check if user has completed registration
+    func refreshUserStatus() async {
+        await checkFirstTimeUser()
     }
     
     // MARK: - Delete Account
@@ -149,6 +170,12 @@ class AuthViewModel: ObservableObject {
         error = nil
         
         do {
+            // Delete Firestore document first
+            if let uid = user?.uid {
+                try await db.collection("users").document(uid).delete()
+            }
+            
+            // Then delete auth account
             try await authService.deleteAccount()
             self.user = nil
         } catch {
@@ -158,6 +185,7 @@ class AuthViewModel: ObservableObject {
         
         isLoading = false
     }
+    
     
     // MARK: - Cleanup
     deinit {

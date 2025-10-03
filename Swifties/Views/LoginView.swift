@@ -1,19 +1,15 @@
-//
-//  LoginView.swift
-//  Swifties
-//
-//  Created by Natalia Villegas Calderón on 1/10/25.
-//
+// LoginView.swift
+// Swifties
+// Created by Natalia Villegas Calderón on 1/10/25.
 
 import SwiftUI
 import Combine
 import FirebaseAnalytics
 
-
 struct LoginView: View {
     @EnvironmentObject var viewModel: AuthViewModel
     @Environment(\.colorScheme) var colorScheme
-    @Environment(\.dismiss) var dismiss
+    
     @State private var hasRedirected = false
     @State private var shouldNavigate = false
     @State private var navigationDestination: NavigationDestination?
@@ -63,7 +59,7 @@ struct LoginView: View {
                             .environmentObject(viewModel)
                             .navigationBarBackButtonHidden(true)
                     case .onboarding:
-                        OnboardingView()
+                        RegisterView()
                             .environmentObject(viewModel)
                             .navigationBarBackButtonHidden(true)
                     }
@@ -85,9 +81,7 @@ struct LoginView: View {
             
             // Google Login Button
             Button(action: signInWithGoogle) {
-                
                 HStack(spacing: 12) {
-                    // Use SF Symbol as fallback if image doesn't load
                     Group {
                         if let _ = UIImage(named: "Google") {
                             Image("Google")
@@ -194,8 +188,7 @@ struct LoginView: View {
             Spacer()
             
             // Profile picture
-            if let photoURL = viewModel.user?.photoURL,
-               let url = URL(string: photoURL) {
+            if let photoURL = viewModel.user?.photoURL, let url = URL(string: photoURL) {
                 AsyncImage(url: url) { image in
                     image
                         .resizable()
@@ -235,7 +228,7 @@ struct LoginView: View {
             // Countdown progress
             CountdownView(onComplete: {
                 handleImmediateNavigation()
-            }).padding(.horizontal,40)
+            }).padding(.horizontal, 40)
             
             Spacer()
         }
@@ -268,7 +261,7 @@ struct LoginView: View {
     
     private func handleImmediateNavigation() {
         if viewModel.isFirstTimeUser {
-            print("Navigating to onboarding....")
+            print("Navigating to Register....")
             navigationDestination = .onboarding
         } else {
             print("Navigating to home....")

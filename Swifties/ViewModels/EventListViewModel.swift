@@ -15,7 +15,7 @@ class EventListViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    private let db: Firestore
+    let db = Firestore.firestore(database: "default")
 
     init() {
         // Inicializamos Firestore y configuramos settings
@@ -23,7 +23,7 @@ class EventListViewModel: ObservableObject {
         let settings = FirestoreSettings()
         settings.isPersistenceEnabled = true // cache offline opcional
         firestore.settings = settings
-        self.db = firestore
+        //self.db = firestore
     }
 
     func loadEvents() {

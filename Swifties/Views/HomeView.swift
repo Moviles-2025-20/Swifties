@@ -20,10 +20,9 @@ struct HomeView: View {
                 VStack {
                     CustomTopBar(
                         title: "Hi, \(getUserFirstName())!",
-                        showNotificationButton: true
-                    ) {
-                        print("Notifications tapped")
-                    }
+                        showNotificationButton: true, onBackTap:  {
+                            print("Notifications tapped")
+                        })
                     
                     ScrollView {
                         VStack (spacing: 0) {

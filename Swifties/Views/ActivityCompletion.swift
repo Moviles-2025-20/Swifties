@@ -122,9 +122,9 @@ struct WeeklyChallengeStatsView: View {
             Color("appPrimary").ignoresSafeArea()
             
             VStack(spacing: 0) {
-                CustomTopBar(title: "Challenge Stats", showNotificationButton: false) {
+                CustomTopBar(title: "Challenge Stats", showNotificationButton: false, onBackTap:  {
                     print("Back tapped")
-                }
+                })
                 
                 if viewModel.isLoading {
                     Spacer()

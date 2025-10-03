@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
+    @StateObject private var authViewModel = AuthViewModel()
     @State private var selectedTab = 3 // Profile tab selected
     
     var body: some View {
@@ -44,8 +45,6 @@ struct ProfileView: View {
                             ProfileHeader(
                                 avatar_url: profile.avatar_url,
                                 name: profile.name,
-                                major: profile.major,
-                                age: profile.age,
                                 indoor_outdoor_score: profile.indoor_outdoor_score
                             )
 

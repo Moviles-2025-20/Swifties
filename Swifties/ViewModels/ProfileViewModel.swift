@@ -37,20 +37,41 @@ final class UserProfileRepository {
         self.storage = storage
     }
 
-    func loadProfile(userID: String) async throws -> UserProfile {
+    func loadProfile(userID: String) async throws -> UserModel {
         let snapshot = try await db.collection("users").document(userID).getDocument()
         guard let data = snapshot.data() else {
             throw UserProfileRepositoryError.notFound
         }
 
-        // Extract the nested "profile" map
+        // Extract the nested maps
         guard let profile = data["profile"] as? [String: Any] else {
+            throw UserProfileRepositoryError.decoding
+        }
+        
+        guard let preferences = data["preferences"] as? [String: Any] else {
+            throw UserProfileRepositoryError.decoding
+        }
+        
+        guard let notifications = preferences["notifications"] as? [String: Any] else {
+            throw UserProfileRepositoryError.decoding
+        }
+        
+        guard let stats = profile["stats"] as? [String: Any] else {
             throw UserProfileRepositoryError.decoding
         }
 
         // Safely parse fields from "profile"
         let name = profile["name"] as? String ?? "Unknown"
+        let email = profile["email"] as? String ?? "Unknown"
         let major = profile["major"] as? String ?? "Unknown"
+        let favorite_categories = preferences["favorite_categories"] as? [String] ?? ["Unknown"]
+        let completed_categories = preferences["completed_categories"] as? [String] ?? ["Unknown"]
+        let free_time_slots = notifications["free_time_slots"] as? [String] ?? ["Unknown"]
+        
+        // Parse Dates
+        let created = profile["created"] as? Date ?? Date()
+        let last_active = profile["last_active"] as? Date ?? Date()
+        let last_wish_me_luck = stats["last_wish_me_luck"] as? Date ?? Date()
 
         // Firestore numbers can be Int, Int64, Double, or NSNumber. Normalize to Int.
         let age: Int = {
@@ -59,9 +80,30 @@ final class UserProfileRepository {
             if let v = profile["age"] as? Double { return Int(v) }
             return 0
         }()
-
-        let personality = profile["indoor_outdoor_score"] as? String ?? "Unknown"
-        let preferences = profile["favorite_categories"] as? [String] ?? ["Unknown"]
+        let indoor_outdoor_score: Int = {
+            if let v = preferences["indoor_outdoor_score"] as? Int { return v }
+            if let v = preferences["indoor_outdoor_score"] as? NSNumber { return v.intValue }
+            if let v = preferences["indoor_outdoor_score"] as? Double { return Int(v) }
+            return 0
+        }()
+        let total_weekly_challenges: Int = {
+            if let v = stats["total_weekly_challenges"] as? Int { return v }
+            if let v = stats["total_weekly_challenges"] as? NSNumber { return v.intValue }
+            if let v = stats["total_weekly_challenges"] as? Double { return Int(v) }
+            return 0
+        }()
+        let streak_days: Int = {
+            if let v = stats["streak_days"] as? Int { return v }
+            if let v = stats["streak_days"] as? NSNumber { return v.intValue }
+            if let v = stats["streak_days"] as? Double { return Int(v) }
+            return 0
+        }()
+        let total_activities: Int = {
+            if let v = stats["total_activities"] as? Int { return v }
+            if let v = stats["total_activities"] as? NSNumber { return v.intValue }
+            if let v = stats["total_activities"] as? Double { return Int(v) }
+            return 0
+        }()
 
         // Image resolution priority: imageURL (absolute) -> imagePath (resolve via Storage)
         var resolvedImageURL: String?
@@ -76,15 +118,25 @@ final class UserProfileRepository {
         } else {
             resolvedImageURL = nil
         }
+        
+        let profileModel = Profile(name: name,
+                                   email: email,
+                                   avatarURL: resolvedImageURL,
+                                   created: created,
+                                   lastActive: last_active,
+                                   age: age,
+                                   major: major)
+        let preferencesModel = Preferences(indoorOutdoorScore: indoor_outdoor_score,
+                                           favoriteCategories: favorite_categories,
+                                           completedCategories: completed_categories,
+                                           notifications: Notifications(freeTimeSlots: free_time_slots))
+        let statsModel = Stats(lastWishMeLuck: last_wish_me_luck,
+                               totalWeeklyChallenges: total_weekly_challenges,
+                               streakDays: streak_days,
+                               totalActivities: total_activities)
 
-        return UserProfile(
-            id: userID,
-            name: name,
-            avatar_url: resolvedImageURL,
-            major: major,
-            age: age,
-            indoor_outdoor_score: personality,
-            preferences: preferences
+        return UserModel(
+            profile: profileModel, preferences: preferencesModel, stats: statsModel
         )
     }
 }
@@ -92,7 +144,7 @@ final class UserProfileRepository {
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
-    @Published var profile: UserProfile?
+    @Published var profile: UserModel?
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 

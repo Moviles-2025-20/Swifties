@@ -16,11 +16,12 @@ struct MainView: View {
                 HomeView()
             case 1:
                 EventListView(viewModel: EventListViewModel())
+            case 3:
+                ProfileView()
             default:
                 HomeView()
             }
             
- 
             CustomTabBar(selectedTab: $selectedTab)
         }
         .ignoresSafeArea(.all, edges: .bottom)

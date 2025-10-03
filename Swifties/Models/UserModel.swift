@@ -20,6 +20,7 @@ struct UserModel: Identifiable, Codable {
 struct Profile: Codable {
     var name: String
     var email: String
+    var gender: String
     var avatarURL: String?
     var created: Date
     var lastActive: Date
@@ -29,6 +30,7 @@ struct Profile: Codable {
     enum CodingKeys: String, CodingKey {
         case name
         case email
+        case gender
         case avatarURL = "avatar_url"
         case created
         case lastActive = "last_active"

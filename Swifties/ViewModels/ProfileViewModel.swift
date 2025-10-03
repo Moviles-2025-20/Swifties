@@ -64,6 +64,7 @@ final class UserProfileRepository {
         let name = profile["name"] as? String ?? "Unknown"
         let email = profile["email"] as? String ?? "Unknown"
         let major = profile["major"] as? String ?? "Unknown"
+        let gender = profile["gender"] as? String ?? "Unknown"
         let favorite_categories = preferences["favorite_categories"] as? [String] ?? ["Unknown"]
         let completed_categories = preferences["completed_categories"] as? [String] ?? ["Unknown"]
         let free_time_slots = notifications["free_time_slots"] as? [String] ?? ["Unknown"]
@@ -121,6 +122,7 @@ final class UserProfileRepository {
         
         let profileModel = Profile(name: name,
                                    email: email,
+                                   gender: gender,
                                    avatarURL: resolvedImageURL,
                                    created: created,
                                    lastActive: last_active,

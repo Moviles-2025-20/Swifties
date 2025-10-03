@@ -66,6 +66,7 @@ class AuthViewModel: ObservableObject {
     }
     
     // MARK: - Login with Google
+    @MainActor
     func loginWithGoogle() async {
         isLoading = true
         error = nil
@@ -87,6 +88,7 @@ class AuthViewModel: ObservableObject {
     }
     
     // MARK: - Login with GitHub
+    @MainActor
     func loginWithGitHub() async {
         isLoading = true
         error = nil

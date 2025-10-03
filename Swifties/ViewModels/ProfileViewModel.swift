@@ -56,7 +56,7 @@ final class UserProfileRepository {
             throw UserProfileRepositoryError.decoding
         }
         
-        guard let stats = profile["stats"] as? [String: Any] else {
+        guard let stats = data["stats"] as? [String: Any] else {
             throw UserProfileRepositoryError.decoding
         }
 

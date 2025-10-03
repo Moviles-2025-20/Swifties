@@ -15,7 +15,6 @@ struct Magic8BallView: View {
     var body: some View {
         VStack {
             Spacer().frame(height: 40)
-            
             // Bola 8 grande
             ZStack {
                 Circle()

@@ -32,10 +32,6 @@ final class UserProfileRepository {
     private let db = Firestore.firestore(database: "default")
     private let storage = Storage.storage()
 
-    init() {
-
-    }
-
     func loadProfile(userID: String) async throws -> UserModel {
         let snapshot = try await db.collection("users").document(userID).getDocument()
         guard let data = snapshot.data() else {

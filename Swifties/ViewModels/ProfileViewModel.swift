@@ -29,13 +29,8 @@ enum UserProfileRepositoryError: LocalizedError {
 /// Firebase-backed implementation of `UserProfileRepository` that reads from Firestore
 /// and resolves a Firebase Storage path into a public download URL to be used in-app.
 final class UserProfileRepository {
-    let db = Firestore.firestore(database: "default")
-    private let storage: Storage
-
-    init(db: Firestore = .firestore(), storage: Storage = .storage()) {
-        //self.db = db
-        self.storage = storage
-    }
+    private let db = Firestore.firestore(database: "default")
+    private let storage = Storage.storage()
 
     func loadProfile(userID: String) async throws -> UserModel {
         let snapshot = try await db.collection("users").document(userID).getDocument()
@@ -56,9 +51,7 @@ final class UserProfileRepository {
             throw UserProfileRepositoryError.decoding
         }
         
-        guard let stats = data["stats"] as? [String: Any] else {
-            throw UserProfileRepositoryError.decoding
-        }
+        let stats = data["stats"] as? [String: Any] ?? [:]
 
         // Safely parse fields from "profile"
         let name = profile["name"] as? String ?? "Unknown"
@@ -66,7 +59,7 @@ final class UserProfileRepository {
         let major = profile["major"] as? String ?? "Unknown"
         let gender = profile["gender"] as? String ?? "Unknown"
         let favorite_categories = preferences["favorite_categories"] as? [String] ?? ["Unknown"]
-        let completed_categories = preferences["completed_categories"] as? [String] ?? ["Unknown"]
+        let completed_categories = preferences["completed_categories"] as? [String] ?? []
         let free_time_slots = notifications["free_time_slots"] as? [String] ?? ["Unknown"]
         
         // Parse Dates
@@ -132,7 +125,7 @@ final class UserProfileRepository {
 
         // Image resolution priority: imageURL (absolute) -> imagePath (resolve via Storage)
         var resolvedImageURL: String?
-        if let imagePath = profile["avatar_url"] as? String {
+        if let imagePath = profile["photo"] as? String {
             do {
                 let ref = storage.reference(withPath: imagePath)
                 let url = try await ref.downloadURL()

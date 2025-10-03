@@ -19,7 +19,7 @@ class RegisterViewModel: ObservableObject {
     @Published var favoriteCategories: [String] = []
     @Published var freeTimeSlots: [[String: String]] = []
     @Published var isLoading: Bool = false
-    @Published var indoorOutdoorScore: Double = 50 // NEW: Indoor/Outdoor preference
+    @Published var indoorOutdoorScore: Double = 0 // NEW: Indoor/Outdoor preference
     
     // For UI state
     @Published var selectedDay: String? = nil

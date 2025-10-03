@@ -14,8 +14,8 @@ struct ProfileHeader: View {
     let indoor_outdoor_score: Int
     
     private var personalityLabel: String {
-        if indoor_outdoor_score < 0 { return "Insider" }
-        if indoor_outdoor_score > 0 { return "Outsider" }
+        if indoor_outdoor_score < 50 { return "Insider" }
+        if indoor_outdoor_score > 50 { return "Outsider" }
         return "Neutral"
     }
     
@@ -76,7 +76,7 @@ struct ProfileHeader: View {
                     .font(.subheadline)
                     .foregroundColor(.black)
                 
-                Text("Personality: \(personalityLabel) (\(abs(indoor_outdoor_score))%)")
+                Text("Personality: \(personalityLabel) (\(indoor_outdoor_score)%)")
                     .font(.subheadline)
                     .foregroundColor(.black)
                 
@@ -92,7 +92,7 @@ struct ProfileHeader: View {
 
 // MARK: - Bipolar progress bar (-100 to 100) starting at center
 private struct BipolarProgressBar: View {
-    let value: Int // expected range: -100...100
+    let value: Int // expected range: 0...100
     var height: CGFloat = 8
     var negativeColor: Color = Color("appRed")
     var positiveColor: Color = Color("appBlue")
@@ -100,8 +100,8 @@ private struct BipolarProgressBar: View {
     var body: some View {
         GeometryReader { geo in
             let mid = geo.size.width / 2
-            let floatValue = (CGFloat(value) / 100.0)
-            let magnitude = min(max(abs(CGFloat(value)) / 100.0, 0), 1)
+            let floatValue = (CGFloat(value) - 50.0) / 50.0
+            let magnitude = min(max(abs(floatValue), 0), 1)
             let fillW = mid * magnitude
             ZStack(alignment: .leading) {
                 // Track
@@ -110,7 +110,7 @@ private struct BipolarProgressBar: View {
                     .frame(height: height + 2)
                 
                 // Fill from center to the right for positive values
-                if value > 0 {
+                if value > 50 {
                     Capsule()
                         .fill(positiveColor)
                         .frame(width: fillW, height: height)
@@ -118,18 +118,12 @@ private struct BipolarProgressBar: View {
                 }
                 
                 // Fill from center to the left for negative values
-                if value < 0 {
+                if value < 50 {
                     Capsule()
                         .fill(negativeColor)
                         .frame(width: fillW, height: height)
                         .offset(x: mid - fillW)
                 }
-                
-                // Center tick
-                Circle()
-                    .fill(Color.black.opacity(0.6))
-                    .frame(width: height, height: height)
-                    .offset(x: mid * (1 + floatValue), y: height/2)
             }
         }
         .frame(height: height)

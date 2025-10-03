@@ -65,48 +65,56 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Login with Google
+    // MARK: - Auth Providers
+    enum AuthProvider {
+        case google
+        case github
+        
+        var displayName: String {
+            switch self {
+            case .google: return "Google"
+            case .github: return "GitHub"
+            }
+        }
+    }
+
+    // MARK: - Unified Login
     @MainActor
-    func loginWithGoogle() async {
+    func login(with provider: AuthProvider) async {
         isLoading = true
         error = nil
+        defer { isLoading = false }
         
         do {
-            let result = try await authService.loginWithGoogle()
-            self.user = UserModel.fromFirebase(result.user, providerId: result.providerId)
+            let result: (user: FirebaseAuth.User, providerId: String)
+            switch provider {
+            case .google:
+                result = try await authService.loginWithGoogle()
+            case .github:
+                result = try await authService.loginWithGitHub()
+            }
+            self.user = UserAuthModel.fromFirebase(result.user, providerId: result.providerId)
         } catch let authError as AuthenticationError {
             self.error = authError.localizedDescription
             self.user = nil
-            print("Google login error: \(authError.localizedDescription)")
+            print("\(provider.displayName) login error: \(authError.localizedDescription)")
         } catch {
             self.error = error.localizedDescription
             self.user = nil
-            print("Unexpected Google login error: \(error.localizedDescription)")
+            print("Unexpected \(provider.displayName) login error: \(error.localizedDescription)")
         }
-        
-        isLoading = false
+    }
+    
+    // MARK: - Login with Google
+    @MainActor
+    func loginWithGoogle() async {
+        await login(with: .google)
     }
     
     // MARK: - Login with GitHub
     @MainActor
     func loginWithGitHub() async {
-        isLoading = true
-        error = nil
-        
-        do {
-            let result = try await authService.loginWithGitHub()
-            self.user = UserModel.fromFirebase(result.user, providerId: result.providerId)
-        } catch let authError as AuthenticationError {
-            self.error = authError.localizedDescription
-            self.user = nil
-            print("GitHub login error: \(authError.localizedDescription)")
-        } catch {
-            self.error = error.localizedDescription
-            self.user = nil
-            print("Unexpected GitHub login error: \(error.localizedDescription)")
-        }
-        
-        isLoading = false
+        await login(with: .github)
     }
 
     
@@ -156,3 +164,4 @@ class AuthViewModel: ObservableObject {
         authListenerTask?.cancel()
     }
 }
+

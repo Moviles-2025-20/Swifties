@@ -25,14 +25,14 @@ struct LoginView: View {
     
     // MARK: - Login with Google
     private func signInWithGoogle() {
-        Task { @MainActor in
+        Task {
             await viewModel.loginWithGoogle()
         }
     }
     
     // MARK: - Login with GitHub
     private func signInWithGitHub() {
-        Task { @MainActor in
+        Task {
             await viewModel.loginWithGitHub()
         }
     }

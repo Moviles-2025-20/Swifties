@@ -30,6 +30,13 @@ struct LoginView: View {
         }
     }
     
+    // MARK: - Login with GitHub
+    private func signInWithGitHub() {
+        Task {
+            await viewModel.loginWithGitHub()
+        }
+    }
+    
     // MARK: View
     var body: some View {
         NavigationStack {
@@ -106,8 +113,8 @@ struct LoginView: View {
             .disabled(viewModel.isLoading)
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
-            // GitHub Login Button (disabled)
-            Button(action: {}) {
+            // GitHub Login Button
+            Button(action: signInWithGitHub) {
                 HStack(spacing: 12) {
                     Group {
                         if let _ = UIImage(named: "GitHub") {
@@ -131,8 +138,7 @@ struct LoginView: View {
                 .background(Color.black)
                 .cornerRadius(12)
             }
-            .disabled(true)
-            .opacity(0.5)
+            .disabled(viewModel.isLoading)
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
             // Facebook Login Button (disabled)

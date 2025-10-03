@@ -65,27 +65,58 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Login with Google
-    func loginWithGoogle() async {
+    // MARK: - Auth Providers
+    enum AuthProvider {
+        case google
+        case github
+        
+        var displayName: String {
+            switch self {
+            case .google: return "Google"
+            case .github: return "GitHub"
+            }
+        }
+    }
+
+    // MARK: - Unified Login
+    @MainActor
+    func login(with provider: AuthProvider) async {
         isLoading = true
         error = nil
+        defer { isLoading = false }
         
         do {
-            let result = try await authService.loginWithGoogle()
+            let result: (user: FirebaseAuth.User, providerId: String)
+            switch provider {
+            case .google:
+                result = try await authService.loginWithGoogle()
+            case .github:
+                result = try await authService.loginWithGitHub()
+            }
             self.user = UserAuthModel.fromFirebase(result.user, providerId: result.providerId)
-            self.error = nil
         } catch let authError as AuthenticationError {
             self.error = authError.localizedDescription
             self.user = nil
-            print("Login error: \(authError.localizedDescription)")
+            print("\(provider.displayName) login error: \(authError.localizedDescription)")
         } catch {
             self.error = error.localizedDescription
             self.user = nil
-            print("Unexpected error: \(error.localizedDescription)")
+            print("Unexpected \(provider.displayName) login error: \(error.localizedDescription)")
         }
-        
-        isLoading = false
     }
+    
+    // MARK: - Login with Google
+    @MainActor
+    func loginWithGoogle() async {
+        await login(with: .google)
+    }
+    
+    // MARK: - Login with GitHub
+    @MainActor
+    func loginWithGitHub() async {
+        await login(with: .github)
+    }
+
     
     // MARK: - Logout
     func logout() async {
@@ -133,3 +164,4 @@ class AuthViewModel: ObservableObject {
         authListenerTask?.cancel()
     }
 }
+

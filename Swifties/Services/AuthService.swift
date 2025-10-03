@@ -4,6 +4,7 @@
 //
 //  Created by Natalia Villegas Calderón on 1/10/25.
 //
+
 import Foundation
 import FirebaseAuth
 import FirebaseCore
@@ -105,20 +106,67 @@ class AuthService {
         }
     }
     
+    // MARK: - GitHub Sign In
+    func loginWithGitHub() async throws -> (user: User, providerId: String) {
+        let provider = OAuthProvider(providerID: "github.com")
+        // Set minimal required scope for GitHub authentication. "read:user" allows access to basic profile info.
+        provider.scopes = ["read:user"]
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            provider.getCredentialWith(nil) { credential, error in
+                if let error = error {
+                    continuation.resume(throwing: AuthenticationError.unknown(error))
+                    return
+                }
+                
+                guard let credential = credential else {
+                    continuation.resume(throwing: AuthenticationError.tokenError(message: "No GitHub credential"))
+                    return
+                }
+                
+                Auth.auth().signIn(with: credential) { authResult, error in
+                    if let error = error {
+                        continuation.resume(throwing: AuthenticationError.unknown(error))
+                        return
+                    }
+                    
+                    if let authResult = authResult {
+                        let firebaseUser = authResult.user
+                        let providerId = credential.provider
+                        print("User \(firebaseUser.uid) signed in with GitHub")
+                        continuation.resume(returning: (firebaseUser, providerId))
+                    } else {
+                        continuation.resume(throwing: AuthenticationError.tokenError(message: "No auth result from GitHub"))
+                    }
+                }
+            }
+        }
+    }
+
+    
     // MARK: - Logout
     func logout() async throws {
         do {
-            // Sign out from Google if signed in
-            GIDSignIn.sharedInstance.signOut()
-            
-            // Sign out from Firebase
+            if let providers = Auth.auth().currentUser?.providerData {
+                for provider in providers {
+                    if provider.providerID == "google.com" {
+                        GIDSignIn.sharedInstance.signOut()
+                        print("Google session signed out")
+                    }
+                    else if provider.providerID == "github.com" {
+                        print("GitHub session cleared (handled by Firebase)")
+                    }
+                }
+            }
+            // Sign out from Firebase (clears all providers)
             try Auth.auth().signOut()
-            print("User signed out successfully")
+            print("User signed out successfully from Firebase")
         } catch {
             print("Sign out error: \(error.localizedDescription)")
             throw AuthenticationError.unknown(error)
         }
     }
+
     
     // MARK: - Delete Account
     func deleteAccount() async throws {

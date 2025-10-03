@@ -13,7 +13,7 @@ import Combine
 @MainActor
 class AuthViewModel: ObservableObject {
     // Published properties
-    @Published var user: UserModel?
+    @Published var user: UserAuthModel?
     @Published var isLoading: Bool = false
     @Published var error: String?
     @Published var isFirstTimeUser: Bool = false
@@ -40,7 +40,7 @@ class AuthViewModel: ObservableObject {
             for await firebaseUser in authService.authStateChanges {
                 if let firebaseUser = firebaseUser {
                     let providerId = firebaseUser.providerData.first?.providerID ?? "unknown"
-                    self.user = UserModel.fromFirebase(firebaseUser, providerId: providerId)
+                    self.user = UserAuthModel.fromFirebase(firebaseUser, providerId: providerId)
                     await checkFirstTimeUser()
                 } else {
                     self.user = nil

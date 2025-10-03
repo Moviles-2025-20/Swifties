@@ -1,5 +1,5 @@
 //
-//  AuthUserModel.swift
+//  UserModel.swift
 //  Swifties
 //
 //  Created by Natalia Villegas Calderón on 1/10/25.
@@ -9,7 +9,7 @@ import Foundation
 import FirebaseFirestore
 
 // MARK: - Root User document
-struct UserModelAuth: Identifiable, Codable {
+struct UserModel: Identifiable, Codable {
     @DocumentID var id: String?   // Firestore doc ID (same as uid)
     var profile: Profile
     var preferences: Preferences
@@ -20,20 +20,22 @@ struct UserModelAuth: Identifiable, Codable {
 struct Profile: Codable {
     var name: String
     var email: String
+    var gender: String
     var avatarURL: String?
     var created: Date
     var lastActive: Date
-    var major: String?
-    var age: Int?
+    var age: Int
+    var major: String
     
     enum CodingKeys: String, CodingKey {
         case name
         case email
+        case gender
         case avatarURL = "avatar_url"
         case created
         case lastActive = "last_active"
-        case major
         case age
+        case major
     }
 }
 

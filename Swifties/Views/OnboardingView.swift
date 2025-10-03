@@ -47,7 +47,7 @@ struct OnboardingView: View {
             }
             .padding()
             .navigationDestination(isPresented: $navigateToHome) {
-                HomeView() // Your home view
+                MainView() // Your home view
             }
         }
     }

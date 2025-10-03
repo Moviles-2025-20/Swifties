@@ -24,7 +24,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct SwiftiesApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var authViewModel = AuthViewModel()
-    
+
     var body: some Scene {
         WindowGroup {
             NavigationStack {
@@ -33,7 +33,7 @@ struct SwiftiesApp: App {
             .environmentObject(authViewModel)
             // BEFORE
             //@State private var isLoading = true
-            
+
             //var body: some Scene {
             //WindowGroup {
             //if isLoading {

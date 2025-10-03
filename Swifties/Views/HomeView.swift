@@ -10,16 +10,16 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var viewModel: AuthViewModel
     @State private var selectedTab = 0
-    
+
     // Estado para navegar a WishMeLuck
     @State private var navigateToWishMeLuck = false
-    
+
     var body: some View {
         NavigationView {
             ZStack {
                 Color("appPrimary")
                     .ignoresSafeArea()
-                
+
                 VStack {
                     CustomTopBar(
                         title: "Hi, \(getUserFirstName())!",
@@ -27,7 +27,7 @@ struct HomeView: View {
                     ) {
                         print("Notifications tapped")
                     }
-                    
+
                     ScrollView {
                         VStack (spacing: 0) {
                             HStack {
@@ -36,11 +36,11 @@ struct HomeView: View {
                                     .fontWeight(.semibold)
                                     .padding()
                                     .frame(minHeight: 10)
-                                
+
                                 Spacer()
                             }
                             .padding(.bottom, 10)
-                            
+
                             HStack (spacing: 15) {
                                 Button {
                                     print("Weekly Challenge")
@@ -52,7 +52,7 @@ struct HomeView: View {
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(Color("appBlue"))
-                                
+
                                 Button {
                                     print("Personality Quiz")
                                 } label: {
@@ -65,7 +65,7 @@ struct HomeView: View {
                                 .tint(Color("appRed"))
                             }
                             .padding(.bottom, 10)
-                            
+
                             HStack (spacing: 15) {
                                 // Botón Wish Me Luck
                                 Button {
@@ -78,7 +78,7 @@ struct HomeView: View {
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(Color("appRed"))
-                                
+
                                 Button {
                                     print("Map")
                                 } label: {
@@ -90,7 +90,7 @@ struct HomeView: View {
                                 .buttonStyle(.borderedProminent)
                                 .tint(Color("appBlue"))
                             }
-                            
+
                             // ... resto de tu contenido
                             HStack {
                                 Text("Daily Recommendation")
@@ -98,11 +98,11 @@ struct HomeView: View {
                                     .fontWeight(.semibold)
                                     .padding()
                                     .frame(minHeight: 10)
-                                
+
                                 Spacer()
                             }
                             .padding(.top, 20)
-                            
+
                             EventInfo(imagePath: "evento",
                                          title: "Daily Marathon",
                                          titleColor: Color("appOcher"),
@@ -111,11 +111,11 @@ struct HomeView: View {
                                          walkingMinutes: 8,
                                          location: "Lleras"
                             ).padding(.horizontal, 16)
-                            
+
                             // ... otros eventos
                         }
                     }
-                    
+
                     // NavigationLink invisible que se activa al tocar el botón
                     NavigationLink(
                         destination: Magic8BallView(),
@@ -128,13 +128,13 @@ struct HomeView: View {
         }
         .navigationViewStyle(.stack)
     }
-    
+
     // MARK: - Helper Function
     private func getUserFirstName() -> String {
         guard let displayName = viewModel.user?.displayName else {
             return "User"
         }
-        
+
         let components = displayName.components(separatedBy: " ")
         return components.first ?? displayName
     }

@@ -11,17 +11,18 @@ struct Magic8BallView: View {
     @State var events: [Event] = []
     @State private var selectedEvent: Event? = nil
     @State private var animateBall = false
-    
+
     var body: some View {
         VStack {
             Spacer().frame(height: 40)
+
             // Bola 8 grande
             ZStack {
                 Circle()
                     .fill(Color.black)
                     .frame(width: 280, height: 280)
                     .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 8)
-                
+
                 Text("8")
                     .font(.system(size: 130, weight: .bold))
                     .foregroundColor(.white)
@@ -29,9 +30,9 @@ struct Magic8BallView: View {
                     .animation(.easeInOut(duration: 0.6), value: animateBall)
             }
             .padding(.top, 40)
-            
+
             Spacer().frame(height: 30) // Más cerca de la card
-            
+
             // Card del evento (más pequeña)
             // Card del evento más completa
             // Card del evento más completa y segura
@@ -58,79 +59,79 @@ struct Magic8BallView: View {
                                     .foregroundColor(.white.opacity(0.7))
                             )
                     }
-                    
-                    
+
+
                     // Información principal
                     Text(event.name)
                         .font(.title3)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.center)
-                    
+
                     Text(event.description)
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 6)
-                    
+
                     HStack(spacing: 16) {
                         Label(event.category, systemImage: "tag")
                             .font(.caption)
                             .foregroundColor(.orange)
-                        
+
                         Label(event.type ?? "N/A", systemImage: "star.fill")
                             .font(.caption)
                             .foregroundColor(.blue)
                     }
-                    
+
                     HStack(spacing: 16) {
                         Label(event.location?.address ?? "Unknown location", systemImage: "mappin.and.ellipse")
                             .font(.caption2)
                             .foregroundColor(.gray)
-                        
+
                         Label("\(event.metadata?.durationMinutes ?? 0) min", systemImage: "clock")
                             .font(.caption2)
                             .foregroundColor(.gray)
-                        
-                        
+
+
                         Label(event.metadata?.cost ?? "N/A", systemImage: "dollarsign.circle")
                             .font(.caption2)
                             .foregroundColor(.gray)
-                        
+
                     }
-                    
+
                     HStack(spacing: 16) {
                         Label("\(event.stats?.popularity ?? 0)% popular", systemImage: "heart.fill")
                             .font(.caption2)
                             .foregroundColor(.red)
-                        
+
                         Label(String(format: "%.1f ★", event.stats?.rating ?? 0), systemImage: "star.fill")
                             .font(.caption2)
                             .foregroundColor(.yellow)
                     }
-                    
+
                 } else {
                     Text("Shake or Tap the button below")
                         .font(.body)
                         .foregroundColor(.primary)
-                    
+
                     Text("And let the magic 8-ball discover your perfect event!")
                         .font(.footnote)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
             }
-            
+
             .frame(maxWidth: .infinity, minHeight: 280)
             .padding(16)
             .background(Color.white)
             .cornerRadius(24)
             .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 8)
             .padding(.horizontal, 16)
-            
-            
+
+
             Spacer().frame(height: 20) // Reducido para subir el botón
-            
+
             // Botón
             Button(action: {
                 if !events.isEmpty {
@@ -158,12 +159,12 @@ struct Magic8BallView: View {
             }
         }
     }
-    
+
     func loadEventsFromFirebase() {
         let db = Firestore.firestore()
         db.collection("events").getDocuments { snapshot, error in
             guard let docs = snapshot?.documents else { return }
-            
+
             Task { @MainActor in
                 self.events = docs.compactMap { doc -> Event? in
                     try? doc.data(as: Event.self)
@@ -171,13 +172,13 @@ struct Magic8BallView: View {
             }
         }
     }
-    
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
     // MARK: - Preview con eventos simulados
     struct Magic8BallView_Previews: PreviewProvider {
         static var previews: some View {
@@ -252,5 +253,5 @@ struct Magic8BallView: View {
             Magic8BallView(events: mockEvents)
         }
     }
-    
+
 }

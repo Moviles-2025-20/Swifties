@@ -18,15 +18,16 @@ class EventNotificationService {
 
                     let eventSlot = "\(day) \(time)"
 
-                    if freeSlots.contains(eventSlot) {
-                        if let eventDate = self.dateFrom(day: day, time: time) {
-                            NotificationManager.shared.scheduleNotification(
-                                title: "Nuevo evento disponible 🎉",
-                                body: "\(event.name) está ocurriendo en tu tiempo libre",
-                                date: eventDate
-                            )
-                        }
-                    }
+                    // TODO: FIX THE CORRECT FREE SLOT
+                    //if freeSlots.contains(eventSlot) {
+                        //if let eventDate = self.dateFrom(day: day, time: time) {
+                            //NotificationManager.shared.scheduleNotification(
+                                //title: "Nuevo evento disponible 🎉",
+                                //body: "\(event.name) está ocurriendo en tu tiempo libre",
+                                //date: eventDate
+                            //)
+                        //}
+                    //}
                 }
             }
         }

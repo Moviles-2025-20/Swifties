@@ -29,11 +29,11 @@ enum UserProfileRepositoryError: LocalizedError {
 /// Firebase-backed implementation of `UserProfileRepository` that reads from Firestore
 /// and resolves a Firebase Storage path into a public download URL to be used in-app.
 final class UserProfileRepository {
-    private let db: Firestore
+    let db = Firestore.firestore(database: "default")
     private let storage: Storage
 
     init(db: Firestore = .firestore(), storage: Storage = .storage()) {
-        self.db = db
+        //self.db = db
         self.storage = storage
     }
 

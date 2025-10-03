@@ -7,11 +7,24 @@
 
 import SwiftUI
 import FirebaseCore
+import FirebaseAuth
+import FirebaseFirestore
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        
         FirebaseApp.configure()
+        
+        let db = Firestore.firestore(database: "default")
+        // Test connection
+        db.collection("test").document("connection").setData(["test": "value"]) { error in
+            if let error = error {
+                print("❌ Firestore connection failed: \(error.localizedDescription)")
+            } else {
+                print("✅ Firestore connected successfully!")
+            }
+        }
         return true
     }
     // Restrict the app to portrait mode only
@@ -28,7 +41,11 @@ struct SwiftiesApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                StartView()
+                if Auth.auth().currentUser != nil {
+                    HomeView()
+                }else{
+                    StartView()
+                }
             }
             .environmentObject(authViewModel)
             // BEFORE

@@ -9,7 +9,7 @@ import Foundation
 
 /// Domain model representing a user's profile in the app.
 /// This is the Model in MVVM and should remain a simple data container.
-struct UserProfile: Identifiable, Equatable {
+struct UserProfile: Identifiable, Equatable, Codable {
     let id: String
     let name: String
     let avatar_url: String?

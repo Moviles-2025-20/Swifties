@@ -1,66 +1,74 @@
 //
-//  EventListViewModel.swift
+//  EventDetailViewModel.swift
 //  Swifties
 //
-//  Created by Imac on 1/10/25.
 //
 
 import Foundation
 import FirebaseFirestore
 import Combine
 
-class EventListViewModel: ObservableObject {
-
-    @Published var events: [Event] = []
+class EventDetailViewModel: ObservableObject {
+    @Published var event: Event?
     @Published var isLoading = false
     @Published var errorMessage: String?
-
+    
+    private let eventId: String
     let db = Firestore.firestore(database: "default")
-
-    init() {
-        // Initialize Firestore and configure settings
+    
+    init(eventId: String) {
+        self.eventId = eventId
+        
+        // Configure Firestore settings
         let firestore = Firestore.firestore()
         let settings = FirestoreSettings()
-        //settings.isPersistenceEnabled = true // optional offline cache
+        //settings.isPersistenceEnabled = true
         firestore.settings = settings
     }
-
-    func loadEvents() {
+    
+    func loadEventDetail() {
+        guard !eventId.isEmpty else {
+            errorMessage = "Invalid event ID"
+            return
+        }
+        
         isLoading = true
         errorMessage = nil
-
-        db.collection("events").getDocuments { [weak self] snapshot, error in
+        
+        db.collection("events").document(eventId).getDocument { [weak self] document, error in
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.isLoading = false
-
+                
                 if let error = error {
-                    self.errorMessage = "Error loading events: \(error.localizedDescription)"
+                    self.errorMessage = "Error loading event: \(error.localizedDescription)"
                     print(self.errorMessage ?? "")
                     return
                 }
-
-                guard let documents = snapshot?.documents else {
-                    self.errorMessage = "No events found"
+                
+                guard let document = document, document.exists else {
+                    self.errorMessage = "Event not found"
                     return
                 }
-
-                // Parse documents with complete data
-                self.events = documents.compactMap { doc in
-                    self.parseEvent(documentId: doc.documentID, data: doc.data())
+                
+                // Parse the event from document data
+                let data = document.data() ?? [:]
+                self.event = self.parseEvent(documentId: document.documentID, data: data)
+                
+                if self.event == nil {
+                    self.errorMessage = "Error parsing event data"
+                } else {
+                    print("Event loaded successfully: \(self.event?.name ?? "")")
                 }
-
-                print("Events loaded: \(self.events.count)")
             }
         }
     }
     
     private func parseEvent(documentId: String, data: [String: Any]) -> Event? {
-        // Required fields
         guard let name = data["name"] as? String,
               let description = data["description"] as? String,
               let category = data["category"] as? String else {
-            print("Incomplete document: \(documentId)")
+            print("Missing required fields")
             return nil
         }
         
@@ -137,3 +145,4 @@ class EventListViewModel: ObservableObject {
         return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
     }
 }
+

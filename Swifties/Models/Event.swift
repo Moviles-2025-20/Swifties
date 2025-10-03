@@ -16,7 +16,7 @@ struct Event: Codable, Identifiable {
     let type: String?
     let category: String
     let active: Bool?
-    let eventType: [String]?
+    let eventType: String?  
     let location: Location?
     let schedule: Schedule
     let metadata: Metadata?
@@ -35,12 +35,24 @@ struct Event: Codable, Identifiable {
         let days: [String]
         let times: [String]
     }
+    
+    struct Cost: Codable {
+        let amount: Int
+        let currency: String
+        
+        var formatted: String {
+            if currency == "FREE" || amount == 0 {
+                return "FREE"
+            }
+            return "\(currency) $\(amount)"
+        }
+    }
 
     struct Metadata: Codable {
         let imageUrl: String
         let tags: [String]
         let durationMinutes: Int
-        let cost: String
+        let cost: Cost
 
         enum CodingKeys: String, CodingKey {
             case imageUrl = "image_url"
@@ -65,9 +77,24 @@ struct Event: Codable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id
         case title, name, description, type, category, active
-        case eventType = "EventType"
+        case eventType = "event_type"
         case location, schedule, metadata, stats
         case weatherDependent = "weather_dependent"
         case created
     }
+    
+    // Helper computed properties
+    var durationFormatted: String {
+        guard let metadata = metadata else { return "" }
+        let hours = metadata.durationMinutes / 60
+        let minutes = metadata.durationMinutes % 60
+        if hours > 0 && minutes > 0 {
+            return "\(hours)h \(minutes)min"
+        } else if hours > 0 {
+            return "\(hours)h"
+        } else {
+            return "\(minutes)min"
+        }
+    }
 }
+

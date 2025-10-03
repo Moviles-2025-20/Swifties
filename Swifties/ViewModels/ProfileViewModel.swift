@@ -72,7 +72,15 @@ final class UserProfileRepository {
         // Parse Dates
         let created = profile["created"] as? Date ?? Date()
         let last_active = profile["last_active"] as? Date ?? Date()
-        let last_wish_me_luck = stats["last_wish_me_luck"] as? Date ?? Date()
+        let last_wish_me_luck: Date = {
+            if let ts = stats["last_wish_me_luck"] as? Timestamp {
+                return ts.dateValue()
+            } else if let date = stats["last_wish_me_luck"] as? Date {
+                return date
+            } else {
+                return Date()
+            }
+        }()
 
         // Firestore numbers can be Int, Int64, Double, or NSNumber. Normalize to Int.
         let age: Int = {

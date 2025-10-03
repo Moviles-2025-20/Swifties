@@ -74,19 +74,22 @@ struct RegisterView: View {
                 
                 HStack(spacing: 16) {
                     Button(action: handleNext) {
-                        if viewModel.isLoading {
-                            ProgressView()
-                                .tint(.white)
-                        } else {
-                            Text(currentStep == 4 ? "Save" : "Next")
-                                .font(.system(size: 16, weight: .semibold))
+                        HStack {
+                            if viewModel.isLoading {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Text(currentStep == 4 ? "Save" : "Next")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
                         }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.appRed)
+                        .cornerRadius(12)
+                        .contentShape(Rectangle())
                     }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.appRed)
-                    .cornerRadius(12)
                     .disabled(viewModel.isLoading)
                 }
                 .padding(.horizontal, 24)
@@ -111,15 +114,6 @@ struct RegisterView: View {
                         .foregroundColor(.appRed)
                     }
                 }
-            }
-            
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") {
-                    focusedField = nil
-                }
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.appRed)
             }
         }
         .alert("Error", isPresented: $showAlert) {
@@ -407,7 +401,7 @@ struct RegisterView: View {
                         .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                 )
                 
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     DatePicker("Start", selection: $viewModel.startTime, displayedComponents: .hourAndMinute)
                         .padding()
                         .background(Color.white)
@@ -416,18 +410,37 @@ struct RegisterView: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                         )
+                        .onChange(of: viewModel.startTime) { oldStart, newStart in
+                            // Ensure end is always after start; bump end forward if needed
+                            if viewModel.endTime <= newStart {
+                                viewModel.endTime = Calendar.current.date(byAdding: .minute, value: 30, to: newStart)
+                                    ?? Calendar.current.date(byAdding: .minute, value: 1, to: newStart)
+                                    ?? newStart
+                            }
+                        }
                     
-                    DatePicker("End", selection: $viewModel.endTime, displayedComponents: .hourAndMinute)
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
+                    DatePicker(
+                        "End",
+                        selection: $viewModel.endTime,
+                        in: viewModel.startTime...endOfDay(for: viewModel.startTime),
+                        displayedComponents: .hourAndMinute
+                    )
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
                 }
                 
                 Button(action: {
+                    // Validate end > start before adding
+                    if viewModel.endTime <= viewModel.startTime {
+                        alertMessage = "End time must be after the start time."
+                        showAlert = true
+                        return
+                    }
                     viewModel.addFreeTimeSlot()
                 }) {
                     HStack {
@@ -458,7 +471,7 @@ struct RegisterView: View {
                                 Text(slot["day"] ?? "")
                                     .font(.system(size: 14, weight: .semibold))
                                 Text("\(slot["start"] ?? "") - \(slot["end"] ?? "")")
-                                    .font(.system(size: 11))
+                                    .font(.system(size: 12))
                                     .foregroundColor(.gray)
                             }
                             
@@ -606,5 +619,12 @@ struct RegisterView: View {
                 currentStep += 1
             }
         }
+    }
+    
+    // Helper: end of day for given date (keeps selection within same day)
+    private func endOfDay(for date: Date) -> Date {
+        let cal = Calendar.current
+        // Set end of day to 23:59:00 to avoid confusion in time selection UI
+        return cal.date(bySettingHour: 23, minute: 59, second: 0, of: date) ?? date
     }
 }

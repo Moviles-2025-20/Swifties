@@ -26,6 +26,7 @@ struct MainView: View {
     @ViewBuilder
     private func contentView(for tab: Int) -> some View {
         switch tab {
+            
         case 0:
             HomeView()
         case 1:

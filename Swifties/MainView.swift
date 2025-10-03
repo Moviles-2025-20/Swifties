@@ -17,17 +17,6 @@ struct MainView: View {
         VStack(spacing: 0) {
             contentView(for: selectedTab)
             
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
             CustomTabBar(selectedTab: $selectedTab)
         }
         .ignoresSafeArea(.all, edges: .bottom)

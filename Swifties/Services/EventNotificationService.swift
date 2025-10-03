@@ -9,7 +9,7 @@ import Foundation
 
 class EventNotificationService {
 
-    func checkEventsForUser(user: UserData, events: [Event]) {
+    func checkEventsForUser(user: UserModel, events: [Event]) {
         let freeSlots = user.preferences.notifications.freeTimeSlots
 
         for event in events {

@@ -1,5 +1,5 @@
 //
-//  UserModelAuth.swift
+//  UserAuthModel.swift
 //  Swifties
 //
 //  Created by Natalia Villegas Calderón on 1/10/25.
@@ -8,7 +8,7 @@
 import Foundation
 import FirebaseAuth
 
-struct UserModel{
+struct UserAuthModel{
     let uid: String
     let email: String?
     let displayName: String?
@@ -27,9 +27,9 @@ struct UserModel{
         self.providerId = providerId
     }
     
-    // Factory method to create UserModel from Firebase User
-    static func fromFirebase(_ firebaseUser: User, providerId: String) -> UserModel {
-        return UserModel(
+    // Factory method to create UserAuthModel from Firebase User
+    static func fromFirebase(_ firebaseUser: User, providerId: String) -> UserAuthModel {
+        return UserAuthModel(
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,

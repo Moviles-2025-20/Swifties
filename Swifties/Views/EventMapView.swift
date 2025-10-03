@@ -8,13 +8,16 @@
 import SwiftUI
 import MapKit
 
+/// The geographic coordinates for Bogotá, Colombia.
+private let bogotaCoordinates = CLLocationCoordinate2D(latitude: 4.6533, longitude: -74.0836)
+
 struct EventMapView: View {
     let events: [Event]
     @Binding var selectedEvent: Event?
     var onSelect: ((Event) -> Void)?
 
     @StateObject private var locationManager = LocationManager()
-    @State private var region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 4.6533, longitude: -74.0836),
+    @State private var region = MKCoordinateRegion(center: bogotaCoordinates,
                                                    span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
 
     // Calculate nearest N events using Haversine distance

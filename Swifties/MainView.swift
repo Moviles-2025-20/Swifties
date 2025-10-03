@@ -30,6 +30,8 @@ struct MainView: View {
             HomeView()
         case 1:
             EventListView(viewModel: EventListViewModel())
+        case 2:
+            Magic8BallView() 
         default:
             HomeView()
         }

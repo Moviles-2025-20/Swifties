@@ -17,16 +17,16 @@ struct MainView: View {
         VStack(spacing: 0) {
             contentView(for: selectedTab)
             
-            switch selectedTab {
-            case 0:
-                HomeView()
-            case 1:
-                EventListView(viewModel: EventListViewModel())
-            case 3:
-                ProfileView()
-            default:
-                HomeView()
-            }
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
             
             CustomTabBar(selectedTab: $selectedTab)
         }

@@ -413,7 +413,8 @@ struct RegisterView: View {
                         .onChange(of: viewModel.startTime) { oldStart, newStart in
                             // Ensure end is always after start; bump end forward if needed
                             if viewModel.endTime <= newStart {
-                                viewModel.endTime = Calendar.current.date(byAdding: .minute, value: 30, to: newStart) ?? newStart
+                                viewModel.endTime = Calendar.current.date(byAdding: .minute, value: 30, to: newStart)
+                                    ?? Calendar.current.date(byAdding: .minute, value: 1, to: newStart)!
                             }
                         }
                     

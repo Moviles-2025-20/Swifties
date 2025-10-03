@@ -109,7 +109,8 @@ class AuthService {
     // MARK: - GitHub Sign In
     func loginWithGitHub() async throws -> (user: User, providerId: String) {
         let provider = OAuthProvider(providerID: "github.com")
-        // provider.scopes = ["read:user"] TODO: Check if necessary
+        // Set minimal required scope for GitHub authentication. "read:user" allows access to basic profile info.
+        provider.scopes = ["read:user"]
         
         return try await withCheckedThrowingContinuation { continuation in
             provider.getCredentialWith(nil) { credential, error in

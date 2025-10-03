@@ -624,6 +624,7 @@ struct RegisterView: View {
     // Helper: end of day for given date (keeps selection within same day)
     private func endOfDay(for date: Date) -> Date {
         let cal = Calendar.current
-        return cal.date(bySettingHour: 23, minute: 59, second: 59, of: date) ?? date
+        // Set end of day to 23:59:00 to avoid confusion in time selection UI
+        return cal.date(bySettingHour: 23, minute: 59, second: 0, of: date) ?? date
     }
 }

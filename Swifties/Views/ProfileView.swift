@@ -16,7 +16,7 @@ struct ProfileView: View {
         
         ZStack{Color("appPrimary").ignoresSafeArea()
             VStack(spacing: 0) {
-                // Custom Top Bar, onBackTap: 
+                // Custom Top Bar with notification button
                 CustomTopBar(
                     title: "Profile",
                     showNotificationButton: true,

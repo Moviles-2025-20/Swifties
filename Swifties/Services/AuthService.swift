@@ -168,7 +168,7 @@ class AuthService {
                     if let authResult = authResult {
                         let firebaseUser = authResult.user
                         let providerId = credential.provider
-                        print("Usuario \(firebaseUser.uid) inició sesión con Twitter")
+                        print("User \(firebaseUser.uid) signed in with Twitter")
                         continuation.resume(returning: (firebaseUser, providerId))
                     } else {
                         continuation.resume(throwing: AuthenticationError.tokenError(message: "No auth result from Twitter"))

@@ -14,11 +14,12 @@ struct ProfileView: View {
     
     var body: some View {
         
-        ZStack{Color("appPrimary").ignoresSafeArea()
+        ZStack {
+            Color("appPrimary").ignoresSafeArea()
+            
             VStack(spacing: 0) {
                 // Custom Top Bar
                 CustomTopBar(title: "Profile", showNotificationButton: true) {
-                    // Handle notification tap
                     print("Notification tapped")
                 }
                 
@@ -34,6 +35,7 @@ struct ProfileView: View {
                                     .foregroundColor(.red)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, 20)
+                                
                                 Button("Retry") {
                                     viewModel.loadProfile()
                                 }
@@ -49,21 +51,23 @@ struct ProfileView: View {
                                 age: profile.profile.age,
                                 indoor_outdoor_score: profile.preferences.indoorOutdoorScore
                             )
+                            
+                            // Preferences Section - CORREGIDO
+                            PreferencesSection(
+                                preferences: ["Indoor/Outdoor Score: \(profile.preferences.indoorOutdoorScore)"]
+                            )
 
-                            // Preferences Section
-                            PreferencesSection(preferences: profile.preferences)
-
+                            
                             // Divider
                             Divider()
                                 .padding(.horizontal, 20)
-
+                            
                             // Action Buttons
                             VStack(spacing: 15) {
                                 ActionButton(
                                     title: "Change your password",
                                     backgroundColor: Color("appBlue")
                                 ) {
-                                    // Handle password change
                                     print("Change password tapped")
                                 }
 
@@ -71,7 +75,6 @@ struct ProfileView: View {
                                     title: "Change your profile information",
                                     backgroundColor: Color("appBlue")
                                 ) {
-                                    // Handle profile info change
                                     print("Change profile info tapped")
                                 }
 
@@ -79,7 +82,6 @@ struct ProfileView: View {
                                     title: "Log Out",
                                     backgroundColor: Color("appRed")
                                 ) {
-                                    // Handle log out
                                     print("Log out tapped")
                                 }
 
@@ -87,19 +89,18 @@ struct ProfileView: View {
                                     title: "Delete your account",
                                     backgroundColor: Color("appRed")
                                 ) {
-                                    // Handle account deletion
                                     print("Delete account tapped")
                                 }
                             }
                             .padding(.horizontal, 20)
-
-                            // Bottom spacing for tab bar
+                            
                             Spacer()
                         } else {
                             // No profile available
                             Text("No profile data available.")
                                 .foregroundColor(.secondary)
                                 .padding(.top, 40)
+                            
                             Button("Reload") {
                                 viewModel.loadProfile()
                             }
@@ -117,7 +118,6 @@ struct ProfileView: View {
         }
     }
 }
-
 
 #Preview {
     ProfileView()

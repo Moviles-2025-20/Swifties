@@ -106,40 +106,29 @@ class AuthService {
         }
     }
     
-    // MARK: - GitHub Sign In
-    func loginWithGitHub() async throws -> (user: User, providerId: String) {
-        let provider = OAuthProvider(providerID: "github.com")
-        // Set minimal required scope for GitHub authentication. "read:user" allows access to basic profile info.
-        provider.scopes = ["read:user"]
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            provider.getCredentialWith(nil) { credential, error in
-                if let error = error {
-                    continuation.resume(throwing: AuthenticationError.unknown(error))
-                    return
-                }
-                
-                guard let credential = credential else {
-                    continuation.resume(throwing: AuthenticationError.tokenError(message: "No GitHub credential"))
-                    return
-                }
-                
-                Auth.auth().signIn(with: credential) { authResult, error in
-                    if let error = error {
-                        continuation.resume(throwing: AuthenticationError.unknown(error))
-                        return
-                    }
-                    
-                    if let authResult = authResult {
-                        let firebaseUser = authResult.user
-                        let providerId = credential.provider
-                        print("User \(firebaseUser.uid) signed in with GitHub")
-                        continuation.resume(returning: (firebaseUser, providerId))
-                    } else {
-                        continuation.resume(throwing: AuthenticationError.tokenError(message: "No auth result from GitHub"))
-                    }
-                }
-            }
+    // MARK: - Email Sign In
+    func loginWithEmail(email: String, password: String) async throws -> (user: User, providerId: String) {
+        do {
+            let result = try await Auth.auth().signIn(withEmail: email, password: password)
+            let firebaseUser = result.user
+            let providerId = "password"
+            print("User \(firebaseUser.uid) signed in")
+            return (firebaseUser, providerId)
+        } catch {
+            throw AuthenticationError.unknown(error)
+        }
+    }
+    
+    // MARK: - Email Sign Up (Registration)
+    func registerWithEmail(email: String, password: String) async throws -> (user: User, providerId: String) {
+        do {
+            let result = try await Auth.auth().createUser(withEmail: email, password: password)
+            let firebaseUser = result.user
+            let providerId = "password"
+            print("User \(firebaseUser.uid) registered with email \(firebaseUser.email ?? "no email")")
+            return (firebaseUser, providerId)
+        } catch {
+            throw AuthenticationError.unknown(error)
         }
     }
 
@@ -175,6 +164,16 @@ class AuthService {
                     }
                 }
             }
+        }
+    }
+    
+    // MARK: - Password Reset
+    func sendPasswordReset(email: String) async throws {
+        do {
+            try await Auth.auth().sendPasswordReset(withEmail: email)
+            print("Password reset email sent to \(email)")
+        } catch {
+            throw AuthenticationError.unknown(error)
         }
     }
 

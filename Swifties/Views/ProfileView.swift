@@ -10,8 +10,6 @@ import SwiftUI
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     
-    @State private var selectedTab = 3 // Profile tab selected
-    
     var body: some View {
         
         ZStack{Color("appPrimary").ignoresSafeArea()
@@ -109,9 +107,6 @@ struct ProfileView: View {
                 }
                 .background(Color("appPrimary"))
                 .task { viewModel.loadProfile() }
-                
-                // Custom Tab Bar
-                CustomTabBar(selectedTab: $selectedTab)
             }
             .ignoresSafeArea(.all, edges: .bottom)
         }

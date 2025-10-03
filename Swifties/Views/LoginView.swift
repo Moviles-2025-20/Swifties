@@ -14,23 +14,12 @@ struct LoginView: View {
     @State private var shouldNavigate = false
     @State private var navigationDestination: NavigationDestination?
     
+    @State private var emailText = ""
+    @State private var passwordText = ""
+    
     enum NavigationDestination {
         case home
         case onboarding
-    }
-    
-    // MARK: - Login with Google
-    private func signInWithGoogle() {
-        Task {
-            await viewModel.loginWithGoogle()
-        }
-    }
-    
-    // MARK: - Login with GitHub
-    private func signInWithGitHub() {
-        Task {
-            await viewModel.loginWithGitHub()
-        }
     }
     
     // MARK: View
@@ -71,16 +60,20 @@ struct LoginView: View {
     // MARK: - Login View
     private var loginView: some View {
         VStack(spacing: 24) {
-            Spacer().frame(height: 60)
+            Spacer().frame(height: 40)
             
             Text("Choose your login method")
                 .font(.system(size: 20, weight: .medium))
                 .foregroundColor(.black.opacity(0.7))
             
-            Spacer().frame(height: 40)
+            Spacer().frame(height: 30)
             
             // Google Login Button
-            Button(action: signInWithGoogle) {
+            Button(action: {
+                Task {
+                    await viewModel.loginWithGoogle()
+                }
+            }) {
                 HStack(spacing: 12) {
                     Group {
                         if let _ = UIImage(named: "Google") {
@@ -107,37 +100,11 @@ struct LoginView: View {
             .disabled(viewModel.isLoading)
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
-            // GitHub Login Button
-            Button(action: signInWithGitHub) {
-                HStack(spacing: 12) {
-                    Group {
-                        if let _ = UIImage(named: "GitHub") {
-                            Image("GitHub")
-                                .resizable()
-                                .frame(width: 24, height: 24)
-                        } else {
-                            Image(systemName: "chevron.left.forwardslash.chevron.right")
-                                .font(.system(size: 20))
-                        }
-                    }
-                    
-                    Text("Login with GitHub")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                }
-                .foregroundColor(.white)
-                .padding(.vertical, 16)
-                .padding(.horizontal, 20)
-                .frame(maxWidth: .infinity)
-                .background(Color.black)
-                .cornerRadius(12)
-            }
-            .disabled(viewModel.isLoading)
-            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-            
             // Twitter Login Button
             Button(action: {
-                Task { await viewModel.loginWithTwitter() }
+                Task {
+                    await viewModel.loginWithTwitter()
+                }
             }) {
                 HStack(spacing: 12) {
                     Group {
@@ -165,7 +132,78 @@ struct LoginView: View {
             .disabled(viewModel.isLoading)
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
-            Spacer().frame(height: 30)
+            // Email Login
+            TextField("Email", text: $emailText)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(8)
+                        
+            SecureField("Password", text: $passwordText)
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(8)
+            
+            Button {
+                Task {
+                    await viewModel.loginWithEmail(email: emailText, password: passwordText)
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "envelope.fill")
+                        .resizable()
+                        .frame(width: 24, height: 24)
+                    
+                    Text("Login with Email")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .foregroundColor(.white)
+                .padding(.vertical, 16)
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity)
+                .background(.gray)
+                .cornerRadius(12)
+            }
+            .disabled(viewModel.isLoading)
+            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            
+            Button {
+                Task {
+                    await viewModel.registerWithEmail(email: emailText, password: passwordText)
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "envelope.fill")
+                        .resizable()
+                        .frame(width: 24, height: 24)
+                    
+                    Text("Register with Email")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .foregroundColor(.white)
+                .padding(.vertical, 16)
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity)
+                .background(.gray)
+                .cornerRadius(12)
+            }
+            .disabled(viewModel.isLoading)
+            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            
+            Button {
+                Task {
+                    await viewModel.sendPasswordReset(email: emailText)
+                }
+            } label: {
+                Text("Forgot Password?")
+                    .foregroundColor(.red)
+                    .underline()
+            }
+            
+            Spacer().frame(height: 20)
             
             // Loading indicator
             if viewModel.isLoading {

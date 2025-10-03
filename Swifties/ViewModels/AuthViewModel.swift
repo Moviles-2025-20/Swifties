@@ -85,13 +85,13 @@ class AuthViewModel: ObservableObject {
     // MARK: - Auth Providers
     enum AuthProvider {
         case google
-        case github
+        case email
         case twitter
         
         var displayName: String {
             switch self {
             case .google: return "Google"
-            case .github: return "GitHub"
+            case .email: return "Email"
             case .twitter: return "Twitter"
             }
         }
@@ -99,7 +99,7 @@ class AuthViewModel: ObservableObject {
 
     // MARK: - Unified Login
     @MainActor
-    func login(with provider: AuthProvider) async {
+    func login(with provider: AuthProvider, email: String = "", password: String = "") async {
         isLoading = true
         error = nil
         defer { isLoading = false }
@@ -109,8 +109,8 @@ class AuthViewModel: ObservableObject {
             switch provider {
             case .google:
                 result = try await authService.loginWithGoogle()
-            case .github:
-                result = try await authService.loginWithGitHub()
+            case .email:
+                result = try await authService.loginWithEmail(email: email, password: password)
             case .twitter:
                 result = try await authService.loginWithTwitter()
             }
@@ -126,17 +126,58 @@ class AuthViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Send Password Reset
+    func sendPasswordReset(email: String) async {
+        isLoading = true
+        error = nil
+        
+        do {
+            try await authService.sendPasswordReset(email: email)
+            print("Password reset link sent")
+        } catch let authError as AuthenticationError {
+            self.error = authError.localizedDescription
+            print("Password reset error: \(authError.localizedDescription)")
+        } catch {
+            self.error = error.localizedDescription
+            print("Unexpected error: \(error.localizedDescription)")
+        }
+        
+        isLoading = false
+    }
+    
+    // MARK: - Register with Email
+    func registerWithEmail(email: String, password: String) async {
+        isLoading = true
+        error = nil
+
+        do {
+            let result = try await authService.registerWithEmail(email: email, password: password)
+            self.user = UserAuthModel.fromFirebase(result.user, providerId: result.providerId)
+        } catch let authError as AuthenticationError {
+            self.error = authError.localizedDescription
+            self.user = nil
+            print("Registration error: \(authError.localizedDescription)")
+        } catch {
+            self.error = error.localizedDescription
+            self.user = nil
+            print("Unexpected error: \(error.localizedDescription)")
+        }
+
+        isLoading = false
+    }
+    
     // MARK: - Login with Google
     @MainActor
     func loginWithGoogle() async {
         await login(with: .google)
     }
     
-    // MARK: - Login with GitHub
+    // MARK: - Login with Email
     @MainActor
-    func loginWithGitHub() async {
-        await login(with: .github)
+    func loginWithEmail(email: String, password: String) async {
+        await login(with: .email, email: email, password: password)
     }
+    
     // MARK: - Login with Twitter
     @MainActor
     func loginWithTwitter() async {

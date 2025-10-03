@@ -10,7 +10,7 @@ import SwiftUI
 struct MainView: View {
     
     // MARK: - Properties
-    @State private var selectedTab: Int = -1
+    @State private var selectedTab: Int = 0
     
     // MARK: - Body
     var body: some View {
@@ -31,7 +31,7 @@ struct MainView: View {
         case 1:
             EventListView(viewModel: EventListViewModel())
         default:
-            StartView()
+            HomeView()
         }
     }
 }

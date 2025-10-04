@@ -185,7 +185,7 @@ class RegisterViewModel: ObservableObject {
         // Convert free time slots to array of dictionaries
         let freeTimeSlotsData = freeTimeSlots
         
-        // Prepare data matching your Flutter UserData model structure
+        // Prepare data matching Flutter UserData model structure
         let userData: [String: Any] = [
             "profile": [
                 "name": name,

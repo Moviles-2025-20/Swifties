@@ -603,7 +603,7 @@ class WeeklyChallengeViewModel: ObservableObject {
                     print("   \(data.label): \(data.count > 0 ? "✅ Completed" : "❌ Missed")")
                 }
                 
-                // Actualizar hasAttended en el hilo principal
+                // Update hasAttended on the main thread
                 DispatchQueue.main.async {
                     self.hasAttended = hasAttendedThisWeek
                     print("🔄 Final hasAttended: \(self.hasAttended)")

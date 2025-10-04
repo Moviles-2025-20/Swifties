@@ -65,7 +65,7 @@ struct HomeView: View {
                             
                             HStack (spacing: 15) {
                                 NavigationLink { //  NavigationLink
-                                    Magic8BallView()
+                                    WishMeLuckView()
                                 } label: {
                                     Text("Wish me Luck")
                                         .frame(width: 120, height: 80)

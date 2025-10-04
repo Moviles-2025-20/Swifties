@@ -153,16 +153,6 @@ class AuthService {
         try await user.sendEmailVerification()
     }
     
-    func resendVerificationEmail() {
-        Auth.auth().currentUser?.sendEmailVerification { error in
-            if let error = error {
-                print("Failed to resend verification: \(error.localizedDescription)")
-            } else {
-                print("Verification email re-sent.")
-            }
-        }
-        
-    }
 
     // MARK: - Twitter Sign In
     func loginWithTwitter() async throws -> (user: User, providerId: String) {

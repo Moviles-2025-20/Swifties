@@ -2,7 +2,6 @@
 //  EventMapView.swift
 //  Swifties
 //
-//  Created by Assistant on 10/3/25.
 //
 
 import SwiftUI
@@ -77,7 +76,6 @@ struct EventMapView: View {
             }
             .ignoresSafeArea()
             
-            // Custom Top Bar
             
             // Floating Action Button
             VStack {

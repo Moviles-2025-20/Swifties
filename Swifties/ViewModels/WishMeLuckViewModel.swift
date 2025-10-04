@@ -78,7 +78,7 @@ class WishMeLuckViewModel: ObservableObject {
             await calculateDaysSinceLastWished()
         } catch {
             self.error = "Error getting event: \(error.localizedDescription)"
-            print("rror Firestore: \(error)")
+            print("Error Firestore: \(error)")
         }
 
         isLoading = false

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseFirestore
+import MapKit
 
 struct EventListView: View {
     @StateObject var viewModel: EventListViewModel
@@ -32,9 +33,9 @@ struct EventListView: View {
                 Color("appPrimary").ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    CustomTopBar(title: "Events", showNotificationButton: true) {
+                    CustomTopBar(title: "Events", showNotificationButton: true, onBackTap:  {
                         print("Notification tapped")
-                    }
+                    })
 
                     // Main content
                     if viewModel.isLoading {
@@ -61,23 +62,30 @@ struct EventListView: View {
                         }
                         Spacer()
                     } else {
-                        ScrollView {
+                        VStack(spacing: 0) {
+                            // Keep scroll for list mode only, but show search + toggle above map as well
                             VStack(spacing: 16) {
                                 SearchBar(searchText: $searchText)
                                     .padding(.top, 16)
 
                                 // Filters and switch to map view
                                 FilterToggle(isMapView: $isMapView)
+                            }
 
-                                VStack(alignment: .leading, spacing: 16) {
-                                    HStack {
-                                        Text("Activities")
-                                            .font(.title2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.primary)
-                                        Spacer()
-                                    }
-                                    .padding(.horizontal, 16)
+                            if isMapView {
+                                // Map occupies remaining space under bars
+                                EventMapContainerView(events: filteredEvents)
+                            } else {
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 16) {
+                                        HStack {
+                                            Text("Activities")
+                                                .font(.title2)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.primary)
+                                            Spacer()
+                                        }
+                                        .padding(.horizontal, 16)
 
                                     if filteredEvents.isEmpty {
                                         Text(searchText.isEmpty ? "No events available" : "No events found")
@@ -98,16 +106,15 @@ struct EventListView: View {
                                                         location: event.location.address
                                                     )
                                                 }
-                                                .buttonStyle(PlainButtonStyle())
                                             }
+                                            .padding(.horizontal, 16)
                                         }
-                                        .padding(.horizontal, 16)
                                     }
+                                    Spacer(minLength: 80)
                                 }
-                                Spacer(minLength: 80)
+                                .background(Color("appPrimary"))
                             }
                         }
-                        .background(Color("appPrimary"))
                     }
                 }
             }
@@ -117,6 +124,73 @@ struct EventListView: View {
                     viewModel.loadEvents()
                 }
             }
+        }
+    }
+
+    // Helper container to manage selection and actions from map
+    @ViewBuilder
+    private func EventMapContainerView(events: [Event]) -> some View {
+        EventMapContent(events: events)
+    }
+}
+
+struct EventMapContent: View {
+    let events: [Event]
+    @State private var selectedEvent: Event?
+    @State private var showActionSheet = false
+
+    var body: some View {
+        ZStack {
+            EventMapView(events: events, selectedEvent: $selectedEvent) { event in
+                selectedEvent = event
+                showActionSheet = true
+            }
+            .ignoresSafeArea(edges: .bottom)
+        }
+        .actionSheet(isPresented: $showActionSheet) {
+            ActionSheet(title: Text(selectedEvent?.name ?? "Event"), buttons: [
+                .default(Text("View Details"), action: {
+                    // Navigate to details using a temporary link via NavigationStack environment
+                    // We will present a sheet instead for simplicity
+                }),
+                .default(Text("Get Directions"), action: {
+                    if let event = selectedEvent { openDirections(for: event) }
+                }),
+                .cancel({ selectedEvent = nil })
+            ])
+        }
+        .sheet(item: $selectedEvent) { event in
+            NavigationStack {
+                EventDetailView(event: event)
+            }
+        }
+    }
+
+    private func openDirections(for event: Event) {
+        guard let coords = event.location?.coordinates, coords.count == 2 else { return }
+        
+        let lat = coords[0]
+        let lon = coords[1]
+        let name = event.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Selected event"
+
+        // Try Google Maps application, then Google Maps web and fallback to Apple Maps
+        if let url = URL(string: "comgooglemaps://?daddr=\(lat),\(lon)&directionsmode=walking"), UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        } else if let web = URL(string: "https://www.google.com/maps/dir/?api=1&destination=\(lat),\(lon)&travelmode=walking&destination_place_id=&destination_name=\(name)") {
+            UIApplication.shared.open(web)
+        } else {
+            let mapItem: MKMapItem
+            if #available(iOS 26.0, *) {
+                let coordinate = CLLocation(latitude: lat, longitude: lon)
+                let address = MKAddress(fullAddress: "", shortAddress: event.location?.address ?? "")
+                mapItem = MKMapItem(location: coordinate, address: address)
+            } else {
+                let coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                let placemark = MKPlacemark(coordinate: coordinate)
+                mapItem = MKMapItem(placemark: placemark)
+            }
+            mapItem.name = event.name
+            mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
         }
     }
 }

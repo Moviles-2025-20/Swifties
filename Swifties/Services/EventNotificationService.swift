@@ -58,7 +58,7 @@ class EventNotificationService {
         guard let targetWeekday = weekdays[day.lowercased()] else { return nil }
 
         // 3. Encontrar la próxima fecha con ese weekday
-        var nextDate = Date()
+        let nextDate = Date()
         var components = calendar.dateComponents([.year, .month, .day], from: nextDate)
         components.hour = hour
         components.minute = minute

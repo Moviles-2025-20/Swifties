@@ -6,6 +6,8 @@
 	<string>The photo library is accessed in case you want to upload a photo to a comment made</string>
 	<key>NSCameraUsageDescription</key>
 	<string>The camera is utilized in order to upload photos directly to comments made</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>When location is active, the app will be able to show you a map view and the closest activities to you; including those in a 1km radius.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

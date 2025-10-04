@@ -433,7 +433,7 @@ class WeeklyChallengeViewModel: ObservableObject {
             if let error = error {
                 print("❌ Error saving activity: \(error.localizedDescription)")
                 DispatchQueue.main.async {
-                    self.errorMessage = "Error al guardar la actividad: \(error.localizedDescription)"
+                    self.errorMessage = "Error saving activity: \(error.localizedDescription)"
                 }
             } else {
                 print("✅ Activity saved successfully!")

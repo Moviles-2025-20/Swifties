@@ -12,7 +12,7 @@ struct WeeklyChallengeView: View {
             Color("appPrimary").ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Custom top bar without back button (NavigationStack provides it)
+                // Custom top bar with back button
                 CustomTopBar(title: "Weekly Challenge",
                              showNotificationButton: true,
                              showBackButton: true,

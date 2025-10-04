@@ -54,7 +54,7 @@ final class HomeViewModel: ObservableObject {
     func getAllEvents() async throws -> [Event] {
         let snapshot = try await db.collection("events").getDocuments()
         
-        // ✅ USA EventFactory directamente
+        // ✅ Use EventFactory directly
         let events: [Event] = snapshot.documents.compactMap { doc in
             EventFactory.createEvent(from: doc)
         }

@@ -39,8 +39,8 @@ struct Magic8BallView: View {
                 if let event = selectedEvent {
 
                     // Event Image
-                    if let imageUrl = event.metadata?.imageUrl, !imageUrl.isEmpty {
-                        AsyncImage(url: URL(string: imageUrl)) { image in
+                    if !event.metadata.imageUrl.isEmpty {
+                        AsyncImage(url: URL(string: event.metadata.imageUrl)) { image in
                             image
                                 .resizable()
                                 .scaledToFill()
@@ -80,33 +80,33 @@ struct Magic8BallView: View {
                             .font(.caption)
                             .foregroundColor(.orange)
 
-                        Label(event.type ?? "N/A", systemImage: "star.fill")
+                        Label(event.type, systemImage: "star.fill")
                             .font(.caption)
                             .foregroundColor(.blue)
                     }
 
                     // Event Location, Duration, Cost
                     HStack(spacing: 16) {
-                        Label(event.location?.address ?? "Unknown location", systemImage: "mappin.and.ellipse")
+                        Label(event.location.address, systemImage: "mappin.and.ellipse")
                             .font(.caption2)
                             .foregroundColor(.gray)
 
-                        Label("\(event.metadata?.durationMinutes ?? 0) min", systemImage: "clock")
+                        Label("\(event.metadata.durationMinutes) min", systemImage: "clock")
                             .font(.caption2)
                             .foregroundColor(.gray)
 
-                        Label(event.metadata?.cost.formatted ?? "N/A", systemImage: "dollarsign.circle")
+                        Label(formatCost(event.metadata.cost), systemImage: "dollarsign.circle")
                             .font(.caption2)
                             .foregroundColor(.gray)
                     }
 
                     // Event Popularity and Rating
                     HStack(spacing: 16) {
-                        Label("\(event.stats?.popularity ?? 0)% popular", systemImage: "heart.fill")
+                        Label("\(event.stats.popularity)% popular", systemImage: "heart.fill")
                             .font(.caption2)
                             .foregroundColor(.red)
 
-                        Label(String(format: "%.1f ★", event.stats?.rating ?? 0), systemImage: "star.fill")
+                        Label(String(format: "%d ★", event.stats.rating), systemImage: "star.fill")
                             .font(.caption2)
                             .foregroundColor(.yellow)
                     }
@@ -159,6 +159,14 @@ struct Magic8BallView: View {
         }
     }
 
+    // MARK: - Helper to format cost
+    private func formatCost(_ cost: EventCost) -> String {
+        if cost.amount == 0 {
+            return "Free"
+        }
+        return "\(cost.amount) \(cost.currency)"
+    }
+
     // MARK: - Load events from Firebase
     func loadEventsFromFirebase() {
         let db = Firestore.firestore()
@@ -177,80 +185,77 @@ struct Magic8BallView: View {
             }
         }
     }
-
-    // MARK: - Preview with mock events
-    struct Magic8BallView_Previews: PreviewProvider {
-        static var previews: some View {
-            let mockEvents: [Event] = [
-                Event(
-                    id: "1",
-                    title: "Rock Fest",
-                    name: "Concert",
-                    description: "Live music",
-                    type: "Concert",
-                    category: "Music",
-                    active: true,
-                    eventType: "Music",
-                    location: Event.Location(
-                        city: "Bogotá",
-                        type: "Indoor",
-                        address: "Calle 123",
-                        coordinates: [4.6097, -74.0817]
-                    ),
-                    schedule: Event.Schedule(
-                        days: ["Friday", "Saturday"],
-                        times: ["18:00", "20:00"]
-                    ),
-                    metadata: Event.Metadata(
-                        imageUrl: "",
-                        tags: ["rock", "live"],
-                        durationMinutes: 120,
-                        cost: Event.Cost(amount: 50, currency: "USD")
-                    ),
-                    stats: Event.EventStats(
-                        popularity: 85,
-                        totalCompletions: 150,
-                        rating: 4.5
-                    ),
-                    weatherDependent: false,
-                    created: Timestamp(date: Date())
-                ),
-                Event(
-                    id: "2",
-                    title: "Art Expo",
-                    name: "Exhibition",
-                    description: "Modern art",
-                    type: "Exhibition",
-                    category: "Art",
-                    active: true,
-                    eventType: "Art",
-                    location: Event.Location(
-                        city: "Bogotá",
-                        type: "Indoor",
-                        address: "Carrera 7",
-                        coordinates: [4.6533, -74.0836]
-                    ),
-                    schedule: Event.Schedule(
-                        days: ["Monday", "Tuesday"],
-                        times: ["10:00", "14:00"]
-                    ),
-                    metadata: Event.Metadata(
-                        imageUrl: "",
-                        tags: ["art", "modern"],
-                        durationMinutes: 90,
-                        cost: Event.Cost(amount: 0, currency: "FREE")
-                    ),
-                    stats: Event.EventStats(
-                        popularity: 70,
-                        totalCompletions: 200,
-                        rating: 4.8
-                    ),
-                    weatherDependent: false,
-                    created: Timestamp(date: Date())
-                )
-            ]
-            Magic8BallView(events: mockEvents)
-        }
-    }
 }
 
+// MARK: - Preview with mock events
+struct Magic8BallView_Previews: PreviewProvider {
+    static var previews: some View {
+        let mockEvents: [Event] = [
+            Event(
+                activetrue: true,
+                category: "Music",
+                created: "2025-10-05T18:00:00-05:00",
+                description: "Live rock music concert",
+                eventType: "Concert",
+                location: EventLocation(
+                    address: "Calle 123",
+                    city: "Bogotá",
+                    coordinates: [4.6097, -74.0817],
+                    type: "Indoor"
+                ),
+                metadata: EventMetadata(
+                    cost: EventCost(amount: 50000, currency: "COP"),
+                    durationMinutes: 120,
+                    imageUrl: "https://example.com/image.jpg",
+                    tags: ["rock", "live", "music"]
+                ),
+                name: "Rock Fest",
+                schedule: EventSchedule(
+                    days: ["Friday", "Saturday"],
+                    times: ["18:00", "20:00"]
+                ),
+                stats: EventStats(
+                    popularity: 85,
+                    rating: 4,
+                    totalCompletions: 150
+                ),
+                title: "Rock Fest 2025",
+                type: "Concert",
+                weatherDependent: false
+            ),
+            Event(
+                activetrue: true,
+                category: "Art",
+                created: "2025-10-05T10:00:00-05:00",
+                description: "Modern art exhibition",
+                eventType: "Exhibition",
+                location: EventLocation(
+                    address: "Carrera 7",
+                    city: "Bogotá",
+                    coordinates: [4.6533, -74.0836],
+                    type: "Indoor"
+                ),
+                metadata: EventMetadata(
+                    cost: EventCost(amount: 0, currency: "COP"),
+                    durationMinutes: 90,
+                    imageUrl: "https://example.com/art.jpg",
+                    tags: ["art", "modern", "exhibition"]
+                ),
+                name: "Art Expo",
+                schedule: EventSchedule(
+                    days: ["Monday", "Tuesday"],
+                    times: ["10:00", "14:00"]
+                ),
+                stats: EventStats(
+                    popularity: 70,
+                    rating: 5,
+                    totalCompletions: 200
+                ),
+                title: "Art Expo 2025",
+                type: "Exhibition",
+                weatherDependent: false
+            )
+        ]
+        return Magic8BallView(events: mockEvents)
+    }
+}

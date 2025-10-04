@@ -7,14 +7,16 @@
 
 import SwiftUI
 import UIKit
+
 /// A reusable event pod/card with image, colored title, description, time and walking distance.
 /// - **Parameters**:
-///   - imagePath: Local asset name or file path for the event photo.
+///   - imagePath: Local asset name, file path, or URL string for the event photo.
 ///   - title: Event title text.
 ///   - titleColor: Background color for the title area (configurable externally).
 ///   - description: Short description of the event.
 ///   - timeText: A formatted time string (e.g., "Today, 5:30 PM").
 ///   - walkingMinutes: Walking distance in minutes.
+///   - location: Optional location string.
 
 struct EventInfo: View {
     let imagePath: String
@@ -27,10 +29,8 @@ struct EventInfo: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Left image
-            eventImage
-                .resizable()
-                .scaledToFill()
+            // Left image - now supports URLs
+            eventImageView
                 .frame(width: 75, height: 100)
                 .clipped()
                 .cornerRadius(10)
@@ -105,7 +105,48 @@ struct EventInfo: View {
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    // MARK: - Image loader helper
+    // MARK: - Image View with URL Support
+    @ViewBuilder
+    private var eventImageView: some View {
+        // Check if imagePath is a URL
+        if imagePath.starts(with: "http://") || imagePath.starts(with: "https://") {
+            // Load from URL using AsyncImage
+            AsyncImage(url: URL(string: imagePath)) { phase in
+                switch phase {
+                case .empty:
+                    // Loading placeholder
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .overlay(
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        )
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                case .failure:
+                    // Error placeholder
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .overlay(
+                            Image(systemName: "photo")
+                                .foregroundColor(.white.opacity(0.7))
+                        )
+                @unknown default:
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                }
+            }
+        } else {
+            // Try to load from local assets or file path
+            eventImage
+                .resizable()
+                .scaledToFill()
+        }
+    }
+
+    // MARK: - Local Image loader helper (for assets and file paths)
     private var eventImage: Image {
         // Try to load from asset catalog first, then from file path URL
         if let uiImage = UIImage(named: imagePath) {

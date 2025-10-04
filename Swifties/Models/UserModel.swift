@@ -56,10 +56,25 @@ struct Preferences: Codable {
 
 // MARK: - Notifications
 struct Notifications: Codable {
-    var freeTimeSlots: [String]
+    var freeTimeSlots: [TimeSlot]  
     
     enum CodingKeys: String, CodingKey {
         case freeTimeSlots = "free_time_slots"
+    }
+}
+
+// MARK: - TimeSlot (NUEVO)
+struct TimeSlot: Codable, Identifiable {
+    var id: UUID = UUID()  // Para usar en ForEach
+    var day: String
+    var start: String
+    var end: String
+    
+    enum CodingKeys: String, CodingKey {
+        case day
+        case start
+        case end
+        // 'id' no se guarda en Firestore
     }
 }
 
@@ -77,4 +92,3 @@ struct Stats: Codable {
         case totalActivities = "total_activities"
     }
 }
-

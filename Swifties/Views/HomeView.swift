@@ -50,10 +50,8 @@ struct HomeView: View {
                                 .buttonStyle(.borderedProminent)
                                 .tint(Color("appBlue"))
                                 
-                                Button {
-                                    print("Personality Quiz")
-                                } label: {
-                                    Text("Personality Quiz")
+                                NavigationLink(destination: UserInfoView()) {
+                                    Text("Events For Your Free Time")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.white)

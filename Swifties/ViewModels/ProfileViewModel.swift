@@ -60,7 +60,15 @@ final class UserProfileRepository {
         let gender = profile["gender"] as? String ?? "Unknown"
         let favorite_categories = preferences["favorite_categories"] as? [String] ?? ["Unknown"]
         let completed_categories = preferences["completed_categories"] as? [String] ?? []
-        let free_time_slots = notifications["free_time_slots"] as? [String] ?? ["Unknown"]
+        let free_time_slots_raw = notifications["free_time_slots"] as? [[String: Any]] ?? []
+        let free_time_slots: [TimeSlot] = free_time_slots_raw.compactMap { dict in
+            guard let day = dict["day"] as? String,
+                  let start = dict["start"] as? String,
+                  let end = dict["end"] as? String else {
+                return nil
+            }
+            return TimeSlot(day: day, start: start, end: end)
+        }
         
         // Parse Dates
         let created: Date = {

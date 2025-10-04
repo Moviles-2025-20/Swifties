@@ -1,4 +1,3 @@
-
 //
 //  FreeTimeSlot.swift
 //  Swifties

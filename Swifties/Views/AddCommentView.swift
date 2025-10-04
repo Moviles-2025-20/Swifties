@@ -219,7 +219,7 @@ struct AddCommentView: View {
     private func submit() async {
         // Validate prerequisites
         guard let eventId = event.id, !eventId.isEmpty else {
-            submitError = "Missing event identifier \(event.name)."
+            submitError = "Missing event identifier."
             return
         }
         guard let uid = Auth.auth().currentUser?.uid else {

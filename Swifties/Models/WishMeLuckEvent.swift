@@ -1,17 +1,6 @@
-//
-//  WishMeLuckEvent.swift
-//  Swifties
-//
-//  Created by Natalia Villegas Calderón on 4/10/25.
-//
-//
-//  WishMeLuckEvent.swift
-//  Swifties
-//
-//  Created on 10/4/25.
-//
-
 import Foundation
+
+
 
 struct WishMeLuckEvent: Codable, Identifiable {
     let id: String
@@ -22,8 +11,15 @@ struct WishMeLuckEvent: Codable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id
         case title
-        case imageUrl = "image_url"
+        case imageUrlSnake = "image_url"
+        case imageUrlCamel = "imageUrl"
         case description
+        case metadata
+    }
+    
+    enum MetadataKeys: String, CodingKey {
+        case imageUrlSnake = "image_url"
+        case imageUrlCamel = "imageUrl"
     }
     
     init(id: String, title: String, imageUrl: String, description: String) {
@@ -33,29 +29,46 @@ struct WishMeLuckEvent: Codable, Identifiable {
         self.description = description
     }
     
-    // Custom decoder to handle nested Firebase structure
+    // MARK: - Decodable
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
-        id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
-        
-        // Try to get title from multiple possible fields
-        if let titleValue = try? container.decode(String.self, forKey: .title) {
-            title = titleValue
-        } else {
-            title = "Untitled Event"
-        }
-        
-        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl) ?? ""
+
+        id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? "Untitled Event"
         description = try container.decodeIfPresent(String.self, forKey: .description) ?? "No description available"
+        
+        if let snake = try? container.decode(String.self, forKey: .imageUrlSnake) {
+            imageUrl = snake
+        } else if let camel = try? container.decode(String.self, forKey: .imageUrlCamel) {
+            imageUrl = camel
+        } else if let metadata = try? container.nestedContainer(keyedBy: MetadataKeys.self, forKey: .metadata) {
+            if let metaSnake = try? metadata.decode(String.self, forKey: .imageUrlSnake) {
+                imageUrl = metaSnake
+            } else if let metaCamel = try? metadata.decode(String.self, forKey: .imageUrlCamel) {
+                imageUrl = metaCamel
+            } else {
+                imageUrl = ""
+            }
+        } else {
+            imageUrl = ""
+        }
     }
     
-    // Helper to create from Event model
+    // MARK: - Encodable
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(description, forKey: .description)
+        try container.encode(imageUrl, forKey: .imageUrlCamel) // usa camelCase al guardar
+    }
+    
+    // MARK: - Helper
     static func fromEvent(_ event: Event) -> WishMeLuckEvent {
         return WishMeLuckEvent(
             id: event.id ?? UUID().uuidString,
             title: event.title,
-            imageUrl: event.metadata.imageUrl,
+            imageUrl: event.metadata.imageUrl ?? "",
             description: event.description
         )
     }

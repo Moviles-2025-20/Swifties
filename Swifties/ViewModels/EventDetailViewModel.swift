@@ -65,39 +65,47 @@ class EventDetailViewModel: ObservableObject {
         }
     }
     
-    func loadComments(event_id: String) {
-        db.collection("comments")
-            .whereField("event_id", isEqualTo: event_id)
-            .order(by: "created", descending: true)
-            .getDocuments { [weak self] snapshot, error in
-                guard let self = self else { return }
-
-                DispatchQueue.main.async {
-                    if let error = error {
-                        print("❌ Error fetching comments: \(error.localizedDescription)")
-                        self.comments = []
+    func loadComments(event_id: String) async {
+        await withCheckedContinuation { continuation in
+            db.collection("comments")
+                .whereField("event_id", isEqualTo: event_id)
+                .order(by: "created", descending: true)
+                .getDocuments { [weak self] snapshot, error in
+                    guard let self = self else {
+                        continuation.resume()
                         return
                     }
 
-                    guard let documents = snapshot?.documents else {
-                        print("⚠️ No comments found for event \(event_id)")
-                        self.comments = []
-                        return
-                    }
-
-                    let parsed = documents.compactMap { doc -> Comment? in
-                        do {
-                            return try doc.data(as: Comment.self)
-                        } catch {
-                            print("⚠️ Failed to parse comment \(doc.documentID): \(error)")
-                            return nil
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            print("❌ Error fetching comments: \(error.localizedDescription)")
+                            self.comments = []
+                            continuation.resume()
+                            return
                         }
-                    }
 
-                    self.comments = parsed
-                    print("✅ Loaded \(parsed.count) comments for event \(event_id)")
+                        guard let documents = snapshot?.documents else {
+                            print("⚠️ No comments found for event \(event_id)")
+                            self.comments = []
+                            continuation.resume()
+                            return
+                        }
+
+                        let parsed = documents.compactMap { doc -> Comment? in
+                            do {
+                                return try doc.data(as: Comment.self)
+                            } catch {
+                                print("⚠️ Failed to parse comment \(doc.documentID): \(error)")
+                                return nil
+                            }
+                        }
+
+                        self.comments = parsed
+                        print("✅ Loaded \(parsed.count) comments for event \(event_id)")
+                        continuation.resume()
+                    }
                 }
-            }
+        }
     }
 
     

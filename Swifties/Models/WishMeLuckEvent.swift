@@ -1,7 +1,4 @@
 import Foundation
-
-
-
 struct WishMeLuckEvent: Codable, Identifiable {
     let id: String
     let title: String

@@ -78,16 +78,6 @@ struct EventMapView: View {
             .ignoresSafeArea()
             
             // Custom Top Bar
-            VStack {
-                CustomTopBar(
-                    title: "Events Map",
-                    showNotificationButton: true,
-                    onNotificationTap: {
-                        print("Notification tapped")
-                    }
-                )
-                Spacer()
-            }
             
             // Floating Action Button
             VStack {

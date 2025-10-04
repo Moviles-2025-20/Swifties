@@ -64,7 +64,7 @@ struct AddCommentView: View {
                                     .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(10)
                                     .onChange(of: reviewDescription) { _ in
-                                        enforceWordLimit()
+                                        reviewDescription = commentViewModel.enforceWordLimit(reviewDescription: reviewDescription, wordLimit: wordLimit)
                                     }
 
                                 // Placeholder
@@ -77,9 +77,9 @@ struct AddCommentView: View {
                             }
                             HStack {
                                 Spacer()
-                                Text("\(currentWordCount())/\(wordLimit) words")
+                                Text("\(commentViewModel.currentWordCount(reviewDescription: reviewDescription))/\(wordLimit) words")
                                     .font(.caption)
-                                    .foregroundColor(currentWordCount() > wordLimit ? .red : .secondary)
+                                    .foregroundColor(commentViewModel.currentWordCount(reviewDescription: reviewDescription) > wordLimit ? .red : .secondary)
                             }
                         }
 
@@ -206,7 +206,7 @@ struct AddCommentView: View {
         reviewTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         reviewDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         rating == 0 ||
-        currentWordCount() > wordLimit
+        commentViewModel.currentWordCount(reviewDescription: reviewDescription) > wordLimit
     }
 
     @MainActor
@@ -241,36 +241,15 @@ struct AddCommentView: View {
             submitError = (error as NSError).localizedDescription
         }
     }
-
-    // MARK: Functions used to solve word counts and limits
-    /// Helper to tokenize a string into words, splitting on whitespace, newlines, and punctuation.
-    private func tokenizeWords(from text: String) -> [String] {
-        return text
-            .components(separatedBy: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
-            .filter { !$0.isEmpty }
-    }
-
-    private func currentWordCount() -> Int {
-        return tokenizeWords(from: reviewDescription).count
-    }
-
-    private func enforceWordLimit() {
-        let words = tokenizeWords(from: reviewDescription)
-        let limitedWords = words.prefix(wordLimit)
-        let reconstructed = limitedWords.joined(separator: " ")
-        if words.count > wordLimit {
-            reviewDescription = reconstructed
-        }
-    }
-
+    
     // MARK: Loading images helper
-    private func loadImageFromPhotosPicker() async {
-        guard let item = photoPickerItem else { return }
+    func loadImageFromPhotosPicker() async {
+        guard let item: PhotosPickerItem = photoPickerItem else { return }
         do {
             if let data = try await item.loadTransferable(type: Data.self),
                let image = UIImage(data: data) {
                 await MainActor.run {
-                    self.selectedImage = image
+                    return image
                 }
             }
         } catch {

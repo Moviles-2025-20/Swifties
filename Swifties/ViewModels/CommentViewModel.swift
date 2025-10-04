@@ -83,4 +83,26 @@ final class CommentViewModel {
         let url = try await ref.downloadURL()
         return url.absoluteString
     }
+    
+    // MARK: Functions used to solve word counts and limits
+    /// Helper to tokenize a string into words, splitting on whitespace, newlines, and punctuation.
+    private func tokenizeWords(from text: String) -> [String] {
+        return text
+            .components(separatedBy: CharacterSet.whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+    }
+
+    func currentWordCount(reviewDescription: String) -> Int {
+        return tokenizeWords(from: reviewDescription).count
+    }
+
+    func enforceWordLimit(reviewDescription: String, wordLimit: Int) -> String {
+        let words = tokenizeWords(from: reviewDescription)
+        let limitedWords = words.prefix(wordLimit)
+        let reconstructed = limitedWords.joined(separator: " ")
+        if words.count > wordLimit {
+            return reconstructed
+        }
+        return reviewDescription
+    }
 }

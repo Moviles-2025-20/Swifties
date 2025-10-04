@@ -37,7 +37,7 @@ final class HomeViewModel: ObservableObject {
                 recommendations.append(event)
             } else {
                 print("No valid data for document \(eventID)")
-                return []
+                continue
             }
         }
         

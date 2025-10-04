@@ -21,7 +21,13 @@ final class CommentViewModel {
     }
     
     // Precompiled regex for faster loading times
-    private static let wordRegex = try! NSRegularExpression(pattern: "\\S+", options: [])
+    private static var wordRegex: NSRegularExpression {
+        do {
+            return try NSRegularExpression(pattern: "\\S+", options: [])
+        } catch {
+            fatalError("Failed to compile wordRegex: \(error)")
+        }
+    }
 
     func submit(_ payload: SubmissionPayload) async throws {
         // Create a new document reference first so we can use its ID for the storage path

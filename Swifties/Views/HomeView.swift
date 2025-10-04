@@ -128,12 +128,7 @@ struct HomeView: View {
     
     // MARK: - Helper Function
     private func getUserFirstName() -> String {
-        guard let displayName = viewModel.user?.displayName else {
-            guard let displayName = profileViewModel.profile?.profile.name else {
-                return "User"
-            }
-            return displayName
-        }
+        let displayName = viewModel.user?.displayName ?? profileViewModel.profile?.profile.name ?? "User"
         
         let components = displayName.components(separatedBy: " ")
         return components.first ?? displayName

@@ -1,12 +1,13 @@
 // CommentViewModel.swift
 // Handles creating comment documents and uploading optional images to Firebase Storage.
 
+import Combine
 import Foundation
 import FirebaseFirestore
 import FirebaseStorage
 import UIKit
 
-final class CommentViewModel {
+final class CommentViewModel: ObservableObject {
     private let db = Firestore.firestore(database: "default")
     private let storage = Storage.storage()
 
@@ -25,7 +26,11 @@ final class CommentViewModel {
         do {
             return try NSRegularExpression(pattern: "\\S+", options: [])
         } catch {
-            fatalError("Failed to compile wordRegex: \(error)")
+            // Log the issue for debugging
+            print("⚠️ Failed to compile wordRegex: \(error). Using fallback regex.")
+            
+            // Fallback to a safe, permissive pattern (matches any non-empty string)
+            return try! NSRegularExpression(pattern: ".+", options: [])
         }
     }
 
@@ -73,7 +78,7 @@ final class CommentViewModel {
     // MARK: - Helpers
     private func uploadImage(_ image: UIImage, toPath path: String) async throws -> String {
         guard let data = image.jpegData(compressionQuality: 0.85) else {
-            throw NSError(domain: "CommentRepository", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode image."])
+            throw NSError(domain: "CommentViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode image."])
         }
         let ref = storage.reference(withPath: path)
         let metadata = StorageMetadata()

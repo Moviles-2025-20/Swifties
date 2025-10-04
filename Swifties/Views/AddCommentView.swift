@@ -9,7 +9,7 @@ import FirebaseAuth
 struct AddCommentView: View {
     let event: Event
     @Environment(\.dismiss) private var dismiss
-    private let commentViewModel = CommentViewModel()
+    @StateObject private var commentViewModel = CommentViewModel()
 
     // Inputs
     @State private var reviewTitle: String = ""

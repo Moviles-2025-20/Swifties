@@ -60,7 +60,7 @@ struct WishMeLuckEvent: Codable, Identifiable {
         try container.encode(id, forKey: .id)
         try container.encode(title, forKey: .title)
         try container.encode(description, forKey: .description)
-        try container.encode(imageUrl, forKey: .imageUrlCamel) // usa camelCase al guardar
+        try container.encode(imageUrl, forKey: .imageUrlCamel) // uses camelCase when saving
     }
     
     // MARK: - Helper

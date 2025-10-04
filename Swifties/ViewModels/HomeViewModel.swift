@@ -25,7 +25,8 @@ struct RecommendationItem: Codable {
 @MainActor
 final class HomeViewModel: ObservableObject {
     let db = Firestore.firestore(database: "default")
-    let eventListViewModel = EventListViewModel()
+    // ❌ Ya no necesitas esta línea - EventListViewModel ya no tiene parseEvent
+    // let eventListViewModel = EventListViewModel()
     @Published var recommendations: [Event] = []
     
     init() {
@@ -89,18 +90,15 @@ final class HomeViewModel: ObservableObject {
     private func loadRecommendations(from eventIDs: [String]) async {
         var tempEvents: [Event] = []
         
-        for eventID in eventIDs {
-            do {
-                let document = try await db.collection("events").document(eventID).getDocument()
-                
-                if let data = document.data(),
-                   let event = eventListViewModel.parseEvent(documentId: eventID, data: data) {
-                    tempEvents.append(event)
-                } else {
-                    print("⚠️ No valid data for document \(eventID)")
-                }
-            } catch {
-                print("❌ Firestore fetch failed for \(eventID): \(error.localizedDescription)")
+        for eventID in searchResults {
+            let document = try await db.collection("events").document(eventID).getDocument()
+            
+          
+            if let event = EventFactory.createEvent(from: document) {
+                recommendations.append(event)
+            } else {
+                print("No valid data for document \(eventID)")
+                continue
             }
         }
         
@@ -111,10 +109,12 @@ final class HomeViewModel: ObservableObject {
     // Fetch all events for map and other listings
     func getAllEvents() async throws -> [Event] {
         let snapshot = try await db.collection("events").getDocuments()
+        
+        // ✅ Use EventFactory directly
         let events: [Event] = snapshot.documents.compactMap { doc in
-            eventListViewModel.parseEvent(documentId: doc.documentID, data: doc.data())
+            EventFactory.createEvent(from: doc)
         }
+        
         return events
     }
 }
-

@@ -44,10 +44,8 @@ class EventListViewModel: ObservableObject {
                     return
                 }
 
-                // Parse documents with complete data
-                self.events = documents.compactMap { doc in
-                    self.parseEvent(documentId: doc.documentID, data: doc.data())
-                }
+                
+                self.events = documents.compactMap { EventFactory.createEvent(from: $0) }
 
                 print("Events loaded: \(self.events.count)")
             }

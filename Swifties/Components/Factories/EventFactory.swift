@@ -8,7 +8,7 @@ class EventFactory {
         return parseEventData(data)
     }
     
-    // ✅ NUEVO: Método para DocumentSnapshot (usado en getDocument)
+    // NEW: Method for DocumentSnapshot (used in getDocument)
     static func createEvent(from document: DocumentSnapshot) -> Event? {
         guard let data = document.data() else { return nil }
         return parseEventData(data)

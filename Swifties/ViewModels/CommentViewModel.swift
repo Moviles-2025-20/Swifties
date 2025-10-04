@@ -80,15 +80,13 @@ final class CommentViewModel {
     }
     
     // MARK: Functions used to solve word counts and limits
-    /// Helper to tokenize a string into words, splitting on whitespace, newlines, and punctuation.
-    private func tokenizeWords(from text: String) -> [String] {
-        return text
-            .components(separatedBy: CharacterSet.whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-    }
-
+    /// Returns the number of words in the given string, using the same logic as enforceWordLimit.
     func currentWordCount(reviewDescription: String) -> Int {
-        return tokenizeWords(from: reviewDescription).count
+        let text = reviewDescription
+        let regex = CommentViewModel.wordRegex
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
+        return matches.count
     }
 
     func enforceWordLimit(reviewDescription: String, wordLimit: Int) -> String {

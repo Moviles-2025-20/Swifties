@@ -60,11 +60,12 @@ class WishMeLuckViewModel: ObservableObject {
                 } else {
                     print("No se pudo parsear como Event, usando fallback")
                     let data = randomDoc.data()
+                    let metadata = data["metadata"] as? [String: Any]
                     currentEvent = WishMeLuckEvent(
                         id: randomDoc.documentID,
                         title: data["title"] as? String ?? data["name"] as? String ?? "Untitled Event",
-                        imageUrl: (data["metadata"] as? [String: Any])?["image_url"] as? String
-                               ?? (data["metadata"] as? [String: Any])?["imageUrl"] as? String
+                        imageUrl: metadata?["image_url"] as? String
+                               ?? metadata?["imageUrl"] as? String
                                ?? "",
                         description: data["description"] as? String ?? "No description available"
                     )

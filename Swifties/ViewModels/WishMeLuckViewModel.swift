@@ -70,7 +70,7 @@ class WishMeLuckViewModel: ObservableObject {
                     )
                 }
             } else {
-                print("No hay documentos con activetrue = true")
+                print("No hay documentos con active = true")
                 currentEvent = nil
             }
 

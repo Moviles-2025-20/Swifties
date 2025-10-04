@@ -135,7 +135,7 @@ struct UserInfoView: View {
                                                     description: event.description,
                                                     timeText: event.schedule.times.first ?? "Time TBD",
                                                     walkingMinutes: 5,
-                                                    location: event.location.address
+                                                    location: event.location?.address
                                                 )
                                             }
                                             .buttonStyle(PlainButtonStyle())

@@ -38,9 +38,7 @@ struct HomeView: View {
                             .padding(.bottom, 10)
                             
                             HStack (spacing: 15) {
-                                Button {
-                                    print("Weekly Challenge")
-                                } label: {
+                                NavigationLink(destination: WeeklyChallengeView()) {
                                     Text("Weekly Challenge")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))

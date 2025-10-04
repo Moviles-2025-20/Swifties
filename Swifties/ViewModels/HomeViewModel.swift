@@ -30,11 +30,14 @@ final class HomeViewModel: ObservableObject {
                                        "6avFMINUtpniHV2EIl6m",
                                        "LX7WvPRQrAgPQ40GEhOy",
                                        "SdmE00SDRbcclnQ0lvlf"]
-                
+        
+        // Reset to avoid duplicates when called multiple times
+        recommendations.removeAll()
+        
         for eventID in searchResults {
             let document = try await db.collection("events").document(eventID).getDocument()
             if let data = document.data(),
-                let event = eventListViewModel.parseEvent(documentId: eventID, data: data) {
+               let event = eventListViewModel.parseEvent(documentId: eventID, data: data) {
                 recommendations.append(event)
             } else {
                 print("No valid data for document \(eventID)")
@@ -44,4 +47,14 @@ final class HomeViewModel: ObservableObject {
         
         return recommendations
     }
+    
+    // Fetch all events for map and other listings
+    func getAllEvents() async throws -> [Event] {
+        let snapshot = try await db.collection("events").getDocuments()
+        let events: [Event] = snapshot.documents.compactMap { doc in
+            eventListViewModel.parseEvent(documentId: doc.documentID, data: doc.data())
+        }
+        return events
+    }
 }
+

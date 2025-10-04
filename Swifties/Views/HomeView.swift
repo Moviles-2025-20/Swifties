@@ -10,7 +10,6 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var viewModel: AuthViewModel
     @State private var selectedTab = 0
-    
     @StateObject var homeViewModel = HomeViewModel()
     @State private var recommended: [Event]  = []
         
@@ -41,7 +40,7 @@ struct HomeView: View {
                             .padding(.bottom, 10)
                             
                             HStack (spacing: 15) {
-                                NavigationLink(destination: WeeklyChallengeView()) {
+                                NavigationLink(destination: WeeklyChallengeView().navigationBarHidden(true)) {
                                     Text("Weekly Challenge")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
@@ -50,7 +49,7 @@ struct HomeView: View {
                                 .buttonStyle(.borderedProminent)
                                 .tint(Color("appBlue"))
                                 
-                                NavigationLink(destination: UserInfoView()) {
+                                NavigationLink(destination: UserInfoView().navigationBarHidden(true)) {
                                     Text("Events For Your Free Time")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))

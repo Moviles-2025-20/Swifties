@@ -1,10 +1,3 @@
-//
-//  WeeklyChallengeView.swift
-//  Swifties
-//
-//  Created by Imac  on 4/10/25.
-//
-
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
@@ -12,15 +5,24 @@ import Combine
 
 struct WeeklyChallengeView: View {
     @StateObject private var viewModel = WeeklyChallengeViewModel()
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
         ZStack {
             Color("appPrimary").ignoresSafeArea()
             
             VStack(spacing: 0) {
-                CustomTopBar(title: "Weekly Challenge", showNotificationButton: true) {
+                // Custom top bar with back button
+                CustomTopBar(title: "Weekly Challenge",
+                             showNotificationButton: true,
+                             showBackButton: true,
+                             onNotificationTap: {
                     print("Notification tapped")
-                }
+                    
+                },
+                             onBackTap: {
+                    dismiss()
+                })
                 
                 if viewModel.isLoading {
                     Spacer()
@@ -311,6 +313,7 @@ struct WeeklyChallengeView: View {
                 }
             }
         }
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
                 viewModel.loadChallenge()
@@ -319,7 +322,7 @@ struct WeeklyChallengeView: View {
     }
 }
 
-// MARK: - ViewModel
+// MARK: - ViewModel (unchanged)
 class WeeklyChallengeViewModel: ObservableObject {
     @Published var challengeEvent: Event?
     @Published var totalChallenges: Int = 0
@@ -348,7 +351,6 @@ class WeeklyChallengeViewModel: ObservableObject {
         
         let group = DispatchGroup()
         
-        // Load random event
         group.enter()
         loadRandomEvent { result in
             switch result {
@@ -357,7 +359,6 @@ class WeeklyChallengeViewModel: ObservableObject {
                     self.challengeEvent = event
                     print("✅ Event loaded: \(event.name)")
                 }
-                // Check if user has already attended this specific event
                 group.enter()
                 self.checkIfUserAttended(userId: userId, eventId: event.name) {
                     group.leave()
@@ -370,7 +371,6 @@ class WeeklyChallengeViewModel: ObservableObject {
             group.leave()
         }
         
-        // Load user stats from UserActivity
         group.enter()
         loadUserChallengeStats(userId: userId) { result in
             DispatchQueue.main.async {
@@ -385,7 +385,6 @@ class WeeklyChallengeViewModel: ObservableObject {
             group.leave()
         }
         
-        // Load last 30 days data
         group.enter()
         loadLast30DaysData(userId: userId) { result in
             DispatchQueue.main.async {
@@ -473,8 +472,6 @@ class WeeklyChallengeViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Private Methods
-    
     private func checkIfUserAttended(userId: String, eventId: String, completion: @escaping () -> Void) {
         print("🔍 Checking attendance for user: \(userId), event: \(eventId)")
         
@@ -502,13 +499,6 @@ class WeeklyChallengeViewModel: ObservableObject {
                 
                 print("📊 Documents found for this event: \(documentsCount)")
                 print(attended ? "✅ User HAS attended this event" : "❌ User has NOT attended this event")
-                
-                if let documents = snapshot?.documents {
-                    for doc in documents {
-                        print("📄 Document ID: \(doc.documentID)")
-                        print("📄 Data: \(doc.data())")
-                    }
-                }
                 
                 DispatchQueue.main.async {
                     self.hasAttended = attended
@@ -539,19 +529,16 @@ class WeeklyChallengeViewModel: ObservableObject {
     
     private func loadLast30DaysData(userId: String, completion: @escaping (Result<[ChartData], Error>) -> Void) {
         var calendar = Calendar.current
-        calendar.firstWeekday = 2 // Monday
+        calendar.firstWeekday = 2
         
         let currentDate = Date()
         
-        // Calculate date from 30 days ago
         guard let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: currentDate) else {
             completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Error calculating date"])))
             return
         }
         
         print("📊 Loading activities from last 30 days")
-        print("📅 Current date: \(currentDate)")
-        print("📅 30 days ago: \(thirtyDaysAgo)")
         
         // Get ALL user activities (no time filter in the query)
         // The time filter is applied locally in Swift
@@ -569,7 +556,6 @@ class WeeklyChallengeViewModel: ObservableObject {
                 dateFormatter.dateFormat = "MMM dd, yyyy HH:mm"
                 dateFormatter.timeZone = calendar.timeZone
                 
-                // Obtener todas las fechas de actividades
                 var activityDates: [Date] = []
                 if let documents = snapshot?.documents {
                     print("📄 Found \(documents.count) total activities in last 30 days:")
@@ -583,7 +569,6 @@ class WeeklyChallengeViewModel: ObservableObject {
                     }
                 }
                 
-                // Prepare the last 4 weeks
                 var chartData: [ChartData] = []
                 var hasAttendedThisWeek = false
                 
@@ -599,38 +584,18 @@ class WeeklyChallengeViewModel: ObservableObject {
                     let endOfWeek = weekInterval.end
                     let label = weeksAgo == 0 ? "This Week" : "\(weeksAgo)w ago"
                     
-                    print("\n📅 Checking week: \(label)")
-                    print("   Range: \(dateFormatter.string(from: startOfWeek)) to \(dateFormatter.string(from: endOfWeek))")
-                    
-                    // Count how many activities fall in this week
                     let activitiesInWeek = activityDates.filter { activityDate in
                         activityDate >= startOfWeek && activityDate < endOfWeek
                     }
                     
                     let hasCompleted = !activitiesInWeek.isEmpty
-                    print("   Activities found: \(activitiesInWeek.count)")
-                    print("   Status: \(hasCompleted ? "✅ Completed" : "❌ Missed")")
-                    
-                    if hasCompleted {
-                        for activityDate in activitiesInWeek {
-                            print("      - \(dateFormatter.string(from: activityDate))")
-                        }
-                    }
-                    
                     chartData.append(ChartData(label: label, count: hasCompleted ? 1 : 0))
                     
-                    // If it's the current week, update hasAttended
                     if weeksAgo == 0 {
                         hasAttendedThisWeek = hasCompleted
                     }
                 }
                 
-                print("\n✅ Chart data prepared:")
-                for data in chartData {
-                    print("   \(data.label): \(data.count > 0 ? "✅ Completed" : "❌ Missed")")
-                }
-                
-                // Update hasAttended on the main thread
                 DispatchQueue.main.async {
                     self.hasAttended = hasAttendedThisWeek
                     print("🔄 Final hasAttended: \(self.hasAttended)")
@@ -646,9 +611,6 @@ class WeeklyChallengeViewModel: ObservableObject {
         
         let weekOfYear = calendar.component(.weekOfYear, from: Date())
         let year = calendar.component(.year, from: Date())
-        let weekKey = "\(year)-W\(weekOfYear)"
-        
-        print("🗓️ Loading event for week: \(weekKey)")
         
         db.collection("events").getDocuments { snapshot, error in
             if let error = error {
@@ -665,10 +627,7 @@ class WeeklyChallengeViewModel: ObservableObject {
             let index = seed % documents.count
             let selectedDoc = documents[index]
             
-            print("🎯 Selected event index: \(index) out of \(documents.count)")
-            
             if let event = self.parseEvent(documentId: selectedDoc.documentID, data: selectedDoc.data()) {
-                print("✅ Weekly challenge event: \(event.name)")
                 completion(.success(event))
             } else {
                 completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse event"])))
@@ -766,7 +725,6 @@ class WeeklyChallengeViewModel: ObservableObject {
     }
 }
 
-// MARK: - Event Model
 extension Event: Equatable {
     static func == (lhs: Event, rhs: Event) -> Bool {
         return lhs.name == rhs.name &&
@@ -775,18 +733,8 @@ extension Event: Equatable {
     }
 }
 
-// MARK: - Chart Data Model
 struct ChartData: Identifiable {
     let id = UUID()
     let label: String
     let count: Int
-}
-
-// MARK: - Preview
-struct WeeklyChallengeView_Previews: PreviewProvider {
-    static var previews: some View {
-        NavigationStack {
-            WeeklyChallengeView()
-        }
-    }
 }

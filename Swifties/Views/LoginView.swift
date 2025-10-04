@@ -9,7 +9,6 @@ import FirebaseAnalytics
 struct LoginView: View {
     @EnvironmentObject var viewModel: AuthViewModel
     @Environment(\.colorScheme) var colorScheme
-    
     @State private var hasRedirected = false
     @State private var shouldNavigate = false
     @State private var navigationDestination: NavigationDestination?

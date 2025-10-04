@@ -29,15 +29,25 @@ struct UserInfoView: View {
     @State private var allEvents: [Event] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @Environment(\.dismiss) var dismiss
+
     
     var body: some View {
         ZStack {
             Color("appPrimary").ignoresSafeArea()
             
             VStack(spacing: 0) {
-                CustomTopBar(title: "Available Events", showNotificationButton: true) {
+                CustomTopBar(title: "Available Events",
+                             showNotificationButton: true,
+                             showBackButton: true,
+                             onNotificationTap: {
                     print("Notification tapped")
-                }
+                    
+                },
+                             onBackTap: {
+                    dismiss()
+                })
+                
                 
                 if isLoading {
                     Spacer()

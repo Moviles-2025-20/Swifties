@@ -1,5 +1,5 @@
 // AddCommentView.swift
-// New screen to compose a comment with title, description (500-word limit), rating, emotion, and photo attach.
+// New screen to compose a comment with title, description (500-word limit), rating, emotion, and photo attachment.
 
 import SwiftUI
 import PhotosUI

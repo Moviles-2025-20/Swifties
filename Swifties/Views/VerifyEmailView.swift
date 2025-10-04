@@ -66,7 +66,7 @@ struct VerifyEmailView: View {
                 .padding(.horizontal, 20)
             }
         }
-        .onReceive(Timer.publish(every: 5.0, on: .main, in: .common).autoconnect()) { _ in
+        .onReceive(Timer.publish(every: 10.0, on: .main, in: .common).autoconnect()) { _ in
             Task {
                 await viewModel.reloadUser()
             }

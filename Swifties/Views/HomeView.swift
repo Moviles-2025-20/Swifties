@@ -146,16 +146,6 @@ struct HomeView: View {
                             .padding(.top, 20)
                             
                             EventInfo(imagePath: "evento",
-                                      title: "Kaldivia",
-                                      titleColor: Color("appBlue"),
-                                      description: "Have a cup of coffee during your free period!",
-                                      timeText: "Today, all-day",
-                                      walkingMinutes: 6,
-                                      location: "S1")
-                            .padding(.bottom)
-                            .padding(.horizontal, 16)
-                            
-                            EventInfo(imagePath: "evento",
                                       title: "Cívico Pets",
                                       titleColor: Color("appOcher"),
                                       description: "Bring your pets to the Civic Center",

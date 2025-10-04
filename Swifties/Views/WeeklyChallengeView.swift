@@ -516,7 +516,7 @@ class WeeklyChallengeViewModel: ObservableObject {
         
         let currentDate = Date()
         
-        // Calcular fecha de hace 30 días
+        // Calculate date from 30 days ago
         guard let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: currentDate) else {
             completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Error calculating date"])))
             return

@@ -62,8 +62,17 @@ struct WishMeLuckEvent: Codable, Identifiable {
     
     // MARK: - Helper
     static func fromEvent(_ event: Event) -> WishMeLuckEvent {
+        // Use event.id if it exists, otherwise fallback to event.title or a generated UUID
+        let eventId: String
+        if let id = (event as? (AnyObject & NSObjectProtocol))?.value(forKey: "id") as? String {
+            eventId = id
+        } else if let title = event.title as? String {
+            eventId = title
+        } else {
+            eventId = UUID().uuidString
+        }
         return WishMeLuckEvent(
-            id: event.id ?? UUID().uuidString,
+            id: eventId,
             title: event.title,
             imageUrl: event.metadata.imageUrl ?? "",
             description: event.description

@@ -124,7 +124,6 @@ class WishMeLuckViewModel: ObservableObject {
                 try await updateLastWishedDate()
                 daysSinceLastWished = 0
                 return
-            }
             
             let lastWishDate = lastWishTimestamp.dateValue()
             let now = Date()

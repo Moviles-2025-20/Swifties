@@ -64,7 +64,9 @@ struct AddCommentView: View {
                                     .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(10)
                                     .onChange(of: reviewDescription) { _ in
-                                        reviewDescription = commentViewModel.enforceWordLimit(reviewDescription: reviewDescription, wordLimit: wordLimit)
+                                        if commentViewModel.currentWordCount(reviewDescription: reviewDescription) > wordLimit {
+                                            reviewDescription = commentViewModel.enforceWordLimit(reviewDescription: reviewDescription, wordLimit: wordLimit)
+                                        }
                                     }
 
                                 // Placeholder

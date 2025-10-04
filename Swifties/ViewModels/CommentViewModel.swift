@@ -16,9 +16,12 @@ final class CommentViewModel {
         let title: String
         let text: String
         let image: UIImage?
-        let rating: Int?
-        let emotion: String?
+        let rating: Int
+        let emotion: String
     }
+    
+    // Precomplied regex for faster loading times
+    private static let wordRegex = try! NSRegularExpression(pattern: "\\S+", options: [])
 
     func submit(_ payload: SubmissionPayload) async throws {
         // Create a new document reference first so we can use its ID for the storage path
@@ -91,10 +94,7 @@ final class CommentViewModel {
     func enforceWordLimit(reviewDescription: String, wordLimit: Int) -> String {
         // Use regex to find word ranges, then cut the string at the end of the Nth word
         let text = reviewDescription
-        let pattern = "\\S+"
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
-            return reviewDescription
-        }
+        let regex = CommentViewModel.wordRegex
         let nsText = text as NSString
         let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
         if matches.count > wordLimit, let lastWordRange = matches.prefix(wordLimit).last?.range {

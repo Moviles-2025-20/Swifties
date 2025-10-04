@@ -12,6 +12,8 @@ struct Magic8BallView: View {
     @State var events: [Event] = []
     @State private var selectedEvent: Event? = nil
     @State private var animateBall = false
+    @State private var isLoading = false
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack {
@@ -35,99 +37,131 @@ struct Magic8BallView: View {
             Spacer().frame(height: 30)
 
             // MARK: - Selected Event Info
-            VStack(spacing: 12) {
-                if let event = selectedEvent {
+            if isLoading {
+                ProgressView("Loading events...")
+                    .frame(maxWidth: .infinity, minHeight: 280)
+                    .padding(16)
+                    .background(Color.white)
+                    .cornerRadius(24)
+                    .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 8)
+                    .padding(.horizontal, 16)
+            } else if let error = errorMessage {
+                VStack(spacing: 12) {
+                    Text("⚠️")
+                        .font(.system(size: 50))
+                    Text(error)
+                        .font(.body)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                    Button("Retry") {
+                        loadEventsFromFirebase()
+                    }
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                }
+                .frame(maxWidth: .infinity, minHeight: 280)
+                .padding(16)
+                .background(Color.white)
+                .cornerRadius(24)
+                .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 8)
+                .padding(.horizontal, 16)
+            } else {
+                VStack(spacing: 12) {
+                    if let event = selectedEvent {
 
-                    // Event Image
-                    if !event.metadata.imageUrl.isEmpty {
-                        AsyncImage(url: URL(string: event.metadata.imageUrl)) { image in
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        } placeholder: {
-                            Color.gray.opacity(0.3)
-                        }
-                        .frame(height: 120)
-                        .cornerRadius(16)
-                    } else {
-                        Color.gray.opacity(0.3)
+                        // Event Image
+                        if !event.metadata.imageUrl.isEmpty {
+                            AsyncImage(url: URL(string: event.metadata.imageUrl)) { image in
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                            } placeholder: {
+                                Color.gray.opacity(0.3)
+                            }
                             .frame(height: 120)
                             .cornerRadius(16)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.white.opacity(0.7))
-                            )
+                        } else {
+                            Color.gray.opacity(0.3)
+                                .frame(height: 120)
+                                .cornerRadius(16)
+                                .overlay(
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.white.opacity(0.7))
+                                )
+                        }
+
+                        // Event Name
+                        Text(event.name)
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.center)
+
+                        // Event Description
+                        Text(event.description)
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 6)
+
+                        // Event Category and Type
+                        HStack(spacing: 16) {
+                            Label(event.category, systemImage: "tag")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+
+                            Label(event.type, systemImage: "star.fill")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        }
+
+                        // Event Location, Duration, Cost
+                        HStack(spacing: 16) {
+                            Label(event.location?.address ?? "Address not found", systemImage: "mappin.and.ellipse")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+
+                            Label("\(event.metadata.durationMinutes) min", systemImage: "clock")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+
+                            Label(formatCost(event.metadata.cost), systemImage: "dollarsign.circle")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                        }
+
+                        // Event Popularity and Rating
+                        HStack(spacing: 16) {
+                            Label("\(event.stats.popularity)% popular", systemImage: "heart.fill")
+                                .font(.caption2)
+                                .foregroundColor(.red)
+
+                            Label(String(format: "%d ★", event.stats.rating), systemImage: "star.fill")
+                                .font(.caption2)
+                                .foregroundColor(.yellow)
+                        }
+
+                    } else {
+                        Text("Shake or tap the button below")
+                            .font(.body)
+                            .foregroundColor(.primary)
+
+                        Text("And let the magic 8-ball discover your perfect event!")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
                     }
-
-                    // Event Name
-                    Text(event.name)
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-
-                    // Event Description
-                    Text(event.description)
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 6)
-
-                    // Event Category and Type
-                    HStack(spacing: 16) {
-                        Label(event.category, systemImage: "tag")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-
-                        Label(event.type, systemImage: "star.fill")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                    }
-
-                    // Event Location, Duration, Cost
-                    HStack(spacing: 16) {
-                        Label(event.location?.address ?? "Address not found", systemImage: "mappin.and.ellipse")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-
-                        Label("\(event.metadata.durationMinutes) min", systemImage: "clock")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-
-                        Label(formatCost(event.metadata.cost), systemImage: "dollarsign.circle")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                    }
-
-                    // Event Popularity and Rating
-                    HStack(spacing: 16) {
-                        Label("\(event.stats.popularity)% popular", systemImage: "heart.fill")
-                            .font(.caption2)
-                            .foregroundColor(.red)
-
-                        Label(String(format: "%d ★", event.stats.rating), systemImage: "star.fill")
-                            .font(.caption2)
-                            .foregroundColor(.yellow)
-                    }
-
-                } else {
-                    Text("Shake or tap the button below")
-                        .font(.body)
-                        .foregroundColor(.primary)
-
-                    Text("And let the magic 8-ball discover your perfect event!")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
                 }
+                .frame(maxWidth: .infinity, minHeight: 280)
+                .padding(16)
+                .background(Color.white)
+                .cornerRadius(24)
+                .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 8)
+                .padding(.horizontal, 16)
             }
-            .frame(maxWidth: .infinity, minHeight: 280)
-            .padding(16)
-            .background(Color.white)
-            .cornerRadius(24)
-            .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 8)
-            .padding(.horizontal, 16)
 
             Spacer().frame(height: 20)
 
@@ -145,9 +179,10 @@ struct Magic8BallView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.orange)
+                    .background(events.isEmpty ? Color.gray : Color.orange)
                     .cornerRadius(16)
             }
+            .disabled(events.isEmpty || isLoading)
             .padding(.horizontal, 16)
             .padding(.bottom, 40)
         }
@@ -167,23 +202,115 @@ struct Magic8BallView: View {
         return "\(cost.amount) \(cost.currency)"
     }
 
-    // MARK: - Load events from Firebase
+    // MARK: - Load events from Firebase (mejorado siguiendo el patrón de EventListViewModel)
     func loadEventsFromFirebase() {
+        isLoading = true
+        errorMessage = nil
+        
         let db = Firestore.firestore()
         db.collection("events").getDocuments { snapshot, error in
-            guard let docs = snapshot?.documents else { return }
-
-            Task { @MainActor in
-                self.events = docs.compactMap { doc -> Event? in
-                    do {
-                        return try doc.data(as: Event.self)
-                    } catch {
-                        print("Failed to decode Event from Firestore document \(doc.documentID): \(error)")
-                        return nil
-                    }
+            DispatchQueue.main.async {
+                self.isLoading = false
+                
+                if let error = error {
+                    self.errorMessage = "Error loading events: \(error.localizedDescription)"
+                    print(self.errorMessage ?? "")
+                    return
                 }
+                
+                guard let documents = snapshot?.documents else {
+                    self.errorMessage = "No events found"
+                    return
+                }
+                
+                // Parse documents siguiendo el patrón de EventListViewModel
+                self.events = documents.compactMap { doc in
+                    self.parseEvent(documentId: doc.documentID, data: doc.data())
+                }
+                
+                print("Events loaded: \(self.events.count)")
             }
         }
+    }
+    
+    // MARK: - Parse Event (siguiendo el patrón de EventListViewModel)
+    private func parseEvent(documentId: String, data: [String: Any]) -> Event? {
+        // Required fields
+        guard let name = data["name"] as? String,
+              let description = data["description"] as? String,
+              let category = data["category"] as? String else {
+            print("Incomplete document: \(documentId)")
+            return nil
+        }
+        
+        // Location parsing
+        var location = EventLocation(address: "", city: "", coordinates: [], type: "")
+        if let locationData = data["location"] as? [String: Any] {
+            location = EventLocation(
+                address: locationData["address"] as? String ?? "",
+                city: locationData["city"] as? String ?? "",
+                coordinates: locationData["coordinates"] as? [Double] ?? [],
+                type: locationData["type"] as? String ?? ""
+            )
+        }
+        
+        // Schedule parsing
+        var schedule = EventSchedule(days: [], times: [])
+        if let scheduleData = data["schedule"] as? [String: Any] {
+            schedule = EventSchedule(
+                days: scheduleData["days"] as? [String] ?? [],
+                times: scheduleData["times"] as? [String] ?? []
+            )
+        }
+        
+        // Metadata parsing
+        var metadata = EventMetadata(
+            cost: EventCost(amount: 0, currency: "COP"),
+            durationMinutes: 0,
+            imageUrl: "",
+            tags: []
+        )
+        if let metadataData = data["metadata"] as? [String: Any] {
+            var cost = EventCost(amount: 0, currency: "COP")
+            if let costData = metadataData["cost"] as? [String: Any] {
+                let amount = costData["amount"] as? Int ?? 0
+                let currency = costData["currency"] as? String ?? "COP"
+                cost = EventCost(amount: amount, currency: currency)
+            }
+            
+            metadata = EventMetadata(
+                cost: cost,
+                durationMinutes: metadataData["duration_minutes"] as? Int ?? 0,
+                imageUrl: metadataData["image_url"] as? String ?? "",
+                tags: metadataData["tags"] as? [String] ?? []
+            )
+        }
+        
+        // Stats parsing
+        var stats = EventStats(popularity: 0, rating: 0, totalCompletions: 0)
+        if let statsData = data["stats"] as? [String: Any] {
+            stats = EventStats(
+                popularity: statsData["popularity"] as? Int ?? 0,
+                rating: statsData["rating"] as? Int ?? 0,
+                totalCompletions: statsData["total_completions"] as? Int ?? 0
+            )
+        }
+        
+        return Event(
+            activetrue: data["activetrue"] as? Bool ?? true,
+            category: category,
+            created: data["created"] as? String ?? "",
+            description: description,
+            eventType: data["event_type"] as? String ?? "",
+            location: location,
+            metadata: metadata,
+            name: name,
+            schedule: schedule,
+            stats: stats,
+            title: data["title"] as? String ?? "",
+            type: data["type"] as? String ?? "",
+            weatherDependent: data["weather_dependent"] as? Bool ?? false
+        )
     }
 }
 

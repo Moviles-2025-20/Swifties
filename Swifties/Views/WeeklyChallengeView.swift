@@ -225,6 +225,8 @@ struct WeeklyChallengeView: View {
                                             // Weekly Challenge Indicators
                                             HStack(alignment: .center, spacing: 12) {
                                                 ForEach(viewModel.last30DaysData) { data in
+                                                    let isCompleted = data.count > 0
+                                                    
                                                     VStack(spacing: 12) {
                                                         // Week Label on top
                                                         Text(data.label)
@@ -236,8 +238,6 @@ struct WeeklyChallengeView: View {
                                                         
                                                         // Challenge Status Indicator
                                                         ZStack {
-                                                            let isCompleted = (data.label == "This Week") ? viewModel.hasAttended : (data.count > 0)
-                                                            
                                                             Circle()
                                                                 .fill(isCompleted ?
                                                                       LinearGradient(
@@ -263,11 +263,8 @@ struct WeeklyChallengeView: View {
                                                                     .foregroundColor(.gray.opacity(0.5))
                                                             }
                                                         }
-
                                                         
                                                         // Status Text
-                                                        let isCompleted = (data.label == "This Week") ? viewModel.hasAttended : (data.count > 0)
-
                                                         Text(isCompleted ? "Completed" : "Missed")
                                                             .font(.caption2)
                                                             .fontWeight(isCompleted ? .semibold : .regular)
@@ -338,7 +335,7 @@ class WeeklyChallengeViewModel: ObservableObject {
     func loadChallenge() {
         isLoading = true
         errorMessage = nil
-        hasAttended = false // Reset state
+        hasAttended = false
         
         guard let userId = currentUserId else {
             errorMessage = "Usuario no autenticado"
@@ -408,12 +405,6 @@ class WeeklyChallengeViewModel: ObservableObject {
         }
     }
     
-    // Public method to check attendance for a specific event
-    func checkAttendanceForEvent(userId: String, eventId: String) {
-        print("🔄 Checking attendance on view appear...")
-        checkIfUserAttended(userId: userId, eventId: eventId) { }
-    }
-    
     func markAsAttending() {
         guard let userId = currentUserId,
               let event = challengeEvent else {
@@ -423,7 +414,6 @@ class WeeklyChallengeViewModel: ObservableObject {
         
         print("🔵 Saving activity for user: \(userId), event: \(event.name)")
         
-        // Create UserActivity document
         let activityData: [String: Any] = [
             "event_id": event.name,
             "source": "weekly_challenge",
@@ -436,7 +426,6 @@ class WeeklyChallengeViewModel: ObservableObject {
         
         print("🔵 Activity data: \(activityData)")
         
-        // Save to UserActivity collection
         db.collection("UserActivity").addDocument(data: activityData) { [weak self] error in
             guard let self = self else { return }
             
@@ -450,7 +439,6 @@ class WeeklyChallengeViewModel: ObservableObject {
                 DispatchQueue.main.async {
                     self.hasAttended = true
                     self.totalChallenges += 1
-                    // Reload data to update charts
                     self.loadChallenge()
                 }
             }
@@ -462,7 +450,6 @@ class WeeklyChallengeViewModel: ObservableObject {
     private func checkIfUserAttended(userId: String, eventId: String, completion: @escaping () -> Void) {
         print("🔍 Checking attendance for user: \(userId), event: \(eventId)")
         
-        // Check if user has this specific event in UserActivity with type weekly_challenge
         db.collection("UserActivity")
             .whereField("user_id", isEqualTo: userId)
             .whereField("event_id", isEqualTo: eventId)
@@ -488,7 +475,6 @@ class WeeklyChallengeViewModel: ObservableObject {
                 print("📊 Documents found for this event: \(documentsCount)")
                 print(attended ? "✅ User HAS attended this event" : "❌ User has NOT attended this event")
                 
-                // Print document data for debugging
                 if let documents = snapshot?.documents {
                     for doc in documents {
                         print("📄 Document ID: \(doc.documentID)")
@@ -524,111 +510,112 @@ class WeeklyChallengeViewModel: ObservableObject {
     }
     
     private func loadLast30DaysData(userId: String, completion: @escaping (Result<[ChartData], Error>) -> Void) {
-        var calendar = Calendar(identifier: .iso8601)
-        calendar.firstWeekday = 2 // lunes
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Lunes
+        
         let currentDate = Date()
         
-        print("📊 Loading weekly challenge completion status for last 4 weeks")
+        // Calcular fecha de hace 30 días
+        guard let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: currentDate) else {
+            completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Error calculating date"])))
+            return
+        }
         
-        var chartData: [ChartData] = []
-        let currentWeek = calendar.component(.weekOfYear, from: currentDate)
-        let currentYear = calendar.component(.year, from: currentDate)
+        print("📊 Loading activities from last 30 days")
+        print("📅 Current date: \(currentDate)")
+        print("📅 30 days ago: \(thirtyDaysAgo)")
         
-        let group = DispatchGroup()
-        var weeklyResults: [(week: Int, year: Int, label: String, completed: Bool)] = []
-        
-        for i in 0..<4 {
-            group.enter()
-            
-            let weeksAgo = 3 - i
-            let targetDate = calendar.date(byAdding: .weekOfYear, value: -weeksAgo, to: currentDate) ?? currentDate
-            let targetWeek = calendar.component(.weekOfYear, from: targetDate)
-            let targetYear = calendar.component(.year, from: targetDate)
-            
-            let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: targetDate)!.start
-            let endOfWeek = calendar.dateInterval(of: .weekOfYear, for: targetDate)!.end
-            
-            let label = weeksAgo == 0 ? "This Week" : "\(weeksAgo)w ago"
-            
-            db.collection("UserActivity")
-                .whereField("user_id", isEqualTo: userId)
-                .whereField("type", isEqualTo: "weekly_challenge")
-                .whereField("time", isGreaterThanOrEqualTo: Timestamp(date: startOfWeek))
-                .whereField("time", isLessThan: Timestamp(date: endOfWeek))
-                .getDocuments { snapshot, error in
-                    if let error = error {
-                        print("❌ Error checking week \(targetWeek): \(error.localizedDescription)")
-                        weeklyResults.append((week: targetWeek, year: targetYear, label: label, completed: false))
-                    } else {
-                        let hasCompleted = !(snapshot?.documents.isEmpty ?? true)
-                        let count = snapshot?.documents.count ?? 0
-                        print("📊 Week \(targetWeek) (\(label)): \(hasCompleted ? "✅ Completed" : "❌ Missed") (\(count) activities)")
-
-                        if let documents = snapshot?.documents, !documents.isEmpty {
-                            for doc in documents {
-                                print("   📄 Activity ID: \(doc.documentID)")
-                                print("   📄 Data: \(doc.data())")
-                            }
-                        }
-                        self.db.collection("UserActivity")
-                            .whereField("user_id", isEqualTo: userId)
-                            .whereField("type", isEqualTo: "weekly_challenge")
-                            .order(by: "time", descending: true)
-                            .getDocuments { snapshot, error in
-                                if let error = error {
-                                    print("❌ Error obteniendo actividades: \(error.localizedDescription)")
-                                    return
-                                }
-                                
-                                guard let documents = snapshot?.documents, !documents.isEmpty else {
-                                    print("⚠️ No se encontraron actividades de weekly_challenge para este usuario.")
-                                    return
-                                }
-                                
-                                print("✅ Se encontraron \(documents.count) actividades en total:")
-                                for doc in documents {
-                                    print("— — — — — — — — — — — — — —")
-                                    print("📄 Document ID: \(doc.documentID)")
-                                    print("📄 Data: \(doc.data())")
-                                }
-                                print("— — — — — — — — — — — — — —")
-                            }
-                        weeklyResults.append((week: targetWeek, year: targetYear, label: label, completed: hasCompleted))
-                        
-                        // ✅ Fuerza hasAttended si es la semana actual
-                        if targetWeek == currentWeek && targetYear == currentYear {
-                            DispatchQueue.main.async {
-                                self.hasAttended = hasCompleted
-                                print("🔄 hasAttended (from chart): \(self.hasAttended)")
-                            }
+        // Obtener TODAS las actividades del usuario (sin filtro de tiempo en la consulta)
+        // El filtro de tiempo se hace localmente en Swift
+        db.collection("UserActivity")
+            .whereField("user_id", isEqualTo: userId)
+            .whereField("type", isEqualTo: "weekly_challenge")
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    print("❌ Error loading activities: \(error.localizedDescription)")
+                    completion(.failure(error))
+                    return
+                }
+                
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "MMM dd, yyyy HH:mm"
+                dateFormatter.timeZone = calendar.timeZone
+                
+                // Obtener todas las fechas de actividades
+                var activityDates: [Date] = []
+                if let documents = snapshot?.documents {
+                    print("📄 Found \(documents.count) total activities in last 30 days:")
+                    for doc in documents {
+                        let data = doc.data()
+                        if let timestamp = data["time"] as? Timestamp {
+                            let activityDate = timestamp.dateValue()
+                            activityDates.append(activityDate)
+                            print("   - \(dateFormatter.string(from: activityDate)) - Event: \(data["event_id"] ?? "Unknown")")
                         }
                     }
-                    group.leave()
                 }
-        }
-        
-        group.notify(queue: .main) {
-            weeklyResults.sort { lhs, rhs in
-                calendar.date(from: DateComponents(weekOfYear: lhs.week, yearForWeekOfYear: lhs.year))!
-                < calendar.date(from: DateComponents(weekOfYear: rhs.week, yearForWeekOfYear: rhs.year))!
+                
+                // Preparar las últimas 4 semanas
+                var chartData: [ChartData] = []
+                var hasAttendedThisWeek = false
+                
+                for i in 0..<4 {
+                    let weeksAgo = 3 - i
+                    let targetDate = calendar.date(byAdding: .weekOfYear, value: -weeksAgo, to: currentDate) ?? currentDate
+                    
+                    guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: targetDate) else {
+                        continue
+                    }
+                    
+                    let startOfWeek = weekInterval.start
+                    let endOfWeek = weekInterval.end
+                    let label = weeksAgo == 0 ? "This Week" : "\(weeksAgo)w ago"
+                    
+                    print("\n📅 Checking week: \(label)")
+                    print("   Range: \(dateFormatter.string(from: startOfWeek)) to \(dateFormatter.string(from: endOfWeek))")
+                    
+                    // Contar cuántas actividades caen en esta semana
+                    let activitiesInWeek = activityDates.filter { activityDate in
+                        activityDate >= startOfWeek && activityDate < endOfWeek
+                    }
+                    
+                    let hasCompleted = !activitiesInWeek.isEmpty
+                    print("   Activities found: \(activitiesInWeek.count)")
+                    print("   Status: \(hasCompleted ? "✅ Completed" : "❌ Missed")")
+                    
+                    if hasCompleted {
+                        for activityDate in activitiesInWeek {
+                            print("      - \(dateFormatter.string(from: activityDate))")
+                        }
+                    }
+                    
+                    chartData.append(ChartData(label: label, count: hasCompleted ? 1 : 0))
+                    
+                    // Si es la semana actual, actualizar hasAttended
+                    if weeksAgo == 0 {
+                        hasAttendedThisWeek = hasCompleted
+                    }
+                }
+                
+                print("\n✅ Chart data prepared:")
+                for data in chartData {
+                    print("   \(data.label): \(data.count > 0 ? "✅ Completed" : "❌ Missed")")
+                }
+                
+                // Actualizar hasAttended en el hilo principal
+                DispatchQueue.main.async {
+                    self.hasAttended = hasAttendedThisWeek
+                    print("🔄 Final hasAttended: \(self.hasAttended)")
+                }
+                
+                completion(.success(chartData))
             }
-            
-            chartData = weeklyResults.map { result in
-                ChartData(label: result.label, count: result.completed ? 1 : 0)
-            }
-            
-            print("✅ Chart data prepared: \(chartData.map { "\($0.label): \($0.count)" }.joined(separator: ", "))")
-            completion(.success(chartData))
-        }
     }
-
     
     private func loadRandomEvent(completion: @escaping (Result<Event, Error>) -> Void) {
-        // Get current week number to ensure same event for the entire week
-        var calendar = Calendar(identifier: .iso8601)
-        calendar.firstWeekday = 2 // lunes
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2
+        
         let weekOfYear = calendar.component(.weekOfYear, from: Date())
         let year = calendar.component(.year, from: Date())
         let weekKey = "\(year)-W\(weekOfYear)"
@@ -646,7 +633,6 @@ class WeeklyChallengeViewModel: ObservableObject {
                 return
             }
             
-            // Use week number as seed to get same "random" event for the entire week
             let seed = weekOfYear + (year * 100)
             let index = seed % documents.count
             let selectedDoc = documents[index]
@@ -752,7 +738,7 @@ class WeeklyChallengeViewModel: ObservableObject {
     }
 }
 
-// MARK: - Event Model (Add Equatable conformance)
+// MARK: - Event Model
 extension Event: Equatable {
     static func == (lhs: Event, rhs: Event) -> Bool {
         return lhs.name == rhs.name &&

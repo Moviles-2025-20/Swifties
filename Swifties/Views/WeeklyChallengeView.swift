@@ -513,7 +513,7 @@ class WeeklyChallengeViewModel: ObservableObject {
         
         print("📊 Loading activities from last 30 days")
         
-        db.collection("UserActivity")
+        db.collection("user_activity")
             .whereField("user_id", isEqualTo: userId)
             .whereField("type", isEqualTo: "weekly_challenge")
             .getDocuments { snapshot, error in

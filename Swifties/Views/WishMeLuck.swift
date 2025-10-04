@@ -1,18 +1,17 @@
-//
-//  WishMeLuck.swift
-//  Swifties
-//
-//  Created by Imac  on 2/10/25.
-//
-
 import Foundation
 import SwiftUI
 import CoreMotion
+import FirebaseFirestore
 
 struct WishMeLuckView: View {
     @StateObject private var viewModel = WishMeLuckViewModel()
     @State private var animateBall = false
     @State private var isShaking = false
+    @State private var showEventDetail = false
+    @State private var fullEventForDetail: Event?
+    @State private var isLoadingFullEvent = false
+    
+    private let db = Firestore.firestore(database: "default")
     
     // Accelerometer
     private let motionManager = CMMotionManager()
@@ -54,8 +53,11 @@ struct WishMeLuckView: View {
                             
                             // MARK: - Event Preview or Empty State
                             if let event = viewModel.currentEvent {
-                                EventPreviewCard(event: event)
+                                EventPreviewCard(event: event, isLoadingDetail: isLoadingFullEvent)
                                     .padding(.horizontal, 20)
+                                    .onTapGesture {
+                                        loadFullEventAndShowDetail(eventId: event.id)
+                                    }
                             } else if !viewModel.isLoading {
                                 EmptyStateCard()
                                     .padding(.horizontal, 20)
@@ -75,6 +77,11 @@ struct WishMeLuckView: View {
                 }
             }
             .navigationBarHidden(true)
+            .sheet(isPresented: $showEventDetail) {
+                if let fullEvent = fullEventForDetail {
+                    EventDetailView(event: fullEvent)
+                }
+            }
             .task {
                 await viewModel.calculateDaysSinceLastWished()
                 startAccelerometerUpdates()
@@ -83,6 +90,128 @@ struct WishMeLuckView: View {
                 stopAccelerometerUpdates()
             }
         }
+    }
+    
+    // MARK: - Load Full Event and Show Detail
+    private func loadFullEventAndShowDetail(eventId: String) {
+        isLoadingFullEvent = true
+        
+        db.collection("events").document(eventId).getDocument { document, error in
+            DispatchQueue.main.async {
+                isLoadingFullEvent = false
+                
+                if let error = error {
+                    print("Error loading full event: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let document = document, document.exists else {
+                    print("Event document not found")
+                    return
+                }
+                                
+                // Try to parse using Codable first
+                if let event = try? document.data(as: Event.self) {
+                    print("Successfully parsed event using Codable")
+                    fullEventForDetail = event
+                    showEventDetail = true
+                } else {
+                    // Fallback to manual parsing
+                    print("Codable parsing failed, attempting manual parse")
+                    if let event = parseEventManually(documentId: document.documentID, data: document.data() ?? [:]) {
+                        print("Successfully parsed event manually")
+                        fullEventForDetail = event
+                        showEventDetail = true
+                    } else {
+                        print("❌ Manual parsing also failed")
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Manual Event Parsing (Fallback)
+    private func parseEventManually(documentId: String, data: [String: Any]) -> Event? {
+        guard let name = data["name"] as? String,
+              let description = data["description"] as? String,
+              let category = data["category"] as? String else {
+            print("❌ Missing required fields: name, description, or category")
+            return nil
+        }
+        
+        // Location parsing
+        var location: EventLocation? = nil
+        if let locationData = data["location"] as? [String: Any] {
+            location = EventLocation(
+                address: locationData["address"] as? String ?? "",
+                city: locationData["city"] as? String ?? "",
+                coordinates: locationData["coordinates"] as? [Double] ?? [],
+                type: locationData["type"] as? String ?? ""
+            )
+        }
+        
+        // Schedule parsing
+        var schedule = EventSchedule(days: [], times: [])
+        if let scheduleData = data["schedule"] as? [String: Any] {
+            schedule = EventSchedule(
+                days: scheduleData["days"] as? [String] ?? [],
+                times: scheduleData["times"] as? [String] ?? []
+            )
+        }
+        
+        // Metadata parsing
+        var metadata = EventMetadata(
+            cost: EventCost(amount: 0, currency: "COP"),
+            durationMinutes: 0,
+            imageUrl: "",
+            tags: []
+        )
+        if let metadataData = data["metadata"] as? [String: Any] {
+            var cost = EventCost(amount: 0, currency: "COP")
+            if let costData = metadataData["cost"] as? [String: Any] {
+                let amount = costData["amount"] as? Int ?? 0
+                let currency = costData["currency"] as? String ?? "COP"
+                cost = EventCost(amount: amount, currency: currency)
+            }
+            
+            metadata = EventMetadata(
+                cost: cost,
+                durationMinutes: metadataData["duration_minutes"] as? Int ?? 0,
+                imageUrl: metadataData["image_url"] as? String ?? "",
+                tags: metadataData["tags"] as? [String] ?? []
+            )
+        }
+        
+        // Stats parsing
+        var stats = EventStats(popularity: 0, rating: 0, totalCompletions: 0)
+        if let statsData = data["stats"] as? [String: Any] {
+            stats = EventStats(
+                popularity: statsData["popularity"] as? Int ?? 0,
+                rating: statsData["rating"] as? Int ?? 0,
+                totalCompletions: statsData["total_completions"] as? Int ?? 0
+            )
+        }
+        
+        var event = Event(
+            activetrue: data["active"] as? Bool ?? true,
+            category: category,
+            created: data["created"] as? String ?? "",
+            description: description,
+            eventType: data["event_type"] as? String ?? "",
+            location: location,
+            metadata: metadata,
+            name: name,
+            schedule: schedule,
+            stats: stats,
+            title: data["title"] as? String ?? name,
+            type: data["type"] as? String ?? "",
+            weatherDependent: data["weather_dependent"] as? Bool ?? false
+        )
+        
+        // Manually set the document ID
+        event.id = documentId
+        
+        return event
     }
     
     // MARK: - Trigger Wish
@@ -127,18 +256,15 @@ struct WishMeLuckView: View {
     private func handleShake() {
         let now = Date()
         
-        // Check cooldown
         if let lastShake = lastShakeTime,
            now.timeIntervalSince(lastShake) < shakeCooldown {
             return
         }
         
-        // Don't shake if already loading
         guard !viewModel.isLoading else { return }
         
         lastShakeTime = now
         
-        // Haptic feedback
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
         
@@ -233,6 +359,7 @@ struct MotivationalMessageCard: View {
 // MARK: - Event Preview Card
 struct EventPreviewCard: View {
     let event: WishMeLuckEvent
+    let isLoadingDetail: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -244,6 +371,7 @@ struct EventPreviewCard: View {
                         .scaledToFill()
                 } placeholder: {
                     Color.gray.opacity(0.3)
+                        .overlay(ProgressView())
                 }
                 .frame(height: 180)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -269,11 +397,30 @@ struct EventPreviewCard: View {
                 .font(.body)
                 .foregroundColor(.secondary)
                 .lineLimit(3)
+            
+            // Tap to view hint
+            HStack {
+                Spacer()
+                if isLoadingDetail {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Loading details...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("Tap to view details")
+                        .font(.caption)
+                        .foregroundColor(.appOcher)
+                    Image(systemName: "arrow.up.forward.circle.fill")
+                        .foregroundColor(.appOcher)
+                }
+            }
         }
         .padding()
         .background(Color.white)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .opacity(isLoadingDetail ? 0.6 : 1.0)
     }
 }
 
@@ -321,7 +468,7 @@ struct WishMeLuckButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(isLoading ? Color.gray : Color.orange)
+            .background(isLoading ? Color.gray : Color.appOcher)
             .cornerRadius(16)
         }
         .disabled(isLoading)

@@ -107,4 +107,14 @@ final class HomeViewModel: ObservableObject {
         // Update published property on main thread
         recommendations = tempEvents
     }
+    
+    // Fetch all events for map and other listings
+    func getAllEvents() async throws -> [Event] {
+        let snapshot = try await db.collection("events").getDocuments()
+        let events: [Event] = snapshot.documents.compactMap { doc in
+            eventListViewModel.parseEvent(documentId: doc.documentID, data: doc.data())
+        }
+        return events
+    }
 }
+

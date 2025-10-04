@@ -16,7 +16,7 @@ struct CustomTabBar: View {
             Spacer()
             TabBarButton(icon: "lightbulb", isSelected: selectedTab == 1) { selectedTab = 1 }
             Spacer()
-            TabBarButton(icon: "calendar", isSelected: selectedTab == 2) { selectedTab = 2 }
+            TabBarButton(icon: "wand.and.sparkles", isSelected: selectedTab == 2) { selectedTab = 2 }
             Spacer()
             TabBarButton(icon: "person", isSelected: selectedTab == 3) { selectedTab = 3 }
         }

@@ -32,7 +32,7 @@ struct MainView: View {
         case 1:
             EventListView(viewModel: EventListViewModel())
         case 2:
-            Magic8BallView()
+            WishMeLuckView()
         case 3:
             ProfileView()
         default:

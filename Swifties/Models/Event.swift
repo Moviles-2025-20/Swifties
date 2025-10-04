@@ -1,13 +1,15 @@
 import Foundation
+import FirebaseFirestore
 
 // MARK: - Main Event Structure
-struct Event: Codable {
+struct Event: Identifiable, Codable {
+    @DocumentID var id: String?
     let activetrue: Bool
     let category: String
     let created: String
     let description: String
     let eventType: String
-    let location: EventLocation
+    let location: EventLocation?
     let metadata: EventMetadata
     let name: String
     let schedule: EventSchedule
@@ -17,6 +19,7 @@ struct Event: Codable {
     let weatherDependent: Bool
     
     enum CodingKeys: String, CodingKey {
+        case id
         case activetrue
         case category
         case created

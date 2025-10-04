@@ -47,7 +47,7 @@ struct EventMapView: View {
                     let longitude = (coords.count > 1 ? coords[1] : 0)
                     let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
                     
-                    Annotation(event.title ?? "Event", coordinate: coordinate) {
+                    Annotation(event.title, coordinate: coordinate) {
                         Button {
                             selectedEvent = event
                             onSelect?(event)
@@ -237,7 +237,8 @@ struct NearbyEventRow: View {
                         }
                     }
                     
-                    if let tags = event.metadata?.tags, !tags.isEmpty {
+                    let tags = event.metadata.tags
+                    if !tags.isEmpty {
                         HStack(spacing: 4) {
                             ForEach(tags.prefix(2), id: \.self) { tag in
                                 Text(tag)

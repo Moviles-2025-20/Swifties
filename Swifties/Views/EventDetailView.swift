@@ -1,5 +1,4 @@
 import SwiftUI
-import FirebaseFirestore
 
 struct EventDetailView: View {
     @StateObject var viewModel: EventDetailViewModel
@@ -35,7 +34,7 @@ struct EventDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         // Event Image - full width, no padding
-                        if let url = URL(string: event.metadata.imageUrl), !event.metadata.imageUrl.isEmpty {
+                        if !event.metadata.imageUrl.isEmpty, let url = URL(string: event.metadata.imageUrl) {
                             AsyncImage(url: url) { image in
                                 image
                                     .resizable()
@@ -59,7 +58,7 @@ struct EventDetailView: View {
                         
                             // Location and Time
                             HStack(spacing: 12) {
-                                Label(event.location.address, systemImage: "mappin.circle.fill")
+                                Label(event.location?.address ?? "Address not found", systemImage: "mappin.circle.fill")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                 
@@ -171,3 +170,4 @@ struct EventDetailView: View {
         return distribution[rating] ?? 0.0
     }
 }
+

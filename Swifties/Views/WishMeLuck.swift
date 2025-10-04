@@ -87,7 +87,7 @@ struct Magic8BallView: View {
 
                     // Event Location, Duration, Cost
                     HStack(spacing: 16) {
-                        Label(event.location.address, systemImage: "mappin.and.ellipse")
+                        Label(event.location?.address ?? "Address not found", systemImage: "mappin.and.ellipse")
                             .font(.caption2)
                             .foregroundColor(.gray)
 

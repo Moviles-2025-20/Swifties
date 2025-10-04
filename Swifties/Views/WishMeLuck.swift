@@ -334,7 +334,7 @@ struct WishMeLuckButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(isLoading ? Color.gray : Color.orange)
+            .background(isLoading ? Color.gray : .appOcher)
             .cornerRadius(16)
         }
         .disabled(isLoading)

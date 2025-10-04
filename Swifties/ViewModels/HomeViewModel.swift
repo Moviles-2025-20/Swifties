@@ -17,10 +17,9 @@ final class HomeViewModel: ObservableObject {
     
     init() {
         // Initialize Firestore and configure settings
-        let firestore = Firestore.firestore()
         let settings = FirestoreSettings()
         //settings.isPersistenceEnabled = true // optional offline cache
-        firestore.settings = settings
+        self.firestore.settings = settings
     }
     
     func getRecommendations() async throws -> [Event] {

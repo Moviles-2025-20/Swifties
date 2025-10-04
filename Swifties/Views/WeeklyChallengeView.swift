@@ -592,7 +592,7 @@ class WeeklyChallengeViewModel: ObservableObject {
                     
                     chartData.append(ChartData(label: label, count: hasCompleted ? 1 : 0))
                     
-                    // Si es la semana actual, actualizar hasAttended
+                    // If it's the current week, update hasAttended
                     if weeksAgo == 0 {
                         hasAttendedThisWeek = hasCompleted
                     }

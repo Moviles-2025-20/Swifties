@@ -253,7 +253,10 @@ struct AddCommentView: View {
                 }
             }
         } catch {
-            // Handle errors if needed
+            print("Failed to load image from photo picker:", error)
+            await MainActor.run {
+                submitError = "Failed to load image. \(error.localizedDescription)"
+            }
         }
     }
 }

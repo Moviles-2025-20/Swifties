@@ -211,7 +211,7 @@ struct EventDetailView: View {
             return
         }
         
-        db.collection("UserActivity")
+        db.collection("user_activities")
             .whereField("user_id", isEqualTo: userId)
             .whereField("event_id", isEqualTo: event.name)
             .whereField("source", isEqualTo: "list_events")
@@ -249,7 +249,7 @@ struct EventDetailView: View {
         ]
         
         // Save to UserActivity
-        db.collection("UserActivity").addDocument(data: activityData) { error in
+        db.collection("user_activities").addDocument(data: activityData) { error in
             if let error = error {
                 print("Error saving attendance: \(error.localizedDescription)")
                 return

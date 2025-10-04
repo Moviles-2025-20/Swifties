@@ -315,7 +315,7 @@ class WeeklyChallengeViewModel: ObservableObject {
             let index = seed % documents.count
             let selectedDoc = documents[index]
             
-            // 🎯 AQUÍ USAMOS EL FACTORY - Reemplaza las 80+ líneas de parseEvent
+            // 🎯 HERE WE USE THE FACTORY - Replaces the 80+ lines of parseEvent
             if let event = EventFactory.createEvent(from: selectedDoc) {
                 completion(.success(event))
             } else {

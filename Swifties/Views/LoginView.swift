@@ -44,13 +44,24 @@ struct LoginView: View {
                 if let destination = navigationDestination {
                     switch destination {
                     case .home:
-                        HomeView()
-                            .environmentObject(viewModel)
-                            .navigationBarBackButtonHidden(true)
+                        if viewModel.user?.providerId == "password" && viewModel.isEmailVerified == false {
+                            VerifyEmailView()
+                                .environmentObject(viewModel)
+                        } else {
+                            HomeView()
+                                .environmentObject(viewModel)
+                                .navigationBarBackButtonHidden(true)
+                        }
                     case .onboarding:
-                        RegisterView()
-                            .environmentObject(viewModel)
-                            .navigationBarBackButtonHidden(true)
+                        if viewModel.user?.providerId == "password" && viewModel.isEmailVerified == false {
+                            VerifyEmailView()
+                                .environmentObject(viewModel)
+                                .navigationBarBackButtonHidden(true)
+                        } else {
+                            RegisterView()
+                                .environmentObject(viewModel)
+                                .navigationBarBackButtonHidden(true)
+                        }
                     }
                 }
             }
@@ -153,7 +164,7 @@ struct LoginView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "envelope.fill")
                         .resizable()
-                        .frame(width: 24, height: 24)
+                        .frame(height: 24)
                     
                     Text("Login with Email")
                         .font(.system(size: 16, weight: .semibold))
@@ -175,15 +186,15 @@ struct LoginView: View {
                 }
             } label: {
                 HStack(spacing: 12) {
-                    Image(systemName: "envelope.fill")
+                    Image(systemName: "envelope")
                         .resizable()
-                        .frame(width: 24, height: 24)
+                        .frame(height: 24)
                     
                     Text("Register with Email")
                         .font(.system(size: 16, weight: .semibold))
                         .frame(maxWidth: .infinity)
                 }
-                .foregroundColor(.white)
+                .foregroundColor(.black.opacity(0.8))
                 .padding(.vertical, 16)
                 .padding(.horizontal, 20)
                 .frame(maxWidth: .infinity)

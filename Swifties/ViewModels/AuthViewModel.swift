@@ -145,11 +145,36 @@ class AuthViewModel: ObservableObject {
         isLoading = false
     }
     
+    // MARK: Validity for password and email
+    func isValidEmail(_ email: String) -> Bool {
+        let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+        let emailPredicate = NSPredicate(format:"SELF MATCHES %@", emailRegEx)
+        return emailPredicate.evaluate(with: email)
+    }
+    
+    func isValidPassword(_ password: String) -> Bool {
+        let passwordRegEx = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)[A-Za-z\\d]{8,}$"
+        let passwordPredicate = NSPredicate(format: "SELF MATCHES %@", passwordRegEx)
+        return passwordPredicate.evaluate(with: password)
+    }
+    
     // MARK: - Register with Email
     func registerWithEmail(email: String, password: String) async {
         isLoading = true
         error = nil
 
+        guard isValidEmail(email) else {
+            self.error = "Please enter a valid email address."
+            isLoading = false
+            return
+        }
+            
+        guard isValidPassword(password) else {
+            self.error = "Password must be at least 8 characters, include uppercase, lowercase, and a number."
+            isLoading = false
+            return
+        }
+        
         do {
             let result = try await authService.registerWithEmail(email: email, password: password)
             self.user = UserAuthModel.fromFirebase(result.user, providerId: result.providerId)
@@ -164,6 +189,10 @@ class AuthViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+    
+    func resendVerificationEmail() async {
+        authService.resendVerificationEmail()
     }
     
     // MARK: - Login with Google
@@ -184,6 +213,21 @@ class AuthViewModel: ObservableObject {
         await login(with: .twitter)
     }
     
+    // MARK: Reload user
+    func reloadUser() async {
+        guard let currentUser = Auth.auth().currentUser else { return }
+        do {
+            try await currentUser.reload()
+            self.user = UserAuthModel.fromFirebase(currentUser, providerId: currentUser.providerData.first?.providerID ?? "password")
+        } catch {
+            print("Error reloading user: \(error.localizedDescription)")
+        }
+    }
+
+    var isEmailVerified: Bool {
+        return Auth.auth().currentUser?.isEmailVerified ?? false
+    }
+
     // MARK: - Logout
     func logout() async {
         isLoading = true

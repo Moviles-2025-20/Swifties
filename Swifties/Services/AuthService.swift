@@ -121,14 +121,39 @@ class AuthService {
     
     // MARK: - Email Sign Up (Registration)
     func registerWithEmail(email: String, password: String) async throws -> (user: User, providerId: String) {
-        do {
-            let result = try await Auth.auth().createUser(withEmail: email, password: password)
-            let firebaseUser = result.user
-            let providerId = "password"
-            print("User \(firebaseUser.uid) registered with email \(firebaseUser.email ?? "no email")")
-            return (firebaseUser, providerId)
-        } catch {
-            throw AuthenticationError.unknown(error)
+        return try await withCheckedThrowingContinuation { continuation in
+            Auth.auth().createUser(withEmail: email, password: password) { result, error in
+                if let error = error {
+                    continuation.resume(throwing: AuthenticationError.unknown(error))
+                    return
+                }
+                
+                guard let user = result?.user else {
+                    continuation.resume(throwing: AuthenticationError.tokenError(message: "No user after registration"))
+                    return
+                }
+                
+                // Send verification email
+                user.sendEmailVerification { error in
+                    if let error = error {
+                        print("Failed to send verification email: \(error.localizedDescription)")
+                    } else {
+                        print("Verification email sent to \(email)")
+                    }
+                }
+                
+                continuation.resume(returning: (user, "password"))
+            }
+        }
+    }
+    
+    func resendVerificationEmail() {
+        Auth.auth().currentUser?.sendEmailVerification { error in
+            if let error = error {
+                print("Failed to resend verification: \(error.localizedDescription)")
+            } else {
+                print("Verification email re-sent.")
+            }
         }
     }
 

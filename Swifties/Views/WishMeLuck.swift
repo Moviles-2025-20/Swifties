@@ -294,7 +294,7 @@ struct EventPreviewCard: View {
 struct EmptyStateCard: View {
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: "wand.and.stars")
+            Image(systemName: "wand.and.sparkles.inverse")
                 .font(.system(size: 50))
                 .foregroundColor(Color("appBlue").opacity(0.6))
             

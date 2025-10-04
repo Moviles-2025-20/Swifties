@@ -40,16 +40,6 @@ struct ProfileView: View {
                                     viewModel.loadProfile()
                                 }
                                 .buttonStyle(.borderedProminent)
-                                
-                                ActionButton(
-                                    title: "Log Out",
-                                    backgroundColor: Color("appRed")
-                                ) {
-                                    // Handle log out
-                                    Task {
-                                        await authViewModel.logout()
-                                    }
-                                }
                             }
                             .padding(.top, 40)
                         } else if let profile = viewModel.profile {

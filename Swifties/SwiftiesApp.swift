@@ -41,7 +41,7 @@ struct SwiftiesApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                if authViewModel.isAuthenticated {
+                if authViewModel.isAuthenticated && authViewModel.user != nil {
                     let needsEmailVerification = (authViewModel.user?.providerId == "password") && (authViewModel.isEmailVerified == false)
                     if needsEmailVerification {
                         VerifyEmailView()

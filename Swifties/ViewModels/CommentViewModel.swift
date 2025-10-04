@@ -35,7 +35,8 @@ final class CommentViewModel: ObservableObject {
             } else {
                 // If even the fallback fails, return a regex that matches nothing
                 print("⚠️ Fallback regex also failed to compile. Returning a regex that matches nothing.")
-                // Return a static regex that matches nothing as a last resort
+                // Use a pattern that is guaranteed to compile (empty string matches everything, but at least avoids crash)
+                return NSRegularExpression()
                 return CommentViewModel.matchesNothingRegex
         }
     }

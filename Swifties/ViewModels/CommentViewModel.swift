@@ -97,11 +97,19 @@ final class CommentViewModel {
     }
 
     func enforceWordLimit(reviewDescription: String, wordLimit: Int) -> String {
-        let words = tokenizeWords(from: reviewDescription)
-        let limitedWords = words.prefix(wordLimit)
-        let reconstructed = limitedWords.joined(separator: " ")
-        if words.count > wordLimit {
-            return reconstructed
+        // Use regex to find word ranges, then cut the string at the end of the Nth word
+        let text = reviewDescription
+        let pattern = "\\S+"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return reviewDescription
+        }
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
+        if matches.count > wordLimit, let lastWordRange = matches.prefix(wordLimit).last?.range {
+            // The end of the Nth word
+            let endIndex = lastWordRange.location + lastWordRange.length
+            let limitedText = nsText.substring(to: endIndex)
+            return limitedText
         }
         return reviewDescription
     }

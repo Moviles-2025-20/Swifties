@@ -427,7 +427,8 @@ class WeeklyChallengeViewModel: ObservableObject {
         
         print("🔵 Activity data: \(activityData)")
         
-        db.collection("UserActivity").addDocument(data: activityData) { [weak self] error in
+        // Save to UserActivity
+        db.collection("user_activities").addDocument(data: activityData) { [weak self] error in
             guard let self = self else { return }
             
             if let error = error {
@@ -437,7 +438,33 @@ class WeeklyChallengeViewModel: ObservableObject {
                 }
             } else {
                 print("✅ Activity saved successfully!")
-                DispatchQueue.main.async {
+                // Update user's last_event
+                self.updateUserLastEvent(userId: userId, eventName: event.name)
+            }
+        }
+    }
+
+    private func updateUserLastEvent(userId: String, eventName: String) {
+        let userRef = db.collection("users").document(userId)
+        
+        guard let event = challengeEvent else {
+            print("❌ Error: No event available")
+            return
+        }
+        
+        userRef.updateData([
+            "last_event": eventName,
+            "last_event_time": Timestamp(date: Date()),
+            "event_last_category": event.category
+        ]) { [weak self] error in
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ Error updating last_event: \(error.localizedDescription)")
+                    self.errorMessage = "Error updating user profile: \(error.localizedDescription)"
+                } else {
+                    print("✅ User's last_event updated to: \(eventName), category: \(event.category)")
                     self.hasAttended = true
                     self.totalChallenges += 1
                     self.loadChallenge()
@@ -451,7 +478,7 @@ class WeeklyChallengeViewModel: ObservableObject {
     private func checkIfUserAttended(userId: String, eventId: String, completion: @escaping () -> Void) {
         print("🔍 Checking attendance for user: \(userId), event: \(eventId)")
         
-        db.collection("UserActivity")
+        db.collection("user_activities")
             .whereField("user_id", isEqualTo: userId)
             .whereField("event_id", isEqualTo: eventId)
             .whereField("type", isEqualTo: "weekly_challenge")
@@ -494,7 +521,7 @@ class WeeklyChallengeViewModel: ObservableObject {
     private func loadUserChallengeStats(userId: String, completion: @escaping (Result<Int, Error>) -> Void) {
         print("📊 Loading user challenge stats for: \(userId)")
         
-        db.collection("UserActivity")
+        db.collection("user_activities")
             .whereField("user_id", isEqualTo: userId)
             .whereField("type", isEqualTo: "weekly_challenge")
             .getDocuments { snapshot, error in
@@ -528,7 +555,7 @@ class WeeklyChallengeViewModel: ObservableObject {
         
         // Get ALL user activities (no time filter in the query)
         // The time filter is applied locally in Swift
-        db.collection("UserActivity")
+        db.collection("user_activities")
             .whereField("user_id", isEqualTo: userId)
             .whereField("type", isEqualTo: "weekly_challenge")
             .getDocuments { snapshot, error in

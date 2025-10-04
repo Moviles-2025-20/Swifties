@@ -23,7 +23,18 @@ struct RegisterView: View {
         case email
     }
     
-    let categories = ["Music", "Sport", "Academic", "Technology", "Movies", "Literature", "Know the world", "Food"]
+    let categories = ["Music",
+                      "Sports",
+                      "Academic",
+                      "Technology",
+                      "Movies",
+                      "Literature",
+                      "Know the world",
+                      "Food",
+                      "Art",
+                      "Gaming",
+                      "Science",
+                      "Outdoor"]
     let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     let majors = [
         "Ingenieria Industrial",

@@ -177,14 +177,55 @@ struct EventDetailView: View {
                                 Text("Comments")
                                     .font(.headline)
                                 
-                                Text("No comments yet. Be the first!")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                if viewModel.comments.isEmpty {
+                                    Text("No comments yet. Be the first!")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    ForEach(viewModel.comments.compactMap { $0 }, id: \.id) { comment in
+                                        ZStack {
+                                            Rectangle()
+                                                .fill(Color(.appSecondary))
+                                                .cornerRadius(4)
+                                            
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(comment.metadata.title)
+                                                    .font(.title3)
+                                                    .foregroundColor(.black)
+                                                
+                                                Text(comment.metadata.text)
+                                                    .font(.body)
+                                                    .foregroundColor(.black.opacity(0.8))
+                                                
+                                                HStack {
+                                                    if let emotion = comment.emotion {
+                                                        Text("🧠 Emotion: \(emotion)")
+                                                            .font(.footnote)
+                                                            .foregroundColor(.gray)
+                                                    }
+                                                    
+                                                    Spacer()
+                                                    
+                                                    if let rating = comment.rating {
+                                                        Text("Rating: \(rating) Stars")
+                                                            .font(.footnote)
+                                                            .foregroundColor(.gray)
+                                                    }
+                                                }
+                                            }
+                                            .padding(8)
+                                        }
+                                        .padding(10)
+                                    }
+                                }
                             }
                             .padding()
                             .background(Color(.systemBackground))
                             .cornerRadius(12)
                             .padding(.bottom, 20)
+                            .task {
+                                await viewModel.loadComments(event_id: event.id ?? "")
+                            }
                         }
                         .padding(.horizontal)
                     }

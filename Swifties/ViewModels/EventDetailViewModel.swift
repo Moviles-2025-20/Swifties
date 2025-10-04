@@ -12,6 +12,7 @@ class EventDetailViewModel: ObservableObject {
     @Published var event: Event?
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var comments: [Comment?] = []
     
     private let eventId: String
     let db = Firestore.firestore(database: "default")
@@ -63,6 +64,35 @@ class EventDetailViewModel: ObservableObject {
             }
         }
     }
+    
+    func loadComments(event_id: String) async {
+        do {
+            let snapshot = try await db.collection("comments")
+                .whereField("event_id", isEqualTo: event_id)
+                .order(by: "created", descending: true)
+                .getDocuments()
+
+            let parsed = snapshot.documents.compactMap { doc -> Comment? in
+                do {
+                    return try doc.data(as: Comment.self)
+                } catch {
+                    print("⚠️ Failed to parse comment \(doc.documentID): \(error)")
+                    return nil
+                }
+            }
+
+            await MainActor.run {
+                self.comments = parsed
+                print("✅ Loaded \(parsed.count) comments for event \(event_id)")
+            }
+        } catch {
+            print("❌ Error fetching comments: \(error.localizedDescription)")
+            await MainActor.run {
+                self.comments = []
+            }
+        }
+    }
+
     
     private func parseEvent(documentId: String, data: [String: Any]) -> Event? {
         guard let name = data["name"] as? String,

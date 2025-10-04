@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>The photo library is accessed in case you want to upload a photo to a comment made</string>
+	<key>NSCameraUsageDescription</key>
+	<string>The camera is utilized in order to upload photos directly to comments made</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

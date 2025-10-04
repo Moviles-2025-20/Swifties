@@ -5,6 +5,7 @@ struct EventDetailView: View {
     @StateObject var viewModel: EventDetailViewModel
     let event: Event
     @Environment(\.dismiss) var dismiss
+    @State private var showAddComment: Bool = false
     
     init(event: Event) {
         self.event = event
@@ -13,7 +14,7 @@ struct EventDetailView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            Color(.systemGroupedBackground)
+            Color("appPrimary")
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -29,6 +30,14 @@ struct EventDetailView: View {
                         dismiss()
                     }
                 )
+                
+                // Hidden navigation link to push AddCommentView while keeping the Tab Bar visible
+                NavigationLink(isActive: $showAddComment) {
+                    AddCommentView(event: event)
+                } label: {
+                    EmptyView()
+                }
+                .hidden()
                 
                 // Scrollable content
                 ScrollView {
@@ -78,7 +87,7 @@ struct EventDetailView: View {
                             
                             // Make a Comment Button
                             Button(action: {
-                                // Add comment action
+                                showAddComment = true
                             }) {
                                 Text("Make a Comment")
                                     .font(.headline)
@@ -172,3 +181,4 @@ struct EventDetailView: View {
         return distribution[rating] ?? 0.0
     }
 }
+

@@ -1,14 +1,19 @@
 import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 
 struct EventDetailView: View {
     @StateObject var viewModel: EventDetailViewModel
     let event: Event
     @Environment(\.dismiss) var dismiss
     @State private var showAddComment: Bool = false
+    @State private var hasAttended: Bool = false
+    @State private var isCheckingAttendance: Bool = true
+    
+    private let db = Firestore.firestore(database: "default")
     
     init(event: Event) {
         self.event = event
-        // Use title as unique identifier since there's no id field
         _viewModel = StateObject(wrappedValue: EventDetailViewModel(eventId: event.title))
     }
     
@@ -18,7 +23,6 @@ struct EventDetailView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Use the CustomTopBar
                 CustomTopBar(
                     title: "Event Details",
                     showNotificationButton: true,
@@ -31,7 +35,6 @@ struct EventDetailView: View {
                     }
                 )
                 
-                // Hidden navigation link to push AddCommentView while keeping the Tab Bar visible
                 NavigationLink(isActive: $showAddComment) {
                     AddCommentView(event: event)
                 } label: {
@@ -39,10 +42,9 @@ struct EventDetailView: View {
                 }
                 .hidden()
                 
-                // Scrollable content
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        // Event Image - full width, no padding
+                        // Event Image
                         if !event.metadata.imageUrl.isEmpty, let url = URL(string: event.metadata.imageUrl) {
                             AsyncImage(url: url) { image in
                                 image
@@ -57,7 +59,6 @@ struct EventDetailView: View {
                             .clipped()
                         }
                         
-                        // Content container with padding
                         VStack(alignment: .leading, spacing: 16) {
                             // Event Title
                             Text(event.title)
@@ -83,17 +84,38 @@ struct EventDetailView: View {
                                 .font(.body)
                                 .foregroundColor(.primary)
                             
-                            // Make a Comment Button
-                            Button(action: {
-                                showAddComment = true
-                            }) {
-                                Text("Make a Comment")
-                                    .font(.headline)
+                            // Buttons Row
+                            HStack(spacing: 12) {
+                                // Make a Comment Button
+                                Button(action: {
+                                    showAddComment = true
+                                }) {
+                                    Text("Make a Comment")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color.orange)
+                                        .cornerRadius(12)
+                                }
+                                
+                                // Attendance Button
+                                Button(action: {
+                                    markAsAttending()
+                                }) {
+                                    HStack {
+                                        Image(systemName: hasAttended ? "checkmark.circle.fill" : "hand.raised.fill")
+                                        Text(hasAttended ? "Attending!" : "I'm Going")
+                                            .font(.headline)
+                                    }
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding()
-                                    .background(Color.orange)
+                                    .background(hasAttended ? Color.green : Color.blue)
                                     .cornerRadius(12)
+                                }
+                                .disabled(hasAttended || isCheckingAttendance)
+                                .opacity((hasAttended || isCheckingAttendance) ? 0.7 : 1.0)
                             }
                             .padding(.top, 8)
                             
@@ -171,12 +193,106 @@ struct EventDetailView: View {
             }
         }
         .navigationBarHidden(true)
+        .onAppear {
+            checkIfUserAttended()
+        }
     }
     
     private func getPercentage(for rating: Int) -> Double {
-        // Mock data - replace with actual rating distribution from your stats
         let distribution: [Int: Double] = [5: 0.4, 4: 0.3, 3: 0.15, 2: 0.1, 1: 0.05]
         return distribution[rating] ?? 0.0
     }
+    
+    // MARK: - Firebase Methods
+    
+    private func checkIfUserAttended() {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            isCheckingAttendance = false
+            return
+        }
+        
+        db.collection("user_activities")
+            .whereField("user_id", isEqualTo: userId)
+            .whereField("event_id", isEqualTo: event.name)
+            .whereField("source", isEqualTo: "list_events")
+            .getDocuments { snapshot, error in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        print("Error checking attendance: \(error.localizedDescription)")
+                        isCheckingAttendance = false
+                        return
+                    }
+                    
+                    let hasAttendedEvent = (snapshot?.documents.count ?? 0) > 0
+                    hasAttended = hasAttendedEvent
+                    isCheckingAttendance = false
+                    
+                    print("Attendance check: \(hasAttendedEvent ? "Already attending" : "Not attending yet")")
+                }
+            }
+    }
+    
+    private func markAsAttending() {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("Error: User not authenticated")
+            return
+        }
+        
+        let activityData: [String: Any] = [
+            "event_id": event.name,
+            "source": "list_events",
+            "time": Timestamp(date: Date()),
+            "time_of_day": getCurrentTimeOfDay(),
+            "type": "event_attendance",
+            "user_id": userId,
+            "with_friends": false
+        ]
+        
+        // Save to UserActivity
+        db.collection("user_activities").addDocument(data: activityData) { error in
+            if let error = error {
+                print("Error saving attendance: \(error.localizedDescription)")
+                return
+            }
+            
+            print("Attendance saved successfully!")
+            
+            // Update user's last_event
+            self.updateUserLastEvent(userId: userId)
+        }
+    }
+    
+    private func updateUserLastEvent(userId: String) {
+        let userRef = db.collection("users").document(userId)
+        
+        userRef.updateData([
+            "last_event": event.name,
+            "last_event_time": Timestamp(date: Date()),
+            "event_last_category": event.category
+        ]) { error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Error updating last_event: \(error.localizedDescription)")
+                } else {
+                    print("User's last_event updated to: \(self.event.name), category: \(self.event.category)")
+                    self.hasAttended = true
+                }
+            }
+        }
+    }
+    
+    private func getCurrentTimeOfDay() -> String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        
+        switch hour {
+        case 6..<12:
+            return "morning"
+        case 12..<17:
+            return "afternoon"
+        case 17..<21:
+            return "evening"
+        default:
+            return "night"
+        }
+    }
 }
-

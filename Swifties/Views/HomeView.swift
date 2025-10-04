@@ -61,16 +61,17 @@ struct HomeView: View {
                             .padding(.bottom, 10)
                             
                             HStack (spacing: 15) {
-                                NavigationLink { //  NavigationLink
-                                    WishMeLuckView()
-                                } label: {
-                                    Text("Wish me Luck")
+                                Button(action: {
+                              
+                                }) {
+                                    Text("Place Holder")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.white)
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(Color("appRed"))
+
                                 
                                 Button {
                                     print("Map")

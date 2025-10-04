@@ -47,7 +47,7 @@ struct LoginView: View {
                             VerifyEmailView()
                                 .environmentObject(viewModel)
                         } else {
-                            HomeView()
+                            MainView()
                                 .environmentObject(viewModel)
                                 .navigationBarBackButtonHidden(true)
                         }

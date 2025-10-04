@@ -183,6 +183,10 @@ struct Magic8BallView: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(isLoading ? Color.gray : .appOcher)
+            .cornerRadius(16)
         }
     }
 }

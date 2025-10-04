@@ -526,8 +526,8 @@ class WeeklyChallengeViewModel: ObservableObject {
         print("📅 Current date: \(currentDate)")
         print("📅 30 days ago: \(thirtyDaysAgo)")
         
-        // Obtener TODAS las actividades del usuario (sin filtro de tiempo en la consulta)
-        // El filtro de tiempo se hace localmente en Swift
+        // Get ALL user activities (no time filter in the query)
+        // The time filter is applied locally in Swift
         db.collection("UserActivity")
             .whereField("user_id", isEqualTo: userId)
             .whereField("type", isEqualTo: "weekly_challenge")

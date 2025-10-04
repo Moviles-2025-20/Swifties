@@ -101,7 +101,6 @@ final class HomeViewModel: ObservableObject {
                 }
             } catch {
                 print("Failed to fetch document \(eventID): \(error.localizedDescription)")
-                continue
             }
         }
         

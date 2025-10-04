@@ -19,7 +19,6 @@ struct EventMapView: View {
     @State private var region = MKCoordinateRegion(center: bogotaCoordinates,
                                                    span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
     @State private var showNearbyEvents = false
-    @State private var navigateToDetailID: Event.ID?
     @Environment(\.dismiss) var dismiss
     
     // Calculate nearest N events using Haversine distance
@@ -51,7 +50,7 @@ struct EventMapView: View {
                     Annotation(event.title ?? "Event", coordinate: coordinate) {
                         Button {
                             selectedEvent = event
-                            navigateToDetailID = event.id
+                            onSelect?(event)
                         } label: {
                             Image(systemName: "mappin.circle.fill")
                                 .font(.title)
@@ -75,8 +74,7 @@ struct EventMapView: View {
                 }
             }
             .ignoresSafeArea()
-            
-            
+                        
             // Floating Action Button
             VStack {
                 Spacer()
@@ -127,21 +125,15 @@ struct EventMapView: View {
                             region.span = MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
                         }
                     }
-                    // Then navigate to detail
+                    // Trigger selection after animation
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        navigateToDetailID = event.id
+                        selectedEvent = event
+                        onSelect?(event)
                     }
                 }
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
-        }
-        .navigationDestination(item: $navigateToDetailID) { id in
-            if let event = events.first(where: { $0.id == id }) {
-                EventDetailView(event: event)
-            } else {
-                Text("Event not found")
-            }
         }
         .navigationBarHidden(true)
     }

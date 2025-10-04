@@ -153,7 +153,7 @@ class AuthViewModel: ObservableObject {
     }
     
     func isValidPassword(_ password: String) -> Bool {
-        let passwordRegEx = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)[A-Za-z\\d]{8,}$"
+        let passwordRegEx = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)[A-Za-z\\d@$!%*?&]{8,}$"
         let passwordPredicate = NSPredicate(format: "SELF MATCHES %@", passwordRegEx)
         return passwordPredicate.evaluate(with: password)
     }

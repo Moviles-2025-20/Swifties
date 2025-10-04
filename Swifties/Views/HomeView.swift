@@ -11,6 +11,9 @@ struct HomeView: View {
     @EnvironmentObject var viewModel: AuthViewModel
     @State private var selectedTab = 0
     
+    @StateObject var homeViewModel = HomeViewModel()
+    @State private var recommended: [Event]  = []
+        
     var body: some View {
         NavigationStack { 
             ZStack {
@@ -95,6 +98,33 @@ struct HomeView: View {
                             }
                             .padding(.top, 20)
                             
+                            VStack(spacing: 12) {
+                                if recommended.isEmpty {
+                                    ProgressView("Loading recommendations…")
+                                } else {
+                                    ForEach(recommended) { event in
+                                        NavigationLink(destination: EventDetailView(event: event)) {
+                                            EventInfo(
+                                                imagePath: event.metadata.imageUrl,
+                                                title: event.name,
+                                                titleColor: Color.orange,
+                                                description: event.description,
+                                                timeText: event.schedule.times.first ?? "Time TBD",
+                                                walkingMinutes: 5,
+                                                location: event.location?.address
+                                            )
+                                        }
+                                }
+                                .padding(.horizontal, 16)}
+                            }
+                            .task {
+                                do {
+                                    recommended = try await homeViewModel.getRecommendations()
+                                } catch {
+                                    print("Error loading recommendations: \(error)")
+                                }
+                            }
+                            
                             EventInfo(imagePath: "evento",
                                       title: "Daily Marathon",
                                       titleColor: Color("appOcher"),
@@ -114,16 +144,6 @@ struct HomeView: View {
                                 Spacer()
                             }
                             .padding(.top, 20)
-                            
-                            EventInfo(imagePath: "evento",
-                                      title: "Kaldivia",
-                                      titleColor: Color("appBlue"),
-                                      description: "Have a cup of coffee during your free period!",
-                                      timeText: "Today, all-day",
-                                      walkingMinutes: 6,
-                                      location: "S1")
-                            .padding(.bottom)
-                            .padding(.horizontal, 16)
                             
                             EventInfo(imagePath: "evento",
                                       title: "Cívico Pets",

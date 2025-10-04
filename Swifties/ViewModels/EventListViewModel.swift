@@ -10,7 +10,6 @@ import FirebaseFirestore
 import Combine
 
 class EventListViewModel: ObservableObject {
-
     @Published var events: [Event] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -55,7 +54,7 @@ class EventListViewModel: ObservableObject {
         }
     }
     
-    private func parseEvent(documentId: String, data: [String: Any]) -> Event? {
+    func parseEvent(documentId: String, data: [String: Any]) -> Event? {
         // Required fields
         guard let name = data["name"] as? String,
               let description = data["description"] as? String,

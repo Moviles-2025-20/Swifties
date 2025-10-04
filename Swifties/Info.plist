@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>The photo library is accessed in case you want to upload a photo to a comment you make</string>
+	<key>NSCameraUsageDescription</key>
+	<string>The camera is used to upload photos directly when making a comment</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>When location is active, the app will be able to show you a map view and the closest activities to you; including those in a 1km radius.</string>
 	<key>CFBundleURLTypes</key>

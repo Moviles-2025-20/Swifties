@@ -62,9 +62,9 @@ struct HomeView: View {
                             
                             HStack (spacing: 15) {
                                 Button(action: {
-                                    // No hacer nada
+                              
                                 }) {
-                                    Text("Wish me Luck")
+                                    Text("Place Holder")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.white)

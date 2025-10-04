@@ -41,9 +41,7 @@ struct HomeView: View {
                             .padding(.bottom, 10)
                             
                             HStack (spacing: 15) {
-                                Button {
-                                    print("Weekly Challenge")
-                                } label: {
+                                NavigationLink(destination: WeeklyChallengeView()) {
                                     Text("Weekly Challenge")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
@@ -65,7 +63,7 @@ struct HomeView: View {
                             
                             HStack (spacing: 15) {
                                 NavigationLink { //  NavigationLink
-                                    Magic8BallView()
+                                    WishMeLuckView()
                                 } label: {
                                     Text("Wish me Luck")
                                         .frame(width: 120, height: 80)

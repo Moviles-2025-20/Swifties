@@ -4,258 +4,332 @@
 //
 //  Created by Imac  on 2/10/25.
 //
-
+//
 import SwiftUI
-import FirebaseFirestore
+import CoreMotion
 
-struct Magic8BallView: View {
-    @State var events: [Event] = []
-    @State private var selectedEvent: Event? = nil
+struct WishMeLuckView: View {
+    @StateObject private var viewModel = WishMeLuckViewModel()
     @State private var animateBall = false
-
+    @State private var isShaking = false
+    
+    // Accelerometer
+    private let motionManager = CMMotionManager()
+    @State private var lastShakeTime: Date?
+    private let shakeThreshold: Double = 2.5
+    private let shakeCooldown: TimeInterval = 3.0
+    
     var body: some View {
-        VStack {
-            Spacer().frame(height: 40)
-
-            // MARK: - Magic 8-Ball
+        NavigationStack {
             ZStack {
-                Circle()
-                    .fill(Color.black)
-                    .frame(width: 280, height: 280)
-                    .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 8)
-
-                Text("8")
-                    .font(.system(size: 130, weight: .bold))
-                    .foregroundColor(.white)
-                    .rotationEffect(.degrees(animateBall ? 360 : 0))
-                    .animation(.easeInOut(duration: 0.6), value: animateBall)
-            }
-            .padding(.top, 40)
-
-            Spacer().frame(height: 30)
-
-            // MARK: - Selected Event Info
-            VStack(spacing: 12) {
-                if let event = selectedEvent {
-
-                    // Event Image
-                    if !event.metadata.imageUrl.isEmpty {
-                        AsyncImage(url: URL(string: event.metadata.imageUrl)) { image in
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        } placeholder: {
-                            Color.gray.opacity(0.3)
-                        }
-                        .frame(height: 120)
-                        .cornerRadius(16)
-                    } else {
-                        Color.gray.opacity(0.3)
-                            .frame(height: 120)
-                            .cornerRadius(16)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.white.opacity(0.7))
+                Color("appPrimary")
+                    .ignoresSafeArea()
+                
+                VStack {
+                    CustomTopBar(
+                        title: "Wish Me Luck",
+                        showNotificationButton: true,
+                        onBackTap: {}
+                    )
+                    
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            // MARK: - Header Section
+                            HeaderSection(daysSinceLastWished: viewModel.daysSinceLastWished)
+                                .padding(.horizontal, 20)
+                            
+                            // MARK: - Magic 8-Ball
+                            Magic8BallCard(
+                                isLoading: viewModel.isLoading,
+                                animateBall: $animateBall
                             )
-                    }
-
-                    // Event Name
-                    Text(event.name)
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-
-                    // Event Description
-                    Text(event.description)
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 6)
-
-                    // Event Category and Type
-                    HStack(spacing: 16) {
-                        Label(event.category, systemImage: "tag")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-
-                        Label(event.type, systemImage: "star.fill")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                    }
-
-                    // Event Location, Duration, Cost
-                    HStack(spacing: 16) {
-                        Label(event.location?.address ?? "Address not found", systemImage: "mappin.and.ellipse")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-
-                        Label("\(event.metadata.durationMinutes) min", systemImage: "clock")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-
-                        Label(formatCost(event.metadata.cost), systemImage: "dollarsign.circle")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                    }
-
-                    // Event Popularity and Rating
-                    HStack(spacing: 16) {
-                        Label("\(event.stats.popularity)% popular", systemImage: "heart.fill")
-                            .font(.caption2)
-                            .foregroundColor(.red)
-
-                        Label(String(format: "%d ★", event.stats.rating), systemImage: "star.fill")
-                            .font(.caption2)
-                            .foregroundColor(.yellow)
-                    }
-
-                } else {
-                    Text("Shake or tap the button below")
-                        .font(.body)
-                        .foregroundColor(.primary)
-
-                    Text("And let the magic 8-ball discover your perfect event!")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: 280)
-            .padding(16)
-            .background(Color.white)
-            .cornerRadius(24)
-            .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 8)
-            .padding(.horizontal, 16)
-
-            Spacer().frame(height: 20)
-
-            // MARK: - Button
-            Button(action: {
-                if !events.isEmpty {
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
-                        animateBall.toggle()
-                        selectedEvent = events.randomElement()
+                            .padding(.horizontal, 20)
+                            
+                            // MARK: - Motivational Message
+                            if let _ = viewModel.currentEvent {
+                                MotivationalMessageCard(message: viewModel.getMotivationalMessage())
+                                    .padding(.horizontal, 20)
+                            }
+                            
+                            // MARK: - Event Preview or Empty State
+                            if let event = viewModel.currentEvent {
+                                EventPreviewCard(event: event)
+                                    .padding(.horizontal, 20)
+                            } else if !viewModel.isLoading {
+                                EmptyStateCard()
+                                    .padding(.horizontal, 20)
+                            }
+                            
+                            // MARK: - Wish Me Luck Button
+                            WishMeLuckButton(isLoading: viewModel.isLoading) {
+                                Task {
+                                    await triggerWish()
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
+                        }
+                        .padding(.top, 10)
                     }
                 }
-            }) {
-                Text("✨ Wish Me Luck!")
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.orange)
-                    .cornerRadius(16)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 40)
-        }
-        .background(Color("appPrimary").ignoresSafeArea())
-        .onAppear {
-            if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
-                loadEventsFromFirebase()
+            .navigationBarHidden(true)
+            .task {
+                await viewModel.calculateDaysSinceLastWished()
+                startAccelerometerUpdates()
+            }
+            .onDisappear {
+                stopAccelerometerUpdates()
             }
         }
     }
-
-    // MARK: - Helper to format cost
-    private func formatCost(_ cost: EventCost) -> String {
-        if cost.amount == 0 {
-            return "Free"
+    
+    // MARK: - Trigger Wish
+    private func triggerWish() async {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            animateBall = true
         }
-        return "\(cost.amount) \(cost.currency)"
-    }
-
-    // MARK: - Load events from Firebase
-    func loadEventsFromFirebase() {
-        let db = Firestore.firestore()
-        db.collection("events").getDocuments { snapshot, error in
-            guard let docs = snapshot?.documents else { return }
-
-            Task { @MainActor in
-                self.events = docs.compactMap { doc -> Event? in
-                    do {
-                        return try doc.data(as: Event.self)
-                    } catch {
-                        print("Failed to decode Event from Firestore document \(doc.documentID): \(error)")
-                        return nil
-                    }
-                }
+        
+        await viewModel.wishMeLuck()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            withAnimation {
+                animateBall = false
             }
+        }
+    }
+    
+    // MARK: - Accelerometer
+    private func startAccelerometerUpdates() {
+        guard motionManager.isAccelerometerAvailable else { return }
+        
+        motionManager.accelerometerUpdateInterval = 0.1
+        motionManager.startAccelerometerUpdates(to: .main) { data, error in
+            guard let data = data, error == nil else { return }
+            
+            let acceleration = sqrt(
+                pow(data.acceleration.x, 2) +
+                pow(data.acceleration.y, 2) +
+                pow(data.acceleration.z, 2)
+            )
+            
+            if acceleration > shakeThreshold {
+                handleShake()
+            }
+        }
+    }
+    
+    private func stopAccelerometerUpdates() {
+        motionManager.stopAccelerometerUpdates()
+    }
+    
+    private func handleShake() {
+        let now = Date()
+        
+        // Check cooldown
+        if let lastShake = lastShakeTime,
+           now.timeIntervalSince(lastShake) < shakeCooldown {
+            return
+        }
+        
+        // Don't shake if already loading
+        guard !viewModel.isLoading else { return }
+        
+        lastShakeTime = now
+        
+        // Haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        Task {
+            await triggerWish()
         }
     }
 }
 
-// MARK: - Preview with mock events
-struct Magic8BallView_Previews: PreviewProvider {
+// MARK: - Header Section
+struct HeaderSection: View {
+    let daysSinceLastWished: Int
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("Days since last wished")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Text("\(daysSinceLastWished)")
+                .font(.system(size: 48, weight: .bold))
+                .foregroundColor(Color("appBlue"))
+            
+            Text(daysSinceLastWished == 1 ? "day" : "days")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+    }
+}
+
+// MARK: - Magic 8-Ball Card
+struct Magic8BallCard: View {
+    let isLoading: Bool
+    @Binding var animateBall: Bool
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Shake your phone or tap the button")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            ZStack {
+                Circle()
+                    .fill(Color.black)
+                    .frame(width: 200, height: 200)
+                    .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 8)
+                
+                if isLoading {
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(1.5)
+                } else {
+                    Text("8")
+                        .font(.system(size: 100, weight: .bold))
+                        .foregroundColor(.white)
+                        .rotationEffect(.degrees(animateBall ? 360 : 0))
+                        .animation(.easeInOut(duration: 0.6), value: animateBall)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 30)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+    }
+}
+
+// MARK: - Motivational Message Card
+struct MotivationalMessageCard: View {
+    let message: String
+    
+    var body: some View {
+        Text(message)
+            .font(.headline)
+            .foregroundColor(Color("appOcher"))
+            .multilineTextAlignment(.center)
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(Color.white)
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+    }
+}
+
+// MARK: - Event Preview Card
+struct EventPreviewCard: View {
+    let event: WishMeLuckEvent
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Event Image
+            if !event.imageUrl.isEmpty {
+                AsyncImage(url: URL(string: event.imageUrl)) { image in
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } placeholder: {
+                    Color.gray.opacity(0.3)
+                }
+                .frame(height: 180)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            } else {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(height: 180)
+                    .overlay(
+                        Image(systemName: "photo")
+                            .font(.system(size: 40))
+                            .foregroundColor(.white.opacity(0.7))
+                    )
+            }
+            
+            // Event Title
+            Text(event.title)
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            // Event Description
+            Text(event.description)
+                .font(.body)
+                .foregroundColor(.secondary)
+                .lineLimit(3)
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+    }
+}
+
+// MARK: - Empty State Card
+struct EmptyStateCard: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "wand.and.sparkles.inverse")
+                .font(.system(size: 50))
+                .foregroundColor(Color("appBlue").opacity(0.6))
+            
+            Text("Shake or tap the button below")
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Text("And let the magic 8-ball discover your perfect event!")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+    }
+}
+
+// MARK: - Wish Me Luck Button
+struct WishMeLuckButton: View {
+    let isLoading: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                if isLoading {
+                    ProgressView()
+                        .tint(.white)
+                }
+                
+                Text(isLoading ? "Finding your event..." : "✨ Wish Me Luck!")
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(isLoading ? Color.gray : Color.orange)
+            .cornerRadius(16)
+        }
+        .disabled(isLoading)
+    }
+}
+
+// MARK: - Preview
+struct WishMeLuckView_Previews: PreviewProvider {
     static var previews: some View {
-        let mockEvents: [Event] = [
-            Event(
-                activetrue: true,
-                category: "Music",
-                created: "2025-10-05T18:00:00-05:00",
-                description: "Live rock music concert",
-                eventType: "Concert",
-                location: EventLocation(
-                    address: "Calle 123",
-                    city: "Bogotá",
-                    coordinates: [4.6097, -74.0817],
-                    type: "Indoor"
-                ),
-                metadata: EventMetadata(
-                    cost: EventCost(amount: 50000, currency: "COP"),
-                    durationMinutes: 120,
-                    imageUrl: "https://example.com/image.jpg",
-                    tags: ["rock", "live", "music"]
-                ),
-                name: "Rock Fest",
-                schedule: EventSchedule(
-                    days: ["Friday", "Saturday"],
-                    times: ["18:00", "20:00"]
-                ),
-                stats: EventStats(
-                    popularity: 85,
-                    rating: 4,
-                    totalCompletions: 150
-                ),
-                title: "Rock Fest 2025",
-                type: "Concert",
-                weatherDependent: false
-            ),
-            Event(
-                activetrue: true,
-                category: "Art",
-                created: "2025-10-05T10:00:00-05:00",
-                description: "Modern art exhibition",
-                eventType: "Exhibition",
-                location: EventLocation(
-                    address: "Carrera 7",
-                    city: "Bogotá",
-                    coordinates: [4.6533, -74.0836],
-                    type: "Indoor"
-                ),
-                metadata: EventMetadata(
-                    cost: EventCost(amount: 0, currency: "COP"),
-                    durationMinutes: 90,
-                    imageUrl: "https://example.com/art.jpg",
-                    tags: ["art", "modern", "exhibition"]
-                ),
-                name: "Art Expo",
-                schedule: EventSchedule(
-                    days: ["Monday", "Tuesday"],
-                    times: ["10:00", "14:00"]
-                ),
-                stats: EventStats(
-                    popularity: 70,
-                    rating: 5,
-                    totalCompletions: 200
-                ),
-                title: "Art Expo 2025",
-                type: "Exhibition",
-                weatherDependent: false
-            )
-        ]
-        return Magic8BallView(events: mockEvents)
+        WishMeLuckView()
     }
 }

@@ -61,9 +61,9 @@ struct HomeView: View {
                             .padding(.bottom, 10)
                             
                             HStack (spacing: 15) {
-                                NavigationLink { //  NavigationLink
-                                    WishMeLuckView()
-                                } label: {
+                                Button(action: {
+                                    // No hacer nada
+                                }) {
                                     Text("Wish me Luck")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
@@ -71,6 +71,7 @@ struct HomeView: View {
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(Color("appRed"))
+
                                 
                                 Button {
                                     print("Map")

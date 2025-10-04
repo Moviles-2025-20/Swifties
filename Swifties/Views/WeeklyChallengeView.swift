@@ -556,7 +556,7 @@ class WeeklyChallengeViewModel: ObservableObject {
                     }
                 }
                 
-                // Preparar las últimas 4 semanas
+                // Prepare the last 4 weeks
                 var chartData: [ChartData] = []
                 var hasAttendedThisWeek = false
                 

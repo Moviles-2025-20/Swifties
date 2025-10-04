@@ -229,7 +229,9 @@ struct AddCommentView: View {
             userId: uid,
             title: reviewTitle.trimmingCharacters(in: .whitespacesAndNewlines),
             text: reviewDescription.trimmingCharacters(in: .whitespacesAndNewlines),
-            image: selectedImage
+            image: selectedImage,
+            rating: rating,
+            emotion: selectedEmotion.title
         )
 
         do {

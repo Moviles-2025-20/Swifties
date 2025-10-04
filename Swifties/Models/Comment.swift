@@ -22,6 +22,8 @@ struct Comment: Codable {
     let eventId: String
     let userId: String
     let metadata: Metadata
+    let rating: Int?
+    let emotion: String?
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -29,5 +31,7 @@ struct Comment: Codable {
         case eventId = "event_id"
         case userId = "user_id"
         case metadata
+        case rating
+        case emotion
     }
 }

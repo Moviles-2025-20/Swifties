@@ -16,6 +16,8 @@ final class CommentViewModel {
         let title: String
         let text: String
         let image: UIImage?
+        let rating: Int?
+        let emotion: String?
     }
 
     func submit(_ payload: SubmissionPayload) async throws {
@@ -33,7 +35,9 @@ final class CommentViewModel {
             created: Date(),
             eventId: payload.eventId,
             userId: payload.userId,
-            metadata: .init(imageURL: imageURLString, title: payload.title, text: payload.text)
+            metadata: .init(imageURL: imageURLString, title: payload.title, text: payload.text),
+            rating: payload.rating,
+            emotion: payload.emotion
         )
 
         try await docRef.setData(toFirestore(comment: comment))
@@ -51,7 +55,9 @@ final class CommentViewModel {
             "created": Timestamp(date: comment.created),
             "event_id": comment.eventId,
             "user_id": comment.userId,
-            "metadata": metadataDict
+            "metadata": metadataDict,
+            "rating": comment.rating as Any,
+            "emotion": comment.emotion as Any
         ]
     }
 

@@ -512,7 +512,7 @@ class WeeklyChallengeViewModel: ObservableObject {
     
     private func loadLast30DaysData(userId: String, completion: @escaping (Result<[ChartData], Error>) -> Void) {
         var calendar = Calendar.current
-        calendar.firstWeekday = 2 // Lunes
+        calendar.firstWeekday = 2 // Monday
         
         let currentDate = Date()
         

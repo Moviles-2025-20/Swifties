@@ -249,7 +249,7 @@ struct AddCommentView: View {
             if let data = try await item.loadTransferable(type: Data.self),
                let image = UIImage(data: data) {
                 await MainActor.run {
-                    return image
+                    selectedImage = image
                 }
             }
         } catch {

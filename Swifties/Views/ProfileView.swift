@@ -9,7 +9,8 @@ import SwiftUI
 
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
-    
+    @StateObject private var authViewModel = AuthViewModel()
+        
     var body: some View {
         
         ZStack{Color("appPrimary").ignoresSafeArea()
@@ -32,10 +33,21 @@ struct ProfileView: View {
                                     .foregroundColor(.red)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, 20)
+                                
                                 Button("Retry") {
                                     viewModel.loadProfile()
                                 }
                                 .buttonStyle(.borderedProminent)
+                                
+                                ActionButton(
+                                    title: "Log Out",
+                                    backgroundColor: Color("appRed")
+                                ) {
+                                    // Handle log out
+                                    Task {
+                                        await authViewModel.logout()
+                                    }
+                                }
                             }
                             .padding(.top, 40)
                         } else if let profile = viewModel.profile {
@@ -78,7 +90,9 @@ struct ProfileView: View {
                                     backgroundColor: Color("appRed")
                                 ) {
                                     // Handle log out
-                                    print("Log out tapped")
+                                    Task {
+                                        await authViewModel.logout()
+                                    }
                                 }
 
                                 ActionButton(
@@ -98,6 +112,7 @@ struct ProfileView: View {
                             Text("No profile data available.")
                                 .foregroundColor(.secondary)
                                 .padding(.top, 40)
+                            
                             Button("Reload") {
                                 viewModel.loadProfile()
                             }

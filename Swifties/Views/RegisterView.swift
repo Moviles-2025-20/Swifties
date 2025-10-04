@@ -129,8 +129,7 @@ struct RegisterView: View {
             Text("Your profile has been saved successfully!")
         }
         .fullScreenCover(isPresented: $navigateToHome) {
-            HomeView()
-                .environmentObject(authViewModel)
+            MainView()
         }
         .onAppear {
             viewModel.initializeWithAuthUser(Auth.auth().currentUser)

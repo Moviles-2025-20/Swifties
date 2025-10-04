@@ -44,7 +44,7 @@ final class CommentViewModel {
     }
     
     // Firestore payload
-    func toFirestore(comment: Comment) -> [String: Any] {
+    private func toFirestore(comment: Comment) -> [String: Any] {
         var metadataDict: [String: Any] = [
             "title": comment.metadata.title,
             "text": comment.metadata.text,

@@ -339,7 +339,7 @@ class WeeklyChallengeViewModel: ObservableObject {
         hasAttended = false
         
         guard let userId = currentUserId else {
-            errorMessage = "Usuario no autenticado"
+            errorMessage = "User not authenticated"
             isLoading = false
             return
         }

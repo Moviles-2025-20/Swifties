@@ -90,19 +90,22 @@ final class HomeViewModel: ObservableObject {
     private func loadRecommendations(from eventIDs: [String]) async {
         var tempEvents: [Event] = []
         
-        for eventID in searchResults {
-            let document = try await db.collection("events").document(eventID).getDocument()
-            
-          
-            if let event = EventFactory.createEvent(from: document) {
-                recommendations.append(event)
-            } else {
-                print("No valid data for document \(eventID)")
+        for eventID in eventIDs {
+            do {
+                let document = try await db.collection("events").document(eventID).getDocument()
+                
+                if let event = EventFactory.createEvent(from: document) {
+                    tempEvents.append(event)
+                } else {
+                    print("No valid data for document \(eventID)")
+                }
+            } catch {
+                print("Failed to fetch document \(eventID): \(error.localizedDescription)")
                 continue
             }
         }
         
-        // Update published property on main thread
+        // Update published property
         recommendations = tempEvents
     }
     

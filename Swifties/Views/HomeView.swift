@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var selectedTab = 0
     
     @StateObject var homeViewModel = HomeViewModel()
+    @StateObject var profileViewModel = ProfileViewModel()
     @State private var recommended: [Event]  = []
         
     var body: some View {
@@ -86,7 +87,7 @@ struct HomeView: View {
                             }
                             
                             HStack {
-                                Text("Daily Recommendation")
+                                Text("Daily Recommendations")
                                     .font(.title3)
                                     .fontWeight(.semibold)
                                     .padding()
@@ -100,7 +101,7 @@ struct HomeView: View {
                                 if recommended.isEmpty {
                                     ProgressView("Loading recommendations…")
                                 } else {
-                                    ForEach(recommended) { event in
+                                    ForEach(recommended, id: \.title) { event in
                                         NavigationLink(destination: EventDetailView(event: event)) {
                                             EventInfo(
                                                 imagePath: event.metadata.imageUrl,
@@ -116,42 +117,9 @@ struct HomeView: View {
                                 .padding(.horizontal, 16)}
                             }
                             .task {
-                                do {
-                                    recommended = try await homeViewModel.getRecommendations()
-                                } catch {
-                                    print("Error loading recommendations: \(error)")
-                                }
+                                await homeViewModel.getRecommendations()
+                                recommended = homeViewModel.recommendations
                             }
-                            
-                            EventInfo(imagePath: "evento",
-                                      title: "Daily Marathon",
-                                      titleColor: Color("appOcher"),
-                                      description: "Have a blast with us on our daily marathon!",
-                                      timeText: "Today, 10am",
-                                      walkingMinutes: 8,
-                                      location: "Lleras"
-                            ).padding(.horizontal, 16)
-                            
-                            HStack {
-                                Text("Close to you")
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                                    .padding()
-                                    .frame(minHeight: 10)
-                                
-                                Spacer()
-                            }
-                            .padding(.top, 20)
-                            
-                            EventInfo(imagePath: "evento",
-                                      title: "Cívico Pets",
-                                      titleColor: Color("appOcher"),
-                                      description: "Bring your pets to the Civic Center",
-                                      timeText: "Tomorrow, 8-10am",
-                                      walkingMinutes: 4,
-                                      location: "RGD")
-                            .padding(.bottom)
-                            .padding(.horizontal, 16)
                         }
                     }
                 }
@@ -162,6 +130,9 @@ struct HomeView: View {
     // MARK: - Helper Function
     private func getUserFirstName() -> String {
         guard let displayName = viewModel.user?.displayName else {
+            guard let displayName = profileViewModel.profile?.profile.name else {
+                return "User"
+            }
             return "User"
         }
         

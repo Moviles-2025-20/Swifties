@@ -7,9 +7,13 @@ import UIKit
 import FirebaseAuth
 
 struct AddCommentView: View {
-    let event: Event
+    var event: Event
     @Environment(\.dismiss) private var dismiss
     @StateObject private var commentViewModel = CommentViewModel()
+    
+    init(event: Event) {
+        self.event = event
+    }
 
     // Inputs
     @State private var reviewTitle: String = ""
@@ -215,7 +219,7 @@ struct AddCommentView: View {
     private func submit() async {
         // Validate prerequisites
         guard let eventId = event.id, !eventId.isEmpty else {
-            submitError = "Missing event identifier."
+            submitError = "Missing event identifier \(event.name)."
             return
         }
         guard let uid = Auth.auth().currentUser?.uid else {

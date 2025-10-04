@@ -117,7 +117,7 @@ class EventListViewModel: ObservableObject {
         }
         
         return Event(
-            activetrue: data["activetrue"] as? Bool ?? true,
+            activetrue: data["active"] as? Bool ?? true,
             category: category,
             created: data["created"] as? String ?? "",
             description: description,

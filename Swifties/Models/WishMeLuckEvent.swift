@@ -68,7 +68,7 @@ struct WishMeLuckEvent: Codable, Identifiable {
         return WishMeLuckEvent(
             id: event.id ?? UUID().uuidString,
             title: event.title,
-            imageUrl: event.metadata.imageUrl ?? "",
+            imageUrl: event.metadata.imageUrl,
             description: event.description
         )
     }

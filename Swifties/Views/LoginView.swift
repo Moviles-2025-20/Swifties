@@ -164,6 +164,7 @@ struct LoginView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "envelope.fill")
                         .resizable()
+                        .scaledToFit()
                         .frame(height: 24)
                     
                     Text("Login with Email")
@@ -188,6 +189,7 @@ struct LoginView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "envelope")
                         .resizable()
+                        .scaledToFit()
                         .frame(height: 24)
                     
                     Text("Register with Email")

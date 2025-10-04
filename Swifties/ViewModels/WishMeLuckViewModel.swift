@@ -2,12 +2,14 @@
 //  WishMeLuckViewModel.swift
 //  Swifties
 //
-//  Created on 10/4/25.
+//  Created by Natalia Villegas Calderón on 4/10/25.
 //
 
 import Foundation
 import FirebaseFirestore
 import FirebaseAuth
+import Combine
+import FirebaseCore
 
 @MainActor
 class WishMeLuckViewModel: ObservableObject {
@@ -16,8 +18,8 @@ class WishMeLuckViewModel: ObservableObject {
     @Published var error: String?
     @Published var daysSinceLastWished: Int = 0
     
-    private let db = Firestore.firestore()
-    
+    private let db = Firestore.firestore(database: "default")
+
     // MARK: - Motivational Messages
     func getMotivationalMessage() -> String {
         guard let event = currentEvent else { return "" }

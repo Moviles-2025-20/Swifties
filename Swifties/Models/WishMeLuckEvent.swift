@@ -2,6 +2,12 @@
 //  WishMeLuckEvent.swift
 //  Swifties
 //
+//  Created by Natalia Villegas Calderón on 4/10/25.
+//
+//
+//  WishMeLuckEvent.swift
+//  Swifties
+//
 //  Created on 10/4/25.
 //
 

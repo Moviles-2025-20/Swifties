@@ -28,7 +28,7 @@ class WishMeLuckViewModel: ObservableObject {
     
     // MARK: - Wish Me Luck with Smart Recommendations
     func wishMeLuck() async {
-        print("🎯 === WISH ME LUCK STARTED ===")
+        print(" === WISH ME LUCK STARTED ===")
         isLoading = true
         error = nil
         currentEvent = nil
@@ -40,7 +40,7 @@ class WishMeLuckViewModel: ObservableObject {
                 throw NSError(domain: "WishMeLuck", code: 401,
                             userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
             }
-            print("👤 User ID: \(userId)")
+            print(" User ID: \(userId)")
             
             // Get user data
             let userDoc = try await db.collection("users").document(userId).getDocument()
@@ -57,7 +57,7 @@ class WishMeLuckViewModel: ObservableObject {
             let lastEventId = userData["last_event"] as? String
             let lastEventCategory = userData["event_last_category"] as? String
             
-            print("⚙️ User Preferences:")
+            print(" User Preferences:")
             print("   - Favorite Categories: \(favoriteCategories)")
             print("   - Last Event ID: \(lastEventId ?? "None")")
             print("   - Last Event Category: \(lastEventCategory ?? "None")")
@@ -71,7 +71,7 @@ class WishMeLuckViewModel: ObservableObject {
             )
             
             if let event = event {
-                print("✅ Event Selected:")
+                print(" Event Selected:")
                 print("   - ID: \(event.id)")
                 print("   - Title: \(event.title)")
                 print("   - Description: \(event.description)")
@@ -79,19 +79,16 @@ class WishMeLuckViewModel: ObservableObject {
             } else {
                 print("❌ No event was selected")
             }
-            
-            // Don't update user's last event here - only update when they actually attend
-            // Call markEventAsAttended() separately when user confirms attendance
-            
+
             try await updateLastWishedDate()
             await calculateDaysSinceLastWished()
             
-            print("🎯 === WISH ME LUCK COMPLETED ===\n")
+            print(" === WISH ME LUCK COMPLETED ===\n")
             
         } catch {
             self.error = "Error getting event: \(error.localizedDescription)"
             print("❌ Error Firestore: \(error)")
-            print("🎯 === WISH ME LUCK FAILED ===\n")
+            print(" === WISH ME LUCK FAILED ===\n")
         }
 
         isLoading = false
@@ -105,7 +102,7 @@ class WishMeLuckViewModel: ObservableObject {
         lastEventCategory: String?
     ) async throws -> WishMeLuckEvent? {
         
-        print("🤔 Determining recommendation strategy...")
+        print(" Determining recommendation strategy...")
         
         // Case 1: User has a last event
         if let lastCategory = lastEventCategory, !lastCategory.isEmpty {

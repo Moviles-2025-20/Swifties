@@ -192,7 +192,12 @@ class AuthViewModel: ObservableObject {
     }
     
     func resendVerificationEmail() async {
-        authService.resendVerificationEmail()
+        do {
+            try await authService.resendVerificationEmail()
+        } catch {
+            self.error = error.localizedDescription
+            print("Resend verification email error: \(error.localizedDescription)")
+        }
     }
     
     // MARK: - Login with Google

@@ -146,6 +146,12 @@ class AuthService {
             }
         }
     }
+    func resendVerificationEmail() async throws {
+        guard let user = Auth.auth().currentUser else {
+            throw AuthenticationError.tokenError(message: "No current user to send verification email")
+        }
+        try await user.sendEmailVerification()
+    }
     
     func resendVerificationEmail() {
         Auth.auth().currentUser?.sendEmailVerification { error in
@@ -155,6 +161,7 @@ class AuthService {
                 print("Verification email re-sent.")
             }
         }
+        
     }
 
     // MARK: - Twitter Sign In

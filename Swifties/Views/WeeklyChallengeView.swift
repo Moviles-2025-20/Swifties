@@ -575,7 +575,7 @@ class WeeklyChallengeViewModel: ObservableObject {
                     print("\n📅 Checking week: \(label)")
                     print("   Range: \(dateFormatter.string(from: startOfWeek)) to \(dateFormatter.string(from: endOfWeek))")
                     
-                    // Contar cuántas actividades caen en esta semana
+                    // Count how many activities fall in this week
                     let activitiesInWeek = activityDates.filter { activityDate in
                         activityDate >= startOfWeek && activityDate < endOfWeek
                     }

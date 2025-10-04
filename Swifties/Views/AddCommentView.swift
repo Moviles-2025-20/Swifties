@@ -241,26 +241,22 @@ struct AddCommentView: View {
     }
 
     // MARK: Functions used to solve word counts and limits
-    private func currentWordCount() -> Int {
-        let words = reviewDescription
+    /// Helper to tokenize a string into words, splitting on whitespace, newlines, and punctuation.
+    private func tokenizeWords(from text: String) -> [String] {
+        return text
             .components(separatedBy: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
             .filter { !$0.isEmpty }
-        return words.count
+    }
+
+    private func currentWordCount() -> Int {
+        return tokenizeWords(from: reviewDescription).count
     }
 
     private func enforceWordLimit() {
-        let tokens = reviewDescription
-            .components(separatedBy: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
-        var words: [String] = []
-        for token in tokens where !token.isEmpty {
-            if words.count < wordLimit {
-                words.append(token)
-            } else {
-                break
-            }
-        }
-        let reconstructed = words.joined(separator: " ")
-        if currentWordCount() > wordLimit {
+        let words = tokenizeWords(from: reviewDescription)
+        let limitedWords = words.prefix(wordLimit)
+        let reconstructed = limitedWords.joined(separator: " ")
+        if words.count > wordLimit {
             reviewDescription = reconstructed
         }
     }

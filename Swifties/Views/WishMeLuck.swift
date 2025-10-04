@@ -4,21 +4,8 @@
 //
 //  Created by Imac  on 2/10/25.
 //
-//
-//  WishMeLuckEvent.swift
-//  Swifties
-//
-//  Created on 10/4/25.
-//
 
 import Foundation
-//
-//  WishMeLuckView.swift
-//  Swifties
-//
-//  Created on 10/4/25.
-//
-
 import SwiftUI
 import CoreMotion
 

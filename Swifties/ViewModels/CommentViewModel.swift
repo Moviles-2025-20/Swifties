@@ -30,7 +30,13 @@ final class CommentViewModel: ObservableObject {
             print("⚠️ Failed to compile wordRegex: \(error). Using fallback regex.")
             
             // Fallback to a safe, permissive pattern (matches any non-empty string)
-            return try! NSRegularExpression(pattern: ".+", options: [])
+            if let fallback = try? NSRegularExpression(pattern: ".+", options: []) {
+                return fallback
+            } else {
+                // If even the fallback fails, return a regex that matches nothing
+                print("⚠️ Fallback regex also failed to compile. Returning a regex that matches nothing.")
+                return try! NSRegularExpression(pattern: "a^", options: [])
+            }
         }
     }
 

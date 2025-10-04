@@ -132,7 +132,7 @@ struct HomeView: View {
             guard let displayName = profileViewModel.profile?.profile.name else {
                 return "User"
             }
-            return "User"
+            return displayName
         }
         
         let components = displayName.components(separatedBy: " ")

@@ -15,11 +15,13 @@ struct ProfileView: View {
         
         ZStack{Color("appPrimary").ignoresSafeArea()
             VStack(spacing: 0) {
-                // Custom Top Bar
-                CustomTopBar(title: "Profile", showNotificationButton: true) {
-                    // Handle notification tap
-                    print("Notification tapped")
-                }
+                // Custom Top Bar with notification button
+                CustomTopBar(
+                    title: "Profile",
+                    showNotificationButton: true,
+                    onBackTap:  {
+                        print("Notifications tapped")
+                    })
                 
                 ScrollView {
                     VStack(spacing: 25) {

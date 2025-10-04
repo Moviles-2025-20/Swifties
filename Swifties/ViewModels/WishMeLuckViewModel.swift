@@ -35,73 +35,64 @@ class WishMeLuckViewModel: ObservableObject {
     }
     
     // MARK: - Wish Me Luck
+    // MARK: - Wish Me Luck
     func wishMeLuck() async {
         isLoading = true
         error = nil
         currentEvent = nil
-        
+
         do {
-            // Simulate shake/animation delay
-            try await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
-            
-            // Get random event
-            let event = try await getRandomEvent()
-            currentEvent = event
-            
-            // Update last wished date
+            try await Task.sleep(nanoseconds: 1_500_000_000)
+
+            let snapshot = try await db.collection("events")
+                .whereField("active", isEqualTo: true)
+                .getDocuments()
+
+            print("Eventos encontrados: \(snapshot.documents.count)")
+
+    
+            if let randomDoc = snapshot.documents.randomElement() {
+                print("Documento elegido: \(randomDoc.documentID)")
+                print("Data cruda: \(randomDoc.data())")
+                
+                if let event = try? randomDoc.data(as: Event.self) {
+                    print("Parseado como Event")
+                    currentEvent = WishMeLuckEvent.fromEvent(event)
+                } else {
+                    print("No se pudo parsear como Event, usando fallback")
+                    let data = randomDoc.data()
+                    currentEvent = WishMeLuckEvent(
+                        id: randomDoc.documentID,
+                        title: data["title"] as? String ?? data["name"] as? String ?? "Untitled Event",
+                        imageUrl: (data["metadata"] as? [String: Any])?["image_url"] as? String
+                               ?? (data["metadata"] as? [String: Any])?["imageUrl"] as? String
+                               ?? "",
+                        description: data["description"] as? String ?? "No description available"
+                    )
+                }
+            } else {
+                print("No hay documentos con activetrue = true")
+                currentEvent = nil
+            }
+
             try await updateLastWishedDate()
-            
-            // Recalculate days since last wished
             await calculateDaysSinceLastWished()
-            
-            error = nil
         } catch {
             self.error = "Error getting event: \(error.localizedDescription)"
-            currentEvent = nil
+            print("rror Firestore: \(error)")
         }
-        
+
         isLoading = false
     }
+
+
     
     // MARK: - Get Random Event
-    private func getRandomEvent() async throws -> WishMeLuckEvent {
-        let snapshot = try await db.collection("events")
-            .whereField("activetrue", isEqualTo: true)
-            .getDocuments()
-        
-        guard !snapshot.documents.isEmpty else {
-            throw NSError(domain: "WishMeLuck", code: 404, userInfo: [NSLocalizedDescriptionKey: "No events available"])
-        }
-        
-        // Get random event
-        guard let randomDoc = snapshot.documents.randomElement() else {
-            throw NSError(domain: "WishMeLuck", code: 500, userInfo: [NSLocalizedDescriptionKey: "Could not select random event"])
-        }
-        
-        // Try to decode as Event first
-        if let event = try? randomDoc.data(as: Event.self) {
-            return WishMeLuckEvent.fromEvent(event)
-        }
-        
-        // Fallback: manual parsing
-        let data = randomDoc.data()
-        let id = randomDoc.documentID
-        let title = data["title"] as? String ?? data["name"] as? String ?? "Untitled Event"
-        let description = data["description"] as? String ?? "No description available"
-        
-        var imageUrl = ""
-        if let metadata = data["metadata"] as? [String: Any],
-           let url = metadata["image_url"] as? String {
-            imageUrl = url
-        }
-        
-        return WishMeLuckEvent(
-            id: id,
-            title: title,
-            imageUrl: imageUrl,
-            description: description
-        )
+    func getRandomEvent(from events: [Event]) -> WishMeLuckEvent? {
+        guard let randomEvent = events.randomElement() else { return nil }
+        return WishMeLuckEvent.fromEvent(randomEvent)
     }
+
     
     // MARK: - Update Last Wished Date
     private func updateLastWishedDate() async throws {

@@ -35,7 +35,6 @@ class WishMeLuckViewModel: ObservableObject {
     }
     
     // MARK: - Wish Me Luck
-    // MARK: - Wish Me Luck
     func wishMeLuck() async {
         isLoading = true
         error = nil

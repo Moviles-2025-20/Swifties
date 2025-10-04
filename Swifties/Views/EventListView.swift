@@ -87,26 +87,24 @@ struct EventListView: View {
                                         }
                                         .padding(.horizontal, 16)
 
-                                        if filteredEvents.isEmpty {
-                                            Text(searchText.isEmpty ? "No events available" : "No events found")
-                                                .foregroundColor(.secondary)
-                                                .frame(maxWidth: .infinity)
-                                                .padding()
-                                        } else {
-                                            VStack(spacing: 12) {
-                                                ForEach(filteredEvents) { event in
-                                                    NavigationLink(destination: EventDetailView(event: event)) {
-                                                        EventInfo(
-                                                            imagePath: "theater_event",
-                                                            title: event.name,
-                                                            titleColor: Color.orange,
-                                                            description: event.description,
-                                                            timeText: event.schedule.times.first ?? "Time TBD",
-                                                            walkingMinutes: 5,
-                                                            location: event.location?.address ?? event.category
-                                                        )
-                                                    }
-                                                    .buttonStyle(PlainButtonStyle())
+                                    if filteredEvents.isEmpty {
+                                        Text(searchText.isEmpty ? "No events available" : "No events found")
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                    } else {
+                                        VStack(spacing: 12) {
+                                            ForEach(filteredEvents, id: \.title) { event in
+                                                NavigationLink(destination: EventDetailView(event: event)) {
+                                                    EventInfo(
+                                                        imagePath: event.metadata.imageUrl,
+                                                        title: event.name,
+                                                        titleColor: Color.orange,
+                                                        description: event.description,
+                                                        timeText: event.schedule.times.first ?? "Time TBD",
+                                                        walkingMinutes: 5,
+                                                        location: event.location.address
+                                                    )
                                                 }
                                             }
                                             .padding(.horizontal, 16)
@@ -201,70 +199,68 @@ struct EventMapContent: View {
     let mockVM = EventListViewModel()
     let mockEvents: [Event] = [
         Event(
-            id: "1",
-            title: "Rock Fest",
-            name: "Concert",
-            description: "Live music",
-            type: "Concert",
+            activetrue: true,
             category: "Music",
-            active: true,
-            eventType: "Music",
-            location: Event.Location(
-                city: "Bogotá",
-                type: "Indoor",
+            created: "2025-10-05T18:00:00-05:00",
+            description: "Live rock music concert",
+            eventType: "Concert",
+            location: EventLocation(
                 address: "123 Street",
-                coordinates: [4.6097, -74.0817]
+                city: "Bogotá",
+                coordinates: [4.6097, -74.0817],
+                type: "Indoor"
             ),
-            schedule: Event.Schedule(
+            metadata: EventMetadata(
+                cost: EventCost(amount: 50000, currency: "COP"),
+                durationMinutes: 120,
+                imageUrl: "https://example.com/image.jpg",
+                tags: ["rock", "live", "music"]
+            ),
+            name: "Rock Fest",
+            schedule: EventSchedule(
                 days: ["Friday", "Saturday"],
                 times: ["18:00", "20:00"]
             ),
-            metadata: Event.Metadata(
-                imageUrl: "https://example.com/image.jpg",
-                tags: ["rock", "live"],
-                durationMinutes: 120,
-                cost: Event.Cost(amount: 50, currency: "USD")
-            ),
-            stats: Event.EventStats(
+            stats: EventStats(
                 popularity: 85,
-                totalCompletions: 150,
-                rating: 4.5
+                rating: 4,
+                totalCompletions: 150
             ),
-            weatherDependent: false,
-            created: Timestamp(date: Date())
+            title: "Rock Fest 2025",
+            type: "Concert",
+            weatherDependent: false
         ),
         Event(
-            id: "2",
-            title: "Art Expo",
-            name: "Exhibition",
-            description: "Modern art",
-            type: "Exhibition",
+            activetrue: true,
             category: "Art",
-            active: true,
-            eventType: "Art",
-            location: Event.Location(
-                city: "Bogotá",
-                type: "Indoor",
+            created: "2025-10-05T10:00:00-05:00",
+            description: "Modern art exhibition",
+            eventType: "Exhibition",
+            location: EventLocation(
                 address: "7th Avenue",
-                coordinates: [4.6533, -74.0836]
+                city: "Bogotá",
+                coordinates: [4.6533, -74.0836],
+                type: "Indoor"
             ),
-            schedule: Event.Schedule(
+            metadata: EventMetadata(
+                cost: EventCost(amount: 0, currency: "COP"),
+                durationMinutes: 90,
+                imageUrl: "https://example.com/art.jpg",
+                tags: ["art", "modern", "exhibition"]
+            ),
+            name: "Art Expo",
+            schedule: EventSchedule(
                 days: ["Monday", "Tuesday", "Wednesday"],
                 times: ["10:00", "14:00"]
             ),
-            metadata: Event.Metadata(
-                imageUrl: "https://example.com/art.jpg",
-                tags: ["art", "modern"],
-                durationMinutes: 90,
-                cost: Event.Cost(amount: 0, currency: "FREE")
-            ),
-            stats: Event.EventStats(
+            stats: EventStats(
                 popularity: 70,
-                totalCompletions: 200,
-                rating: 4.8
+                rating: 5,
+                totalCompletions: 200
             ),
-            weatherDependent: false,
-            created: Timestamp(date: Date())
+            title: "Art Expo 2025",
+            type: "Exhibition",
+            weatherDependent: false
         )
     ]
     mockVM.events = mockEvents

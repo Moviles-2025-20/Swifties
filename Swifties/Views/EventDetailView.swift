@@ -8,7 +8,8 @@ struct EventDetailView: View {
     
     init(event: Event) {
         self.event = event
-        _viewModel = StateObject(wrappedValue: EventDetailViewModel(eventId: event.id ?? ""))
+        // Use title as unique identifier since there's no id field
+        _viewModel = StateObject(wrappedValue: EventDetailViewModel(eventId: event.title))
     }
     
     var body: some View {
@@ -34,7 +35,7 @@ struct EventDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         // Event Image - full width, no padding
-                        if let imageUrl = event.metadata?.imageUrl, let url = URL(string: imageUrl) {
+                        if let url = URL(string: event.metadata.imageUrl), !event.metadata.imageUrl.isEmpty {
                             AsyncImage(url: url) { image in
                                 image
                                     .resizable()
@@ -51,18 +52,16 @@ struct EventDetailView: View {
                         // Content container with padding
                         VStack(alignment: .leading, spacing: 16) {
                             // Event Title
-                            Text(event.title ?? event.name)
+                            Text(event.title)
                                 .font(.title3)
                                 .fontWeight(.bold)
                                 .padding(.top, 16)
                         
                             // Location and Time
                             HStack(spacing: 12) {
-                                if let location = event.location {
-                                    Label(location.address, systemImage: "mappin.circle.fill")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
+                                Label(event.location.address, systemImage: "mappin.circle.fill")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
                                 
                                 if let firstTime = event.schedule.times.first {
                                     Label(firstTime, systemImage: "clock.fill")
@@ -94,18 +93,18 @@ struct EventDetailView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack(alignment: .top) {
                                     VStack {
-                                        Text(String(format: "%.1f", event.stats?.rating ?? 0.0))
+                                        Text(String(format: "%.1f", Double(event.stats.rating)))
                                             .font(.system(size: 48, weight: .bold))
                                         
                                         HStack(spacing: 4) {
                                             ForEach(0..<5) { index in
-                                                Image(systemName: "star.fill")
+                                                Image(systemName: index < event.stats.rating ? "star.fill" : "star")
                                                     .foregroundColor(.orange)
                                                     .font(.system(size: 16))
                                             }
                                         }
                                         
-                                        Text("\(event.stats?.totalCompletions ?? 0) reviews")
+                                        Text("\(event.stats.totalCompletions) reviews")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }

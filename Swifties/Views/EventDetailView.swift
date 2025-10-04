@@ -95,7 +95,7 @@ struct EventDetailView: View {
                                         .foregroundColor(.white)
                                         .frame(maxWidth: .infinity)
                                         .padding()
-                                        .background(Color.orange)
+                                        .background(Color.appOcher)
                                         .cornerRadius(12)
                                 }
                                 
@@ -111,7 +111,7 @@ struct EventDetailView: View {
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding()
-                                    .background(hasAttended ? Color.green : Color.blue)
+                                    .background(hasAttended ? Color.green : Color(.appBlue))
                                     .cornerRadius(12)
                                 }
                                 .disabled(hasAttended || isCheckingAttendance)
@@ -129,7 +129,7 @@ struct EventDetailView: View {
                                         HStack(spacing: 4) {
                                             ForEach(0..<5) { index in
                                                 Image(systemName: index < event.stats.rating ? "star.fill" : "star")
-                                                    .foregroundColor(.orange)
+                                                    .foregroundColor(.appOcher)
                                                     .font(.system(size: 16))
                                             }
                                         }
@@ -153,7 +153,7 @@ struct EventDetailView: View {
                                                             .fill(Color.gray.opacity(0.2))
                                                         
                                                         Rectangle()
-                                                            .fill(Color.orange)
+                                                            .fill(Color.appOcher)
                                                             .frame(width: geo.size.width * getPercentage(for: rating))
                                                     }
                                                 }

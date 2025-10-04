@@ -99,7 +99,7 @@ struct EventListView: View {
                                                         EventInfo(
                                                             imagePath: event.metadata.imageUrl,
                                                             title: event.name,
-                                                            titleColor: Color.orange,
+                                                            titleColor: Color.appOcher,
                                                             description: event.description,
                                                             timeText: event.schedule.times.first ?? "Time TBD",
                                                             walkingMinutes: 5,

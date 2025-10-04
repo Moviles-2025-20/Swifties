@@ -20,7 +20,7 @@ final class CommentViewModel {
         let emotion: String
     }
     
-    // Precomplied regex for faster loading times
+    // Precompiled regex for faster loading times
     private static let wordRegex = try! NSRegularExpression(pattern: "\\S+", options: [])
 
     func submit(_ payload: SubmissionPayload) async throws {

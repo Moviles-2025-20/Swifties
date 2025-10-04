@@ -69,7 +69,7 @@ final class HomeViewModel: ObservableObject {
                 return
             }
             
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            guard httpResponse.statusCode == 200 else {
                 print("⚠️ Server responded with non-200 — using defaults")
                 await loadRecommendations(from: defaultResults)
                 return

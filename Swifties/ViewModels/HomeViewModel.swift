@@ -11,7 +11,7 @@ import Combine
 
 @MainActor
 final class HomeViewModel: ObservableObject {
-    let firestore = Firestore.firestore(database: "default")
+    let db = Firestore.firestore(database: "default")
     let eventListViewModel = EventListViewModel()
     @Published var recommendations: [Event] = []
     
@@ -19,19 +19,20 @@ final class HomeViewModel: ObservableObject {
         // Initialize Firestore and configure settings
         let settings = FirestoreSettings()
         //settings.isPersistenceEnabled = true // optional offline cache
-        self.firestore.settings = settings
+        self.db.settings = settings
     }
     
+    // TODO: Add functionality of the model via REST or FAST API
     func getRecommendations() async throws -> [Event] {
         // let userID = Auth.auth().currentUser?.uid
         let searchResults: [String] = ["19ph2WwBuiuI0Rgw7t5F",
                                        "1XrXxsVrJWnFCsmDJ3YH",
                                        "6avFMINUtpniHV2EIl6m",
                                        "LX7WvPRQrAgPQ40GEhOy",
-                                       "SdmE00SDRbcclnQ0lvlf"] // TODO: Add functionality of the model via REST or FAST API
+                                       "SdmE00SDRbcclnQ0lvlf"]
                 
         for eventID in searchResults {
-            let document = try await firestore.collection("events").document(eventID).getDocument()
+            let document = try await db.collection("events").document(eventID).getDocument()
             if let data = document.data(),
                 let event = eventListViewModel.parseEvent(documentId: eventID, data: data) {
                 recommendations.append(event)

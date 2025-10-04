@@ -70,15 +70,7 @@ final class CommentViewModel {
         let metadata = StorageMetadata()
         metadata.contentType = "image/jpeg"
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            ref.putData(data, metadata: metadata) { _, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
-        }
+        _ = try await ref.putDataAsync(data, metadata: metadata)
 
         let url = try await ref.downloadURL()
         return url.absoluteString

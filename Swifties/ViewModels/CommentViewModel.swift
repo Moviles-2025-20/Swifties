@@ -37,15 +37,10 @@ final class CommentViewModel: ObservableObject {
                 print("⚠️ Fallback regex also failed to compile. Returning a regex that matches nothing.")
                 // Use a pattern that is guaranteed to compile (empty string matches everything, but at least avoids crash)
                 return NSRegularExpression()
-                return CommentViewModel.matchesNothingRegex
+            }
         }
     }
 
-    // Static regex that matches nothing, used as a last resort fallback
-    private static let matchesNothingRegex: NSRegularExpression = {
-        // "a^" is a pattern that will never match anything
-        return (try? NSRegularExpression(pattern: "a^", options: [])) ?? NSRegularExpression()
-    }()
     func submit(_ payload: SubmissionPayload) async throws {
         // Create a new document reference first so we can use its ID for the storage path
         let docRef = db.collection("comments").document()

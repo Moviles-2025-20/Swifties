@@ -41,6 +41,6 @@ struct UserAuthModel{
 
 enum AuthProviderType {
     case google
-    case github
-    case facebook
+    case email
+    case twitter
 }

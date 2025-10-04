@@ -31,7 +31,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         return .portrait
     }
-
+}
 
 @main
 struct SwiftiesApp: App {
@@ -41,11 +41,18 @@ struct SwiftiesApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                if Auth.auth().currentUser != nil {
-                    MainView()
-                    //UserInfoView()
-                }else{
+                if authViewModel.isAuthenticated {
+                    let needsEmailVerification = (authViewModel.user?.providerId == "password") && (authViewModel.isEmailVerified == false)
+                    if needsEmailVerification {
+                        VerifyEmailView()
+                            .environmentObject(authViewModel)
+                    } else {
+                        MainView()
+                            .environmentObject(authViewModel)
+                    }
+                } else {
                     StartView()
+                        .environmentObject(authViewModel)
                 }
             }
             .environmentObject(authViewModel)
@@ -69,6 +76,5 @@ struct SwiftiesApp: App {
             //EventListView(viewModel: EventListViewModel())
             //}
          }
-       }
     }
 }

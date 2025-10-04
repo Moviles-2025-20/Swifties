@@ -149,3 +149,4 @@ class EventDetailViewModel: ObservableObject {
         return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
     }
 }
+

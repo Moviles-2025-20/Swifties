@@ -111,7 +111,7 @@ struct EventDetailView: View {
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding()
-                                    .background(hasAttended ? Color.green : Color.blue)
+                                    .background(hasAttended ? Color.green : Color(.appBlue))
                                     .cornerRadius(12)
                                 }
                                 .disabled(hasAttended || isCheckingAttendance)

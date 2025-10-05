@@ -11,8 +11,9 @@ struct FilterToggle: View {
     @Binding var isMapView: Bool
     
     var body: some View {
-        HStack {
-            HStack {
+        HStack(spacing: 12) {
+            // Filter button/indicator
+            HStack(spacing: 6) {
                 Image(systemName: "line.3.horizontal.decrease.circle")
                     .foregroundColor(.orange)
                 Text("Filter")
@@ -22,13 +23,21 @@ struct FilterToggle: View {
             
             Spacer()
             
-            HStack {
-                Text("Map view")
-                    .font(.system(size: 16, weight: .medium))
+            // Map/List toggle section
+            HStack(spacing: 8) {
+               
+                Image(systemName: "list.dash")
+                    .foregroundColor(isMapView ? .gray : .orange)
+                    .font(.system(size: 16))
                 
-                Toggle("", isOn: $isMapView)
+                Toggle("Map view toggle", isOn: $isMapView)
+                    .labelsHidden()
                     .toggleStyle(SwitchToggleStyle(tint: .orange))
                     .scaleEffect(0.8)
+                
+                Image(systemName: "map")
+                    .foregroundColor(isMapView ? .orange : .gray)
+                    .font(.system(size: 16))
             }
         }
         .padding(.horizontal, 16)
@@ -36,3 +45,9 @@ struct FilterToggle: View {
     }
 }
 
+#Preview {
+    VStack {
+        FilterToggle(isMapView: .constant(false))
+        FilterToggle(isMapView: .constant(true))
+    }
+}

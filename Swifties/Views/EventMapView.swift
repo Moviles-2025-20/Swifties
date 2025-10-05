@@ -121,13 +121,14 @@ struct EventMapView: View {
             }
             
             // Debug output
+            /*
             print("Total events passed to map: \(events.count)")
             print("Valid events with coordinates: \(validEvents.count)")
             validEvents.forEach { event in
                 if let coords = event.location?.coordinates, coords.count == 2 {
                     print("Event: \(event.name) at [\(coords[0]), \(coords[1])]")
                 }
-            }
+            }*/
         }
         .onReceive(locationManager.$lastLocation) { location in
             guard let coord = location?.coordinate else { return }
@@ -137,7 +138,7 @@ struct EventMapView: View {
         }
         .sheet(isPresented: $showNearbyEvents) {
             NearbyEventsSheet(
-                nearbyEvents: nearestEvents(from: locationManager.lastLocation, count: 10),
+                nearbyEvents: nearestEvents(from: locationManager.lastLocation, count: 5),
                 onEventTap: { event in
                     showNearbyEvents = false
                     // Animate to event location

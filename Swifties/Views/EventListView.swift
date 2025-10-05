@@ -8,6 +8,7 @@
 import SwiftUI
 import MapKit
 import UIKit
+import FirebaseAnalytics
 
 struct EventListView: View {
     @StateObject var viewModel: EventListViewModel
@@ -95,7 +96,7 @@ struct EventListView: View {
                                         } else {
                                             VStack(spacing: 12) {
                                                 ForEach(filteredEvents, id: \.title) { event in
-                                                    NavigationLink(destination: EventDetailView(event: event)) {
+                                                    NavigationLink(destination: EventDetailView(event: event, source: "list_events")) {
                                                         EventInfo(
                                                             imagePath: event.metadata.imageUrl,
                                                             title: event.name,
@@ -106,8 +107,15 @@ struct EventListView: View {
                                                             location: event.location?.address
                                                         )
                                                     }
+                                                    .simultaneousGesture(TapGesture().onEnded {
+                                                        Analytics.logEvent("event_detail_opened", parameters: [
+                                                            "source": "list_events",
+                                                            "event_id": (event.id ?? event.title) as NSString,
+                                                            "category": event.category as NSString
+                                                        ])
+                                                    })
+                                                    .padding(.horizontal, 16)
                                                 }
-                                                .padding(.horizontal, 16)
                                             }
                                         }
                                     }
@@ -120,6 +128,7 @@ struct EventListView: View {
                 }
             }
             .onAppear {
+                Analytics.logEvent("event_list_viewed", parameters: nil)
                 // Avoid reloading in preview
                 if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
                     viewModel.loadEvents()

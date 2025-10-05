@@ -9,6 +9,7 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 import Combine
+import FirebaseAnalytics
 
 class WeeklyChallengeViewModel: ObservableObject {
     @Published var challengeEvent: Event?
@@ -123,6 +124,11 @@ class WeeklyChallengeViewModel: ObservableObject {
                 }
             } else {
                 print("✅ Activity saved successfully!")
+                Analytics.logEvent("event_attended", parameters: [
+                    "source": "weekly_challenge",
+                    "event_id": event.name as NSString,
+                    "category": event.category as NSString
+                ])
                 self.updateUserLastEvent(userId: userId, eventName: event.name)
             }
         }

@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import CoreMotion
 import FirebaseFirestore
+import FirebaseAnalytics
 
 struct WishMeLuckView: View {
     @StateObject private var viewModel = WishMeLuckViewModel()
@@ -66,7 +67,7 @@ struct WishMeLuckView: View {
                             // MARK: - Wish Me Luck Button
                             WishMeLuckButton(isLoading: viewModel.isLoading) {
                                 Task {
-                                    await triggerWish()
+                                    await triggerWish(method: "button")
                                 }
                             }
                             .padding(.horizontal, 20)
@@ -79,7 +80,7 @@ struct WishMeLuckView: View {
             .navigationBarHidden(true)
             .sheet(isPresented: $showEventDetail) {
                 if let fullEvent = fullEventForDetail {
-                    EventDetailView(event: fullEvent)
+                    EventDetailView(event: fullEvent, source: "wish_me_luck")
                 }
             }
             .task {
@@ -114,6 +115,13 @@ struct WishMeLuckView: View {
                 if let event = try? document.data(as: Event.self) {
                     print("Successfully parsed event using Codable")
                     fullEventForDetail = event
+                    if let fullEvent = fullEventForDetail {
+                        Analytics.logEvent("event_detail_opened", parameters: [
+                            "source": "wish_me_luck",
+                            "event_id": (fullEvent.id ?? fullEvent.title) as NSString,
+                            "category": fullEvent.category as NSString
+                        ])
+                    }
                     showEventDetail = true
                 } else {
                     // Fallback to manual parsing
@@ -121,6 +129,13 @@ struct WishMeLuckView: View {
                     if let event = parseEventManually(documentId: document.documentID, data: document.data() ?? [:]) {
                         print("Successfully parsed event manually")
                         fullEventForDetail = event
+                        if let fullEvent = fullEventForDetail {
+                            Analytics.logEvent("event_detail_opened", parameters: [
+                                "source": "wish_me_luck",
+                                "event_id": (fullEvent.id ?? fullEvent.title) as NSString,
+                                "category": fullEvent.category as NSString
+                            ])
+                        }
                         showEventDetail = true
                     } else {
                         print("❌ Manual parsing also failed")
@@ -215,13 +230,19 @@ struct WishMeLuckView: View {
     }
     
     // MARK: - Trigger Wish
-    private func triggerWish() async {
+    private func triggerWish(method: String) async {
         withAnimation(.easeInOut(duration: 0.5)) {
             animateBall = true
         }
-        
+
+        // Log Wish Me Luck trigger
+        Analytics.logEvent("wish_me_luck_triggered", parameters: [
+            "method": method as NSString,
+            "days_since_last": NSNumber(value: viewModel.daysSinceLastWished)
+        ])
+
         await viewModel.wishMeLuck()
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             withAnimation {
                 animateBall = false
@@ -269,7 +290,7 @@ struct WishMeLuckView: View {
         generator.impactOccurred()
         
         Task {
-            await triggerWish()
+            await triggerWish(method: "shake")
         }
     }
 }

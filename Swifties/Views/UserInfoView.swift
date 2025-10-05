@@ -8,6 +8,7 @@
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseAnalytics
 
 struct UserInfoView: View {
     @StateObject private var viewModel = UserInfoViewModel()
@@ -116,7 +117,7 @@ struct UserInfoView: View {
                                 } else {
                                     VStack(spacing: 12) {
                                         ForEach(viewModel.availableEvents, id: \.title) { event in
-                                            NavigationLink(destination: EventDetailView(event: event)) {
+                                            NavigationLink(destination: EventDetailView(event: event, source: "list_events")) {
                                                 EventInfo(
                                                     imagePath: event.metadata.imageUrl,
                                                     title: event.name,
@@ -128,6 +129,13 @@ struct UserInfoView: View {
                                                 )
                                             }
                                             .buttonStyle(PlainButtonStyle())
+                                            .simultaneousGesture(TapGesture().onEnded {
+                                                Analytics.logEvent("event_detail_opened", parameters: [
+                                                    "source": "list_events",
+                                                    "event_id": (event.id ?? event.title) as NSString,
+                                                    "category": event.category as NSString
+                                                ])
+                                            })
                                         }
                                     }
                                     .padding(.horizontal)

@@ -1,10 +1,12 @@
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseAnalytics
 
 struct EventDetailView: View {
     @StateObject var viewModel: EventDetailViewModel
     let event: Event
+    let source: String
     @Environment(\.dismiss) var dismiss
     @State private var showAddComment: Bool = false
     @State private var hasAttended: Bool = false
@@ -12,8 +14,9 @@ struct EventDetailView: View {
     
     private let db = Firestore.firestore(database: "default")
     
-    init(event: Event) {
+    init(event: Event, source: String = "list_events") {
         self.event = event
+        self.source = source
         _viewModel = StateObject(wrappedValue: EventDetailViewModel(eventId: event.title))
     }
     
@@ -236,6 +239,11 @@ struct EventDetailView: View {
         .navigationBarHidden(true)
         .onAppear {
             checkIfUserAttended()
+            Analytics.logEvent("event_detail_opened", parameters: [
+                "source": source as NSString,
+                "event_id": (event.id ?? event.title) as NSString,
+                "category": event.category as NSString
+            ])
         }
     }
     
@@ -255,7 +263,7 @@ struct EventDetailView: View {
         db.collection("user_activities")
             .whereField("user_id", isEqualTo: userId)
             .whereField("event_id", isEqualTo: event.name)
-            .whereField("source", isEqualTo: "list_events")
+            .whereField("source", isEqualTo: source)
             .getDocuments { snapshot, error in
                 DispatchQueue.main.async {
                     if let error = error {
@@ -281,7 +289,7 @@ struct EventDetailView: View {
         
         let activityData: [String: Any] = [
             "event_id": event.name,
-            "source": "list_events",
+            "source": source,
             "time": Timestamp(date: Date()),
             "time_of_day": getCurrentTimeOfDay(),
             "type": "event_attendance",
@@ -297,6 +305,12 @@ struct EventDetailView: View {
             }
             
             print("Attendance saved successfully!")
+            
+            Analytics.logEvent("event_attended", parameters: [
+                "source": source as NSString,
+                "event_id": event.name as NSString,
+                "category": event.category as NSString
+            ])
             
             // Update user's last_event
             self.updateUserLastEvent(userId: userId)

@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import CoreMotion
 import FirebaseFirestore
+import FirebaseAnalytics
 
 struct WishMeLuckView: View {
     @StateObject private var viewModel = WishMeLuckViewModel()
@@ -93,6 +94,7 @@ struct WishMeLuckView: View {
     }
     
     // MARK: - Load Full Event and Show Detail
+    // MARK: - Load Full Event and Show Detail
     private func loadFullEventAndShowDetail(eventId: String) {
         isLoadingFullEvent = true
         
@@ -114,21 +116,36 @@ struct WishMeLuckView: View {
                 if let event = try? document.data(as: Event.self) {
                     print("Successfully parsed event using Codable")
                     fullEventForDetail = event
+
+                 
+                    AnalyticsService.shared.logActivitySelection(
+                        activityId: event.id ?? "unknown_event",
+                        discoveryMethod: .wishMeLuck
+                    )
+
                     showEventDetail = true
                 } else {
-                    // Fallback to manual parsing
                     print("Codable parsing failed, attempting manual parse")
                     if let event = parseEventManually(documentId: document.documentID, data: document.data() ?? [:]) {
                         print("Successfully parsed event manually")
                         fullEventForDetail = event
+                        
+                 
+                        AnalyticsService.shared.logActivitySelection(
+                            activityId: event.id ?? "unknown_event",
+                            discoveryMethod: .wishMeLuck
+                        )
+                        
                         showEventDetail = true
                     } else {
                         print("❌ Manual parsing also failed")
                     }
                 }
+
             }
         }
     }
+
     
     // MARK: - Manual Event Parsing (Fallback)
     private func parseEventManually(documentId: String, data: [String: Any]) -> Event? {
@@ -216,6 +233,11 @@ struct WishMeLuckView: View {
     
     // MARK: - Trigger Wish
     private func triggerWish() async {
+        Analytics.logEvent("activity_discovery_method", parameters: [
+            "method": "wish_me_luck",
+            "timestamp": Date().timeIntervalSince1970
+        ])
+        
         withAnimation(.easeInOut(duration: 0.5)) {
             animateBall = true
         }
@@ -228,6 +250,7 @@ struct WishMeLuckView: View {
             }
         }
     }
+
     
     // MARK: - Accelerometer
     private func startAccelerometerUpdates() {

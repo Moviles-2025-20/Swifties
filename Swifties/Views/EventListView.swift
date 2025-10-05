@@ -8,6 +8,7 @@
 import SwiftUI
 import MapKit
 import UIKit
+import FirebaseAnalytics
 
 struct EventListView: View {
     @StateObject var viewModel: EventListViewModel
@@ -95,17 +96,28 @@ struct EventListView: View {
                                         } else {
                                             VStack(spacing: 12) {
                                                 ForEach(filteredEvents, id: \.title) { event in
-                                                    NavigationLink(destination: EventDetailView(event: event)) {
-                                                        EventInfo(
-                                                            imagePath: event.metadata.imageUrl,
-                                                            title: event.name,
-                                                            titleColor: Color.appOcher,
-                                                            description: event.description,
-                                                            timeText: event.schedule.times.first ?? "Time TBD",
-                                                            walkingMinutes: 5,
-                                                            location: event.location?.address
+                                                    NavigationLink(
+                                                        destination: EventDetailView(event: event),
+                                                        label: {
+                                                            EventInfo(
+                                                                imagePath: event.metadata.imageUrl,
+                                                                title: event.name,
+                                                                titleColor: Color.appOcher,
+                                                                description: event.description,
+                                                                timeText: event.schedule.times.first ?? "Time TBD",
+                                                                walkingMinutes: 5,
+                                                                location: event.location?.address
+                                                            )
+                                                        }
+                                                    )
+                                                    .simultaneousGesture(TapGesture().onEnded {
+                                                        AnalyticsService.shared.logActivitySelection(
+                                                            activityId: event.id ?? "unknown_event",
+                                                            discoveryMethod: .manualBrowse
                                                         )
-                                                    }
+                                                    })
+
+
                                                 }
                                                 .padding(.horizontal, 16)
                                             }
@@ -120,11 +132,16 @@ struct EventListView: View {
                 }
             }
             .onAppear {
-                // Avoid reloading in preview
                 if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
                     viewModel.loadEvents()
+                    
+                    Analytics.logEvent("activity_discovery_method", parameters: [
+                        "method": "manual_browse",
+                        "timestamp": Date().timeIntervalSince1970
+                    ])
                 }
             }
+
         }
     }
 

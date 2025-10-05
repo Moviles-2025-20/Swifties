@@ -135,10 +135,7 @@ struct EventListView: View {
                 if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
                     viewModel.loadEvents()
                     
-                    Analytics.logEvent("activity_discovery_method", parameters: [
-                        "method": "manual_browse",
-                        "timestamp": Date().timeIntervalSince1970
-                    ])
+                    AnalyticsService.shared.logDiscoveryMethod(.manualBrowse)
                 }
             }
 

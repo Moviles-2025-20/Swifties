@@ -95,7 +95,6 @@ struct WishMeLuckView: View {
     }
     
     // MARK: - Load Full Event and Show Detail
-    // MARK: - Load Full Event and Show Detail
     private func loadFullEventAndShowDetail(eventId: String) {
         isLoadingFullEvent = true
         

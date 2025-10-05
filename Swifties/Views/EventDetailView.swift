@@ -301,7 +301,7 @@ struct EventDetailView: View {
             
             AnalyticsService.shared.logCheckIn(activityId: event.id ?? "unknown_event", category: event.category)
             
-            // Actualizar evento más reciente del usuario
+            // Update user's most recent event
             self.updateUserLastEvent(userId: userId)
         }
     }

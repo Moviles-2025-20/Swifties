@@ -236,10 +236,10 @@ struct WishMeLuckView: View {
     private func triggerWish() async {
         AnalyticsService.shared.logWishMeLuckUsed()
         
-        Analytics.logEvent("activity_discovery_method", parameters: [
-            "method": "wish_me_luck",
-            "timestamp": Date().timeIntervalSince1970
-        ])
+        
+        
+        
+        
         
         withAnimation(.easeInOut(duration: 0.5)) {
             animateBall = true

@@ -65,7 +65,7 @@ struct HomeView: View {
                                 Button(action: {
                               
                                 }) {
-                                    Text("Place Holder")
+                                    Text("Coming soon")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.white)
@@ -75,7 +75,7 @@ struct HomeView: View {
 
                                 
                                 Button {
-                                    print("Map")
+                                    print("Future Feature")
                                 } label: {
                                     Text("Map")
                                         .frame(width: 120, height: 80)

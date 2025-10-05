@@ -297,8 +297,11 @@ struct EventDetailView: View {
             }
             
             print("Attendance saved successfully!")
+
             
-            // Update user's last_event
+            AnalyticsService.shared.logCheckIn(activityId: event.id ?? "unknown_event", category: event.category)
+            
+            // Update user's most recent event
             self.updateUserLastEvent(userId: userId)
         }
     }

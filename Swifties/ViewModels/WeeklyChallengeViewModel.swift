@@ -123,6 +123,7 @@ class WeeklyChallengeViewModel: ObservableObject {
                 }
             } else {
                 print("✅ Activity saved successfully!")
+                AnalyticsService.shared.logCheckIn(activityId: event.name, category: event.category)
                 self.updateUserLastEvent(userId: userId, eventName: event.name)
             }
         }

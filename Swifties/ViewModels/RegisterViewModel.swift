@@ -170,11 +170,13 @@ class RegisterViewModel: ObservableObject {
         
         // Validate all fields
         let validation = validateAllFields()
-        guard validation.isValid else {
-            print("ERROR: Validation failed - \(validation.message)")
-            throw NSError(domain: "ValidationError", code: -1,
-                         userInfo: [NSLocalizedDescriptionKey: validation.message])
+        guard let uid = Auth.auth().currentUser?.uid else {
+            print("ERROR: No authenticated user found")
+            throw NSError(domain: "AuthError", code: -1,
+                         userInfo: [NSLocalizedDescriptionKey: "No authenticated user found"])
         }
+
+        AnalyticsService.shared.setUserId(uid)
         
         print("Validation passed")
         
@@ -211,6 +213,11 @@ class RegisterViewModel: ObservableObject {
         do {
             try await db.collection("users").document(uid).setData(userData, merge: true)
             print("✅ Successfully saved to Firestore!")
+
+            let analytics = AnalyticsService.shared
+
+            analytics.logOutdoorIndoorPreference(Int(indoorOutdoorScore))
+            
         } catch {
             print("❌ Firestore save error: \(error.localizedDescription)")
             throw error

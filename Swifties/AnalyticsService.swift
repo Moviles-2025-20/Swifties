@@ -47,12 +47,7 @@ class AnalyticsService {
         Analytics.setUserID(userId)
     }
 
-    func logScreenView(_ screenName: String) {
-        Analytics.logEvent(AnalyticsEventScreenView, parameters: [
-            AnalyticsParameterScreenName: screenName,
-            AnalyticsParameterScreenClass: screenName
-        ])
-    }
+
 
     func logError(_ error: Error, platform: String) {
         Analytics.logEvent("app_exception", parameters: [

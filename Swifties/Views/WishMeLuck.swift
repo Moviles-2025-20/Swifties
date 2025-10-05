@@ -83,6 +83,7 @@ struct WishMeLuckView: View {
                     EventDetailView(event: fullEvent)
                 }
             }
+            
             .task {
                 await viewModel.calculateDaysSinceLastWished()
                 startAccelerometerUpdates()
@@ -233,6 +234,8 @@ struct WishMeLuckView: View {
     
     // MARK: - Trigger Wish
     private func triggerWish() async {
+        AnalyticsService.shared.logWishMeLuckUsed()
+        
         Analytics.logEvent("activity_discovery_method", parameters: [
             "method": "wish_me_luck",
             "timestamp": Date().timeIntervalSince1970

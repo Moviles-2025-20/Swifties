@@ -21,13 +21,26 @@ struct EventMapView: View {
     @State private var showNearbyEvents = false
     @Environment(\.dismiss) var dismiss
     
+    // Filter events with valid coordinates
+    private var validEvents: [Event] {
+        events.filter { event in
+            guard let coords = event.location?.coordinates,
+                  coords.count == 2,
+                  coords[0] != 0 || coords[1] != 0 else {
+                print("Invalid coordinates for event: \(event.name)")
+                return false
+            }
+            return true
+        }
+    }
+    
     // Calculate nearest N events using Haversine distance
     private func nearestEvents(from location: CLLocation?, count: Int) -> [(event: Event, distance: CLLocationDistance)] {
         guard let location = location else {
-            return events.prefix(count).map { ($0, 0) }
+            return validEvents.prefix(count).map { ($0, 0) }
         }
         
-        let withDistance: [(Event, CLLocationDistance)] = events.compactMap { event in
+        let withDistance: [(Event, CLLocationDistance)] = validEvents.compactMap { event in
             guard let coords = event.location?.coordinates, coords.count == 2 else { return nil }
             let eventLocation = CLLocation(latitude: coords[0], longitude: coords[1])
             return (event, location.distance(from: eventLocation))
@@ -41,21 +54,21 @@ struct EventMapView: View {
         ZStack(alignment: .top) {
             // Map
             Map(initialPosition: .region(region)) {
-                ForEach(events) { event in
-                    let coords = event.location?.coordinates ?? []
-                    let latitude = coords.first ?? 0
-                    let longitude = (coords.count > 1 ? coords[1] : 0)
-                    let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                    
-                    Annotation(event.title, coordinate: coordinate) {
-                        Button {
-                            selectedEvent = event
-                            onSelect?(event)
-                        } label: {
-                            Image(systemName: "mappin.circle.fill")
-                                .font(.title)
-                                .foregroundColor(.pink)
-                                .shadow(radius: 2)
+                ForEach(validEvents) { event in
+                    if let coords = event.location?.coordinates,
+                       coords.count == 2 {
+                        let coordinate = CLLocationCoordinate2D(latitude: coords[0], longitude: coords[1])
+                        
+                        Annotation(event.title, coordinate: coordinate) {
+                            Button {
+                                selectedEvent = event
+                                onSelect?(event)
+                            } label: {
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.title)
+                                    .foregroundColor(.pink)
+                                    .shadow(radius: 2)
+                            }
                         }
                     }
                 }
@@ -105,6 +118,15 @@ struct EventMapView: View {
             if let userLocation = locationManager.lastLocation?.coordinate {
                 region.center = userLocation
                 region.span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+            }
+            
+            // Debug output
+            print("Total events passed to map: \(events.count)")
+            print("Valid events with coordinates: \(validEvents.count)")
+            validEvents.forEach { event in
+                if let coords = event.location?.coordinates, coords.count == 2 {
+                    print("Event: \(event.name) at [\(coords[0]), \(coords[1])]")
+                }
             }
         }
         .onReceive(locationManager.$lastLocation) { location in

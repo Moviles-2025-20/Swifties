@@ -1,21 +1,20 @@
-// EventFactory.swift
 import FirebaseFirestore
 
 class EventFactory {
-    // Método original para QueryDocumentSnapshot (usado en queries)
+    // Method for QueryDocumentSnapshot (used in queries)
     static func createEvent(from document: QueryDocumentSnapshot) -> Event? {
         let data = document.data()
-        return parseEventData(data)
+        return parseEventData(data, documentId: document.documentID)
     }
     
-    // NEW: Method for DocumentSnapshot (used in getDocument)
+    // Method for DocumentSnapshot (used in getDocument)
     static func createEvent(from document: DocumentSnapshot) -> Event? {
         guard let data = document.data() else { return nil }
-        return parseEventData(data)
+        return parseEventData(data, documentId: document.documentID)
     }
     
-    // Método privado compartido que hace el parsing real
-    private static func parseEventData(_ data: [String: Any]) -> Event? {
+    // FIXED: Now accepts documentId parameter
+    private static func parseEventData(_ data: [String: Any], documentId: String) -> Event? {
         guard let name = data["name"] as? String,
               let description = data["description"] as? String,
               let category = data["category"] as? String else {
@@ -27,7 +26,7 @@ class EventFactory {
         let metadata = parseMetadata(from: data["metadata"] as? [String: Any])
         let stats = parseStats(from: data["stats"] as? [String: Any])
         
-        return Event(
+        var event = Event(
             activetrue: data["activetrue"] as? Bool ?? true,
             category: category,
             created: data["created"] as? String ?? "",
@@ -42,6 +41,11 @@ class EventFactory {
             type: data["type"] as? String ?? "",
             weatherDependent: data["weather_dependent"] as? Bool ?? false
         )
+        
+        // CRITICAL: Set the document ID
+        event.id = documentId
+        
+        return event
     }
     
     private static func parseLocation(from data: [String: Any]?) -> EventLocation {

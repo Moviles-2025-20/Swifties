@@ -65,7 +65,7 @@ struct HomeView: View {
                                 Button(action: {
                               
                                 }) {
-                                    Text("Coming soon")
+                                    Text("Coming soon...")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.white)
@@ -75,9 +75,9 @@ struct HomeView: View {
 
                                 
                                 Button {
-                                    print("Future Feature")
+                                    print("Future feature")
                                 } label: {
-                                    Text("Map")
+                                    Text("Coming soon...")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.white)

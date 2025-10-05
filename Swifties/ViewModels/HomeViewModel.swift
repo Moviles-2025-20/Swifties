@@ -89,11 +89,11 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Load Events from Firestore
     private func loadRecommendations(from eventIDs: [String]) async {
         var tempEvents: [Event] = []
-
+        
         for eventID in eventIDs {
             do {
                 let document = try await db.collection("events").document(eventID).getDocument()
-
+                
                 if let event = EventFactory.createEvent(from: document) {
                     tempEvents.append(event)
                 } else {
@@ -101,9 +101,9 @@ final class HomeViewModel: ObservableObject {
                 }
             } catch {
                 print("Failed to fetch document \(eventID): \(error.localizedDescription)")
-                 continue
             }
         }
+        
         // Update published property
         recommendations = tempEvents
     }

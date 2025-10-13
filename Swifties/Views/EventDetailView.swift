@@ -233,7 +233,7 @@ struct EventDetailView: View {
         .navigationBarHidden(true)
         .onAppear {
             checkIfUserAttended()
-            viewModel.startListeningForComments(eventId: event.id)
+            viewModel.startListeningForComments(forEventId: event.id)
         }
         .onDisappear {
             viewModel.stopListeningForComments()

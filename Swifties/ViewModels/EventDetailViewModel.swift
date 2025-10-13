@@ -104,15 +104,15 @@ class EventDetailViewModel: ObservableObject {
     }
 
     // MARK: - Real-time Comments Listener
-    func startListeningForComments(eventId: String?) {
+    func startListeningForComments(forEventId: String?) {
         // If we don't have an event id, exit as requested
-        guard let eventId = eventId, !eventId.isEmpty else { return }
+        guard let forEventId = forEventId, !forEventId.isEmpty else { return }
 
         // Remove any existing listener to avoid duplicates
         commentsListener?.remove()
 
         commentsListener = db.collection("comments")
-            .whereField("event_id", isEqualTo: eventId)
+            .whereField("event_id", isEqualTo: forEventId)
             .order(by: "created", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }

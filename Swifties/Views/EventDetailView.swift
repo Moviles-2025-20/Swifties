@@ -123,18 +123,18 @@ struct EventDetailView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack(alignment: .top) {
                                     VStack {
-                                        Text(String(format: "%.1f", Double(event.stats.rating)))
+                                        Text(String(format: "%.1f", viewModel.averageRating))
                                             .font(.system(size: 48, weight: .bold))
                                         
                                         HStack(spacing: 4) {
                                             ForEach(0..<5) { index in
-                                                Image(systemName: index < event.stats.rating ? "star.fill" : "star")
+                                                Image(systemName: index < Int(round(viewModel.averageRating)) ? "star.fill" : "star")
                                                     .foregroundColor(.appOcher)
                                                     .font(.system(size: 16))
                                             }
                                         }
                                         
-                                        Text("\(event.stats.totalCompletions) reviews")
+                                        Text("\(viewModel.totalRatings) reviews")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
@@ -154,13 +154,13 @@ struct EventDetailView: View {
                                                         
                                                         Rectangle()
                                                             .fill(Color.appOcher)
-                                                            .frame(width: geo.size.width * getPercentage(for: rating))
+                                                            .frame(width: geo.size.width * percentage(for: rating))
                                                     }
                                                 }
                                                 .frame(height: 8)
                                                 .cornerRadius(4)
                                                 
-                                                Text("\(Int(getPercentage(for: rating) * 100))%")
+                                                Text("\(Int(percentage(for: rating) * 100))%")
                                                     .font(.caption)
                                                     .frame(width: 40, alignment: .trailing)
                                             }
@@ -223,9 +223,6 @@ struct EventDetailView: View {
                             .background(Color(.systemBackground))
                             .cornerRadius(12)
                             .padding(.bottom, 20)
-                            .task {
-                                await viewModel.loadComments(event_id: event.id ?? "")
-                            }
                         }
                         .padding(.horizontal)
                     }
@@ -236,16 +233,21 @@ struct EventDetailView: View {
         .navigationBarHidden(true)
         .onAppear {
             checkIfUserAttended()
+            viewModel.startListeningForComments(eventId: event.id)
+        }
+        .onDisappear {
+            viewModel.stopListeningForComments()
         }
     }
     
-    private func getPercentage(for rating: Int) -> Double {
-        let distribution: [Int: Double] = [5: 0.4, 4: 0.3, 3: 0.15, 2: 0.1, 1: 0.05]
-        return distribution[rating] ?? 0.0
+    private func percentage(for rating: Int) -> Double {
+        let total = max(1, viewModel.totalRatings)
+        let index = max(1, min(5, rating)) - 1
+        let count = viewModel.ratingCounts.indices.contains(index) ? viewModel.ratingCounts[index] : 0
+        return viewModel.totalRatings == 0 ? 0.0 : Double(count) / Double(total)
     }
     
     // MARK: - Firebase Methods
-    
     private func checkIfUserAttended() {
         guard let userId = Auth.auth().currentUser?.uid else {
             isCheckingAttendance = false
@@ -329,14 +331,15 @@ struct EventDetailView: View {
         let hour = Calendar.current.component(.hour, from: Date())
         
         switch hour {
-        case 6..<12:
+        case 6...11:
             return "morning"
-        case 12..<17:
+        case 12...16:
             return "afternoon"
-        case 17..<21:
+        case 17...20:
             return "evening"
         default:
             return "night"
         }
     }
 }
+

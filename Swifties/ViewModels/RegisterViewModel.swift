@@ -169,7 +169,9 @@ class RegisterViewModel: ObservableObject {
         print("User ID: \(uid)")
         
         // Validate all fields
-        let validation = validateAllFields()
+        // TODO: Use this field as a safeguard
+        let _ = validateAllFields()
+        
         guard let uid = Auth.auth().currentUser?.uid else {
             print("ERROR: No authenticated user found")
             throw NSError(domain: "AuthError", code: -1,

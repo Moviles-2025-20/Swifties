@@ -183,7 +183,7 @@ class WishMeLuckViewModel: ObservableObject {
         print("   Selected category: '\(randomCategory)'")
         
         // Query events from that category
-        var query = db.collection("events")
+        let query = db.collection("events")
             .whereField("active", isEqualTo: true)
             .whereField("category", isEqualTo: randomCategory)
         

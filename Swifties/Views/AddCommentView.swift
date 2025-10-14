@@ -31,6 +31,7 @@ struct AddCommentView: View {
 
     // Word limit
     private let wordLimit: Int = 500
+    private let titleWordLimit: Int = 20
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -55,6 +56,11 @@ struct AddCommentView: View {
                             TextField("Add a title to your review", text: $reviewTitle)
                                 .textFieldStyle(.roundedBorder)
                                 .textInputAutocapitalization(.sentences)
+                                .onChange(of: reviewTitle) { _ in
+                                    if commentViewModel.currentWordCount(in: reviewTitle) > titleWordLimit {
+                                        reviewDescription = commentViewModel.enforceWordLimit(in: reviewTitle, to: wordLimit)
+                                    }
+                                }
                         }
 
                         // Description with word limit
@@ -68,8 +74,8 @@ struct AddCommentView: View {
                                     .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(10)
                                     .onChange(of: reviewDescription) { _ in
-                                        if commentViewModel.currentWordCount(reviewDescription: reviewDescription) > wordLimit {
-                                            reviewDescription = commentViewModel.enforceWordLimit(reviewDescription: reviewDescription, wordLimit: wordLimit)
+                                        if commentViewModel.currentWordCount(in: reviewDescription) > wordLimit {
+                                            reviewDescription = commentViewModel.enforceWordLimit(in: reviewDescription, to: wordLimit)
                                         }
                                     }
 
@@ -83,9 +89,9 @@ struct AddCommentView: View {
                             }
                             HStack {
                                 Spacer()
-                                Text("\(commentViewModel.currentWordCount(reviewDescription: reviewDescription))/\(wordLimit) words")
+                                Text("\(commentViewModel.currentWordCount(in: reviewDescription))/\(wordLimit) words")
                                     .font(.caption)
-                                    .foregroundColor(commentViewModel.currentWordCount(reviewDescription: reviewDescription) > wordLimit ? .red : .secondary)
+                                    .foregroundColor(commentViewModel.currentWordCount(in: reviewDescription) > wordLimit ? .red : .secondary)
                             }
                         }
 
@@ -212,7 +218,7 @@ struct AddCommentView: View {
         reviewTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         reviewDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         rating == 0 ||
-        commentViewModel.currentWordCount(reviewDescription: reviewDescription) > wordLimit
+        commentViewModel.currentWordCount(in: reviewDescription) > wordLimit
     }
 
     @MainActor

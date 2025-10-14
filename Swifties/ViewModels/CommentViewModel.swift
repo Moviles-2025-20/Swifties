@@ -99,24 +99,24 @@ final class CommentViewModel: ObservableObject {
     
     // MARK: Functions used to solve word counts and limits
     /// Returns the number of words in the given string, using the same logic as enforceWordLimit.
-    func currentWordCount(reviewDescription: String) -> Int {
+    func currentWordCount(in text: String) -> Int {
         let regex = CommentViewModel.wordRegex
-        let nsText = reviewDescription as NSString
-        let matches = regex.matches(in: reviewDescription, options: [], range: NSRange(location: 0, length: nsText.length))
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
         return matches.count
     }
 
-    func enforceWordLimit(reviewDescription: String, wordLimit: Int) -> String {
+    func enforceWordLimit(in text: String, to wordLimit: Int) -> String {
         // Use regex to find word ranges, then cut the string at the end of the Nth word
         let regex = CommentViewModel.wordRegex
-        let nsText = reviewDescription as NSString
-        let matches = regex.matches(in: reviewDescription, options: [], range: NSRange(location: 0, length: nsText.length))
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
         if matches.count > wordLimit, let lastWordRange = matches.prefix(wordLimit).last?.range {
             // The end of the Nth word
             let endIndex = lastWordRange.location + lastWordRange.length
             let limitedText = nsText.substring(to: endIndex)
             return limitedText
         }
-        return reviewDescription
+        return text
     }
 }

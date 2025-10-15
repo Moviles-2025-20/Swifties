@@ -58,7 +58,7 @@ struct AddCommentView: View {
                                 .textInputAutocapitalization(.sentences)
                                 .onChange(of: reviewTitle) { _ in
                                     if commentViewModel.currentWordCount(in: reviewTitle) > titleWordLimit {
-                                        reviewDescription = commentViewModel.enforceWordLimit(in: reviewTitle, to: wordLimit)
+                                        reviewTitle = commentViewModel.enforceWordLimit(in: reviewTitle, to: titleWordLimit)
                                     }
                                 }
                         }

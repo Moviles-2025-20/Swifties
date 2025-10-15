@@ -5,20 +5,18 @@
 //  Created by Natalia Villegas Calderón on 24/09/25.
 //
 
-
 import SwiftUI
 import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
-import FirebaseAnalytics // ✅ NUEVO
+import FirebaseAnalytics
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
 
         FirebaseApp.configure()
-        Analytics.setAnalyticsCollectionEnabled(true) 
-
+        Analytics.setAnalyticsCollectionEnabled(true)
 
         // Test Firestore connection
         let db = Firestore.firestore(database: "default")
@@ -47,21 +45,29 @@ struct SwiftiesApp: App {
 
     var body: some Scene {
         WindowGroup {
-            NavigationStack {
+            // Use the authentication state as the key to force view refresh
+            Group {
                 if authViewModel.isAuthenticated && authViewModel.user != nil {
                     let needsEmailVerification = (authViewModel.user?.providerId == "password") && (authViewModel.isEmailVerified == false)
                     if needsEmailVerification {
-                        VerifyEmailView()
-                            .environmentObject(authViewModel)
+                        NavigationStack {
+                            VerifyEmailView()
+                                .environmentObject(authViewModel)
+                        }
                     } else {
-                        MainView()
-                            .environmentObject(authViewModel)
+                        NavigationStack {
+                            MainView()
+                                .environmentObject(authViewModel)
+                        }
                     }
                 } else {
-                    StartView()
-                        .environmentObject(authViewModel)
+                    NavigationStack {
+                        StartView()
+                            .environmentObject(authViewModel)
+                    }
                 }
             }
+            .id(authViewModel.isAuthenticated) // Force view recreation on auth state change
             .environmentObject(authViewModel)
         }
     }

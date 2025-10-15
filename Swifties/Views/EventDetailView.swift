@@ -9,7 +9,8 @@ struct EventDetailView: View {
     @State private var showAddComment: Bool = false
     @State private var hasAttended: Bool = false
     @State private var isCheckingAttendance: Bool = true
-    
+    @State private var showAuthAlert: Bool = false
+
     private let db = Firestore.firestore(database: "default")
     
     init(event: Event) {
@@ -66,16 +67,27 @@ struct EventDetailView: View {
                                 .fontWeight(.bold)
                                 .padding(.top, 16)
                         
-                            // Location and Time
-                            HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                // Location
                                 Label(event.location?.address ?? "Address not found", systemImage: "mappin.circle.fill")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                 
-                                if let firstTime = event.schedule.times.first {
-                                    Label(firstTime, systemImage: "clock.fill")
-                                        .font(.subheadline)
+                                // Day and Time
+                                HStack(spacing: 4) {
+                                    Image(systemName: "clock.fill")
                                         .foregroundColor(.secondary)
+                                    
+                                    if let firstDay = event.schedule.days.first,
+                                       let firstTime = event.schedule.times.first {
+                                        Text("\(firstDay), \(firstTime)")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    } else if let firstTime = event.schedule.times.first {
+                                        Text(firstTime)
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
                             }
                             
@@ -231,6 +243,11 @@ struct EventDetailView: View {
             }
         }
         .navigationBarHidden(true)
+        .alert("Authentication Required", isPresented: $showAuthAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("You must be logged in to mark attendance.")
+        }
         .onAppear {
             checkIfUserAttended()
             viewModel.startListeningForComments(forEventId: event.id)
@@ -277,7 +294,7 @@ struct EventDetailView: View {
     
     private func markAsAttending() {
         guard let userId = Auth.auth().currentUser?.uid else {
-            print("Error: User not authenticated")
+            showAuthAlert = true
             return
         }
         

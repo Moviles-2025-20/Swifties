@@ -282,25 +282,25 @@ struct RegisterView: View {
             }
             
             VStack(alignment: .leading, spacing: 8) {
-                Text("Birth Date")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.gray)
-                
-                DatePicker(
-                    "Select birth date",
-                    selection: $viewModel.birthDate,
-                    in: ...Date(),
-                    displayedComponents: .date
-                )
-                .datePickerStyle(.compact)
-                .padding()
-                .background(Color.white)
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                )
-            }
+                            Text("Birth Date")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.gray)
+                            
+                            DatePicker(
+                                "Select birth date",
+                                selection: $viewModel.birthDate,
+                                in: minimumBirthDate()...maximumBirthDate(),
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(.compact)
+                            .padding()
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            )
+                        }
         }
     }
     
@@ -637,4 +637,18 @@ struct RegisterView: View {
         // Set end of day to 23:59:00 to avoid confusion in time selection UI
         return cal.date(bySettingHour: 23, minute: 59, second: 0, of: date) ?? date
     }
+}
+
+// MARK: - Helper function to check age range
+
+// Minimum birth date (must be at least 10 years old but not older than 120)
+private func minimumBirthDate() -> Date {
+    let cal = Calendar.current
+    return cal.date(byAdding: .year, value: -120, to: Date()) ?? Date()
+}
+
+// Maximum birth date (today minus 10 years)
+private func maximumBirthDate() -> Date {
+    let cal = Calendar.current
+    return cal.date(byAdding: .year, value: -10, to: Date()) ?? Date()
 }

@@ -15,6 +15,9 @@ struct LoginView: View {
     
     @State private var emailText = ""
     @State private var passwordText = ""
+
+    @State private var showAlert = false
+    @State private var alertMessage = ""
     
     enum NavigationDestination {
         case home
@@ -142,6 +145,9 @@ struct LoginView: View {
             .disabled(viewModel.isLoading)
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
+            Divider()
+                .padding(.horizontal, 20)
+            
             // Email Login
             TextField("Email", text: $emailText)
                 .autocapitalization(.none)
@@ -156,8 +162,26 @@ struct LoginView: View {
                 .cornerRadius(8)
             
             Button {
+                let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
+                let trimmedPassword = passwordText.trimmingCharacters(in: .whitespacesAndNewlines)
+                // Basic validations
+                if trimmedEmail.isEmpty || trimmedPassword.isEmpty {
+                    alertMessage = "Please enter both your email and password."
+                    showAlert = true
+                    return
+                }
+                if !trimmedEmail.contains("@") || !trimmedEmail.contains(".") {
+                    alertMessage = "That doesn’t look like a valid email address. Please check and try again."
+                    showAlert = true
+                    return
+                }
+                if trimmedPassword.count < 6 {
+                    alertMessage = "Your password must be at least 6 characters long (no blank spaces or new lines)."
+                    showAlert = true
+                    return
+                }
                 Task {
-                    await viewModel.loginWithEmail(email: emailText, password: passwordText)
+                    await viewModel.loginWithEmail(email: trimmedEmail, password: trimmedPassword)
                 }
             } label: {
                 HStack(spacing: 12) {
@@ -181,8 +205,25 @@ struct LoginView: View {
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
             Button {
+                let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
+                let trimmedPassword = passwordText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmedEmail.isEmpty || trimmedPassword.isEmpty {
+                    alertMessage = "Please provide both an email and a password to create your account."
+                    showAlert = true
+                    return
+                }
+                if !trimmedEmail.contains("@") || !trimmedEmail.contains(".") {
+                    alertMessage = "Please enter a valid email address before registering."
+                    showAlert = true
+                    return
+                }
+                if trimmedPassword.count < 6 {
+                    alertMessage = "Passwords need to be at least 6 characters. Try adding a few more without spaces or new lines."
+                    showAlert = true
+                    return
+                }
                 Task {
-                    await viewModel.registerWithEmail(email: emailText, password: passwordText)
+                    await viewModel.registerWithEmail(email: trimmedEmail, password: trimmedPassword)
                 }
             } label: {
                 HStack(spacing: 12) {
@@ -223,14 +264,14 @@ struct LoginView: View {
                     .tint(.appRed)
             }
             
-            // Error message
-            if let error = viewModel.error {
-                errorView(message: error)
-            }
-            
             Spacer()
         }
         .padding(.horizontal, 32)
+        .alert("Let’s fix that", isPresented: $showAlert, actions: {
+            Button("OK", role: .cancel) {}
+        }, message: {
+            Text(alertMessage)
+        })
     }
     
     // MARK: - Authenticated View
@@ -283,24 +324,6 @@ struct LoginView: View {
             
             Spacer()
         }
-    }
-    
-    // MARK: - Helper Views
-    private func errorView(message: String) -> some View {
-        HStack {
-            Text(message)
-                .font(.system(size: 14))
-                .foregroundColor(.red)
-                .multilineTextAlignment(.center)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity)
-        .background(Color.red.opacity(0.1))
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.red.opacity(0.2), lineWidth: 1)
-        )
     }
     
     // MARK: - Navigation Handlers

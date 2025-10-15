@@ -92,7 +92,9 @@ struct ProfileView: View {
                                     backgroundColor: Color("appRed")
                                 ) {
                                     // Handle account deletion
-                                    print("Delete account tapped")
+                                    Task {
+                                        await authViewModel.deleteAccount()
+                                    }
                                 }
                             }
                             .padding(.horizontal, 20)

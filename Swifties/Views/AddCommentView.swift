@@ -29,9 +29,9 @@ struct AddCommentView: View {
     @State private var isSubmitting: Bool = false
     @State private var submitError: String? = nil
 
-    // Word limit
-    private let wordLimit: Int = 500
-    private let titleWordLimit: Int = 20
+    // Character limits
+    private let titleCharLimit: Int = 50
+    private let descriptionCharLimit: Int = 500
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -57,13 +57,19 @@ struct AddCommentView: View {
                                 .textFieldStyle(.roundedBorder)
                                 .textInputAutocapitalization(.sentences)
                                 .onChange(of: reviewTitle) { _ in
-                                    if commentViewModel.currentWordCount(in: reviewTitle) > titleWordLimit {
-                                        reviewTitle = commentViewModel.enforceWordLimit(in: reviewTitle, to: titleWordLimit)
+                                    if reviewTitle.count > titleCharLimit {
+                                        reviewTitle = String(reviewTitle.prefix(titleCharLimit))
                                     }
                                 }
+                            HStack {
+                                Spacer()
+                                Text("\(reviewTitle.count)/\(titleCharLimit) characters")
+                                    .font(.caption)
+                                    .foregroundColor(reviewTitle.count > titleCharLimit ? .red : .secondary)
+                            }
                         }
 
-                        // Description with word limit
+                        // Description with character limit
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Description")
                                 .font(.headline)
@@ -74,14 +80,14 @@ struct AddCommentView: View {
                                     .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(10)
                                     .onChange(of: reviewDescription) { _ in
-                                        if commentViewModel.currentWordCount(in: reviewDescription) > wordLimit {
-                                            reviewDescription = commentViewModel.enforceWordLimit(in: reviewDescription, to: wordLimit)
+                                        if reviewDescription.count > descriptionCharLimit {
+                                            reviewDescription = String(reviewDescription.prefix(descriptionCharLimit))
                                         }
                                     }
 
                                 // Placeholder
                                 if reviewDescription.isEmpty {
-                                    Text("Share your experience (max \(wordLimit) words)...")
+                                    Text("Share your experience (max \(descriptionCharLimit) characters)...")
                                         .foregroundColor(.secondary)
                                         .padding(.horizontal, 14)
                                         .padding(.vertical, 14)
@@ -89,9 +95,9 @@ struct AddCommentView: View {
                             }
                             HStack {
                                 Spacer()
-                                Text("\(commentViewModel.currentWordCount(in: reviewDescription))/\(wordLimit) words")
+                                Text("\(reviewDescription.count)/\(descriptionCharLimit) characters")
                                     .font(.caption)
-                                    .foregroundColor(commentViewModel.currentWordCount(in: reviewDescription) > wordLimit ? .red : .secondary)
+                                    .foregroundColor(reviewDescription.count > descriptionCharLimit ? .red : .secondary)
                             }
                         }
 
@@ -218,7 +224,8 @@ struct AddCommentView: View {
         reviewTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         reviewDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         rating == 0 ||
-        commentViewModel.currentWordCount(in: reviewDescription) > wordLimit
+        reviewTitle.count > titleCharLimit ||
+        reviewDescription.count > descriptionCharLimit
     }
 
     @MainActor
@@ -288,4 +295,3 @@ enum Emotion: String, CaseIterable, Identifiable {
         }
     }
 }
-

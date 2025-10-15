@@ -50,16 +50,6 @@ struct StartView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(Color("appBlue"))
                     
-                    Button {
-                        print("Registering...")
-                    } label: {
-                        Text("Register")
-                            .frame(width: 120, height: 45)
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.black)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color("appSecondary"))
                 }
                 
                 Spacer()

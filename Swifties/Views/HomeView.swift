@@ -12,10 +12,10 @@ struct HomeView: View {
     @State private var selectedTab = 0
     @StateObject var homeViewModel = HomeViewModel()
     @StateObject var profileViewModel = ProfileViewModel()
-    @State private var recommended: [Event]  = []
+    @State private var recommended: [Event] = []
         
     var body: some View {
-        NavigationStack { 
+        NavigationStack {
             ZStack {
                 Color("appPrimary")
                     .ignoresSafeArea()
@@ -23,12 +23,12 @@ struct HomeView: View {
                 VStack {
                     CustomTopBar(
                         title: "Hi, \(getUserFirstName())!",
-                        showNotificationButton: true, onBackTap:  {
+                        showNotificationButton: true, onBackTap: {
                             print("Notifications tapped")
                         })
                     
                     ScrollView {
-                        VStack (spacing: 0) {
+                        VStack(spacing: 0) {
                             HStack {
                                 Text("What's on your mind today?")
                                     .font(.title3)
@@ -40,7 +40,7 @@ struct HomeView: View {
                             }
                             .padding(.bottom, 10)
                             
-                            HStack (spacing: 15) {
+                            HStack(spacing: 15) {
                                 NavigationLink(destination: WeeklyChallengeView().navigationBarHidden(true)) {
                                     Text("Weekly Challenge")
                                         .frame(width: 120, height: 80)
@@ -61,7 +61,7 @@ struct HomeView: View {
                             }
                             .padding(.bottom, 10)
                             
-                            HStack (spacing: 15) {
+                            HStack(spacing: 15) {
                                 Button(action: {
                               
                                 }) {
@@ -108,31 +108,64 @@ struct HomeView: View {
                                                 title: event.name,
                                                 titleColor: Color.orange,
                                                 description: event.description,
-                                                timeText: event.schedule.times.first ?? "Time TBD",
+                                                timeText: formatEventTime(event: event),  // EDIT: Updated to include day
                                                 walkingMinutes: 5,
                                                 location: event.location?.address
                                             )
                                         }
+                                    }
+                                    .padding(.horizontal, 16)
                                 }
-                                .padding(.horizontal, 16)}
-                            }
-                            .task {
-                                await homeViewModel.getRecommendations()
-                                recommended = homeViewModel.recommendations
                             }
                         }
                     }
                 }
             }
         }
+        .task {
+            // Load profile data when view appears
+            profileViewModel.loadProfile()
+            
+            // Load recommendations
+            await homeViewModel.getRecommendations()
+            recommended = homeViewModel.recommendations
+        }
     }
     
     // MARK: - Helper Function
     private func getUserFirstName() -> String {
-        let displayName = viewModel.user?.displayName ?? profileViewModel.profile?.profile.name ?? "User"
+        // Priority 1: Profile name from Firestore
+        if let profileName = profileViewModel.profile?.profile.name, !profileName.isEmpty {
+            let components = profileName.components(separatedBy: " ")
+            return components.first ?? profileName
+        }
         
-        let components = displayName.components(separatedBy: " ")
-        return components.first ?? displayName
+        // Priority 2: Firebase Auth display name
+        if let displayName = viewModel.user?.displayName, !displayName.isEmpty {
+            let components = displayName.components(separatedBy: " ")
+            return components.first ?? displayName
+        }
+        
+        // Priority 3: Firebase Auth email (first part before @)
+        if let email = viewModel.user?.email {
+            let components = email.components(separatedBy: "@")
+            return components.first ?? "User"
+        }
+        
+        // Fallback
+        return "User"
+    }
+}
+
+// MARK: - Helper formater function for incluiding date
+private func formatEventTime(event: Event) -> String {
+    let day = event.schedule.days.first ?? ""
+    let time = event.schedule.times.first ?? "Time TBD"
+    
+    if day.isEmpty {
+        return time
+    } else {
+        return "\(day), \(time)"
     }
 }
 

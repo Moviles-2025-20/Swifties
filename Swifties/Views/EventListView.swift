@@ -104,7 +104,7 @@ struct EventListView: View {
                                                                 title: event.name,
                                                                 titleColor: Color.appOcher,
                                                                 description: event.description,
-                                                                timeText: event.schedule.times.first ?? "Time TBD",
+                                                                timeText: formatEventTime(event: event),  // EDIT: Updated to include day
                                                                 walkingMinutes: 5,
                                                                 location: event.location?.address
                                                             )
@@ -211,6 +211,18 @@ struct EventMapContent: View {
             mapItem.name = event.name
             mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
         }
+    }
+}
+
+// MARK: - Helper formater function for incluiding date
+private func formatEventTime(event: Event) -> String {
+    let day = event.schedule.days.first ?? ""
+    let time = event.schedule.times.first ?? "Time TBD"
+    
+    if day.isEmpty {
+        return time
+    } else {
+        return "\(day), \(time)"
     }
 }
 

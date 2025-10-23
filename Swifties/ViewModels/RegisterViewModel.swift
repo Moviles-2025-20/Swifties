@@ -19,7 +19,7 @@ class RegisterViewModel: ObservableObject {
     @Published var favoriteCategories: [String] = []
     @Published var freeTimeSlots: [[String: String]] = []
     @Published var isLoading: Bool = false
-    @Published var indoorOutdoorScore: Double = 0 // NEW: Indoor/Outdoor preference
+    @Published var indoorOutdoorScore: Double = 50
     
     // For UI state
     @Published var selectedDay: String? = nil
@@ -28,6 +28,8 @@ class RegisterViewModel: ObservableObject {
     
     // Track if email came from auth provider
     private var emailFromProvider: String? = nil
+    private var isProviderEmail: Bool = false
+    
     let db = Firestore.firestore(database: "default")
 
     private let dateFormatter: DateFormatter = {
@@ -38,18 +40,26 @@ class RegisterViewModel: ObservableObject {
     
     // MARK: - Computed Properties
     var isEmailFromProvider: Bool {
-        guard let providerEmail = emailFromProvider else {
-            return false
-        }
-        return !providerEmail.isEmpty && email == providerEmail
+        return isProviderEmail
     }
     
     // MARK: - Initialization
     func initializeWithAuthUser(_ user: FirebaseAuth.User?) {
         if let user = user {
+            // Get display name
             name = user.displayName ?? ""
-            email = user.email ?? ""
-            emailFromProvider = user.email
+            
+            // Get email from provider
+            if let userEmail = user.email, !userEmail.isEmpty {
+                email = userEmail
+                emailFromProvider = userEmail
+                isProviderEmail = true
+            } else {
+                isProviderEmail = false
+            }
+            
+            print("📧 Email initialized from provider: \(email)")
+            print("🔒 Email from provider locked: \(isProviderEmail)")
         }
     }
     
@@ -97,35 +107,17 @@ class RegisterViewModel: ObservableObject {
         return ageComponents.year ?? 0
     }
     
-    // MARK: - Validation
+    // MARK: - Step-by-Step Validation
     func validateCurrentStep(_ step: Int) -> (isValid: Bool, message: String) {
         switch step {
         case 0:
-            if name.trimmingCharacters(in: .whitespaces).isEmpty {
-                return (false, "Please enter your name")
-            }
-            if email.trimmingCharacters(in: .whitespaces).isEmpty {
-                return (false, "Please enter your email")
-            }
-            if major.trimmingCharacters(in: .whitespaces).isEmpty {
-                return (false, "Please select your major")
-            }
-            return (true, "")
+            return validateBasicInfo()
         case 1:
-            if gender == nil {
-                return (false, "Please select your gender")
-            }
-            return (true, "")
+            return validatePersonalDetails()
         case 2:
-            if favoriteCategories.isEmpty {
-                return (false, "Please select at least one preference")
-            }
-            return (true, "")
+            return validatePreferences()
         case 3:
-            if freeTimeSlots.isEmpty {
-                return (false, "Please add at least one free time slot")
-            }
-            return (true, "")
+            return validateFreeTimeSlots()
         case 4:
             return validateAllFields()
         default:
@@ -133,26 +125,101 @@ class RegisterViewModel: ObservableObject {
         }
     }
     
-    private func validateAllFields() -> (isValid: Bool, message: String) {
-        if name.trimmingCharacters(in: .whitespaces).isEmpty {
-            return (false, "Name is required")
+    // Step 0: Basic Info Validation
+    private func validateBasicInfo() -> (isValid: Bool, message: String) {
+        // Validate name - trim whitespace and check if empty
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedName.isEmpty {
+            return (false, "Please enter your name (spaces only are not allowed)")
         }
-        if email.trimmingCharacters(in: .whitespaces).isEmpty {
-            return (false, "Email is required")
+        
+        // Validate email
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedEmail.isEmpty {
+            return (false, "Please enter your email")
         }
-        if major.trimmingCharacters(in: .whitespaces).isEmpty {
-            return (false, "Major is required")
+        
+        // Basic email format validation
+        if !isValidEmail(trimmedEmail) {
+            return (false, "Please enter a valid email address")
         }
+        
+        // Validate major
+        if major.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return (false, "Please select your major")
+        }
+        
+        return (true, "")
+    }
+    
+    // Step 1: Personal Details Validation
+    private func validatePersonalDetails() -> (isValid: Bool, message: String) {
         if gender == nil {
-            return (false, "Gender is required")
+            return (false, "Please select your gender")
         }
+        
+        // Validate age (must be between 10 and 120 years old)
+        let age = calculateAge()
+        if age < 10 {
+            return (false, "You must be at least 10 years old to register")
+        }
+        if age > 120 {
+            return (false, "Please enter a valid birth date")
+        }
+        
+        return (true, "")
+    }
+    
+    // Step 2: Preferences Validation
+    private func validatePreferences() -> (isValid: Bool, message: String) {
         if favoriteCategories.isEmpty {
-            return (false, "At least one preference is required")
-        }
-        if freeTimeSlots.isEmpty {
-            return (false, "At least one free time slot is required")
+            return (false, "Please select at least one category")
         }
         return (true, "")
+    }
+    
+    // Step 3: Free Time Slots Validation
+    private func validateFreeTimeSlots() -> (isValid: Bool, message: String) {
+        if freeTimeSlots.isEmpty {
+            return (false, "Please add at least one free time slot")
+        }
+        return (true, "")
+    }
+    
+    // Step 4: Final Validation (all fields)
+    private func validateAllFields() -> (isValid: Bool, message: String) {
+        // Validate basic info
+        let basicValidation = validateBasicInfo()
+        if !basicValidation.isValid {
+            return basicValidation
+        }
+        
+        // Validate personal details
+        let personalValidation = validatePersonalDetails()
+        if !personalValidation.isValid {
+            return personalValidation
+        }
+        
+        // Validate preferences
+        let preferencesValidation = validatePreferences()
+        if !preferencesValidation.isValid {
+            return preferencesValidation
+        }
+        
+        // Validate free time slots
+        let slotsValidation = validateFreeTimeSlots()
+        if !slotsValidation.isValid {
+            return slotsValidation
+        }
+        
+        return (true, "All fields are valid")
+    }
+    
+    // MARK: - Helper: Email Validation
+    private func isValidEmail(_ email: String) -> Bool {
+        let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+        let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
+        return emailPredicate.evaluate(with: email)
     }
     
     // MARK: - Save to Firebase
@@ -168,19 +235,18 @@ class RegisterViewModel: ObservableObject {
         
         print("User ID: \(uid)")
         
-        // Validate all fields
-        // TODO: Use this field as a safeguard
-        let _ = validateAllFields()
-        
-        guard let uid = Auth.auth().currentUser?.uid else {
-            print("ERROR: No authenticated user found")
-            throw NSError(domain: "AuthError", code: -1,
-                         userInfo: [NSLocalizedDescriptionKey: "No authenticated user found"])
+        // Final validation before saving
+        let validation = validateAllFields()
+        if !validation.isValid {
+            throw NSError(domain: "ValidationError", code: -1,
+                         userInfo: [NSLocalizedDescriptionKey: validation.message])
         }
-
-        AnalyticsService.shared.setUserId(uid)
         
         print("Validation passed")
+        
+        // Trim whitespace from name and email before saving
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Get photo URL from current user
         let photoUrl = Auth.auth().currentUser?.photoURL?.absoluteString ?? ""
@@ -192,8 +258,8 @@ class RegisterViewModel: ObservableObject {
         // Prepare data matching Flutter UserData model structure
         let userData: [String: Any] = [
             "profile": [
-                "name": name,
-                "email": email,
+                "name": trimmedName,
+                "email": trimmedEmail,
                 "photo": photoUrl,
                 "major": major,
                 "gender": gender ?? "",
@@ -202,7 +268,7 @@ class RegisterViewModel: ObservableObject {
                 "last_active": FieldValue.serverTimestamp()
             ],
             "preferences": [
-                "indoor_outdoor_score": Int(indoorOutdoorScore), // NEW: Added indoor/outdoor score
+                "indoor_outdoor_score": Int(indoorOutdoorScore),
                 "favorite_categories": favoriteCategories,
                 "notifications": [
                     "free_time_slots": freeTimeSlotsData
@@ -216,9 +282,9 @@ class RegisterViewModel: ObservableObject {
             try await db.collection("users").document(uid).setData(userData, merge: true)
             print("✅ Successfully saved to Firestore!")
 
-            let analytics = AnalyticsService.shared
-
-            analytics.logOutdoorIndoorPreference(Int(indoorOutdoorScore))
+            // Log analytics
+            AnalyticsService.shared.setUserId(uid)
+            AnalyticsService.shared.logOutdoorIndoorPreference(Int(indoorOutdoorScore))
             
         } catch {
             print("❌ Firestore save error: \(error.localizedDescription)")
@@ -231,6 +297,7 @@ class RegisterViewModel: ObservableObject {
         name = ""
         email = ""
         emailFromProvider = nil
+        isProviderEmail = false
         major = ""
         gender = nil
         birthDate = Date()
@@ -239,6 +306,6 @@ class RegisterViewModel: ObservableObject {
         selectedDay = nil
         startTime = Date()
         endTime = Date()
-        indoorOutdoorScore = 50 // Reset to default
+        indoorOutdoorScore = 50
     }
 }

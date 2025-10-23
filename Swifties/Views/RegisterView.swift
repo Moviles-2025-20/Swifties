@@ -282,25 +282,25 @@ struct RegisterView: View {
             }
             
             VStack(alignment: .leading, spacing: 8) {
-                            Text("Birth Date")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.gray)
-                            
-                            DatePicker(
-                                "Select birth date",
-                                selection: $viewModel.birthDate,
-                                in: minimumBirthDate()...maximumBirthDate(),
-                                displayedComponents: .date
-                            )
-                            .datePickerStyle(.compact)
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                            )
-                        }
+                Text("Birth Date")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.gray)
+                
+                DatePicker(
+                    "Select birth date",
+                    selection: $viewModel.birthDate,
+                    in: minimumBirthDate()...maximumBirthDate(),
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.compact)
+                .padding()
+                .background(Color.white)
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                )
+            }
         }
     }
     
@@ -421,7 +421,7 @@ struct RegisterView: View {
                                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                         )
                         .onChange(of: viewModel.startTime) { oldStart, newStart in
-                            // Ensure end is always after start; bump end forward if needed
+                            // Ensure end is always after start
                             if viewModel.endTime <= newStart {
                                 viewModel.endTime = Calendar.current.date(byAdding: .minute, value: 30, to: newStart)
                                     ?? Calendar.current.date(byAdding: .minute, value: 1, to: newStart)
@@ -569,42 +569,17 @@ struct RegisterView: View {
     }
     
     private func handleNext() {
-        switch currentStep {
-        case 0:
-            if viewModel.name.trimmingCharacters(in: .whitespaces).isEmpty {
-                alertMessage = "Please enter your name"
-                showAlert = true
-                return
-            }
-            if viewModel.email.trimmingCharacters(in: .whitespaces).isEmpty {
-                alertMessage = "Please enter your email"
-                showAlert = true
-                return
-            }
-            if viewModel.major.trimmingCharacters(in: .whitespaces).isEmpty {
-                alertMessage = "Please select your major"
-                showAlert = true
-                return
-            }
-        case 1:
-            if viewModel.gender == nil {
-                alertMessage = "Please select your gender"
-                showAlert = true
-                return
-            }
-        case 2:
-            if viewModel.favoriteCategories.isEmpty {
-                alertMessage = "Please select at least one category"
-                showAlert = true
-                return
-            }
-        case 3:
-            if viewModel.freeTimeSlots.isEmpty {
-                alertMessage = "Please add at least one free time slot"
-                showAlert = true
-                return
-            }
-        case 4:
+        // Validate current step before proceeding
+        let validation = viewModel.validateCurrentStep(currentStep)
+        
+        if !validation.isValid {
+            alertMessage = validation.message
+            showAlert = true
+            return
+        }
+        
+        // If we're on the last step, save the data
+        if currentStep == 4 {
             Task {
                 do {
                     try await viewModel.saveUserData()
@@ -620,34 +595,27 @@ struct RegisterView: View {
                 }
             }
             return
-        default:
-            break
         }
         
-        if currentStep < 4 {
-            withAnimation {
-                currentStep += 1
-            }
+        // Move to next step
+        withAnimation {
+            currentStep += 1
         }
     }
     
-    // Helper: end of day for given date (keeps selection within same day)
+    // Helper: end of day for given date
     private func endOfDay(for date: Date) -> Date {
         let cal = Calendar.current
-        // Set end of day to 23:59:00 to avoid confusion in time selection UI
         return cal.date(bySettingHour: 23, minute: 59, second: 0, of: date) ?? date
     }
 }
 
-// MARK: - Helper function to check age range
-
-// Minimum birth date (must be at least 10 years old but not older than 120)
+// MARK: - Helper functions
 private func minimumBirthDate() -> Date {
     let cal = Calendar.current
     return cal.date(byAdding: .year, value: -120, to: Date()) ?? Date()
 }
 
-// Maximum birth date (today minus 10 years)
 private func maximumBirthDate() -> Date {
     let cal = Calendar.current
     return cal.date(byAdding: .year, value: -10, to: Date()) ?? Date()

@@ -89,7 +89,7 @@ struct LoginView: View {
             // Google Login Button
             Button(action: {
                 guard networkMonitor.currentConnectionAvailable() else {
-                    alertMessage = "No network connection  - Cannot log in"
+                    alertMessage = "No network connection - Cannot log in"
                     showAlert = true
                     Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
                     return

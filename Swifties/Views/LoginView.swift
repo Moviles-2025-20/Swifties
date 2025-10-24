@@ -5,6 +5,7 @@
 import SwiftUI
 import Combine
 import FirebaseAnalytics
+import Network
 
 struct LoginView: View {
     @EnvironmentObject var viewModel: AuthViewModel
@@ -18,6 +19,7 @@ struct LoginView: View {
 
     @State private var showAlert = false
     @State private var alertMessage = ""
+    @StateObject private var networkMonitor = NetworkMonitor.shared
     
     enum NavigationDestination {
         case home
@@ -86,6 +88,12 @@ struct LoginView: View {
             
             // Google Login Button
             Button(action: {
+                guard networkMonitor.currentConnectionAvailable() else {
+                    alertMessage = "No network connection  - Cannot log in"
+                    showAlert = true
+                    Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
+                    return
+                }
                 Task {
                     await viewModel.loginWithGoogle()
                 }
@@ -118,6 +126,12 @@ struct LoginView: View {
             
             // Twitter Login Button
             Button(action: {
+                guard networkMonitor.currentConnectionAvailable() else {
+                    alertMessage = "No network connection  - Cannot log in"
+                    showAlert = true
+                    Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
+                    return
+                }
                 Task {
                     await viewModel.loginWithTwitter()
                 }
@@ -165,6 +179,12 @@ struct LoginView: View {
                 .cornerRadius(8)
             
             Button {
+                guard networkMonitor.currentConnectionAvailable() else {
+                    alertMessage = "No network connection  - Cannot log in"
+                    showAlert = true
+                    Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
+                    return
+                }
                 let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
                 let trimmedPassword = passwordText.trimmingCharacters(in: .whitespacesAndNewlines)
                 // Basic validations
@@ -208,6 +228,12 @@ struct LoginView: View {
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
             Button {
+                guard networkMonitor.currentConnectionAvailable() else {
+                    alertMessage = "No network connection  - Cannot register"
+                    showAlert = true
+                    Analytics.logEvent("network_unavailable", parameters: ["context": "register"])
+                    return
+                }
                 let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
                 let trimmedPassword = passwordText.trimmingCharacters(in: .whitespacesAndNewlines)
                 if trimmedEmail.isEmpty || trimmedPassword.isEmpty {
@@ -269,6 +295,7 @@ struct LoginView: View {
             
             Spacer()
         }
+        .onAppear { _ = networkMonitor.isConnected }
         .padding(.horizontal, 32)
         .alert("Let’s fix that", isPresented: $showAlert, actions: {
             Button("OK", role: .cancel) {}

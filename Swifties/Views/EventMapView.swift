@@ -6,6 +6,7 @@
 
 import SwiftUI
 import MapKit
+import Network
 
 /// The geographic coordinates for Bogotá, Colombia.
 private let bogotaCoordinates = CLLocationCoordinate2D(latitude: 4.6533, longitude: -74.0836)
@@ -20,6 +21,9 @@ struct EventMapView: View {
                                                    span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
     @State private var showNearbyEvents = false
     @Environment(\.dismiss) var dismiss
+
+    @StateObject private var networkMonitor = NetworkMonitor.shared
+    private let offlineMessage = "No network connection  - Cannot load map view"
     
     // Filter events with valid coordinates
     private var validEvents: [Event] {
@@ -86,52 +90,62 @@ struct EventMapView: View {
                     }
                 }
             }
-            .ignoresSafeArea()
-                        
-            // Floating Action Button
-            VStack {
-                Spacer()
-                
-                if locationManager.lastLocation != nil {
-                    Button(action: {
-                        showNearbyEvents = true
-                    }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 16))
-                            Text("Close Events")
-                                .font(.system(size: 16, weight: .semibold))
+            
+            if !networkMonitor.isConnected {
+                HStack(spacing: 8) {
+                    Image(systemName: "wifi.exclamationmark")
+                        .foregroundColor(.orange)
+                    Text(offlineMessage)
+                        .font(.subheadline)
+                        .foregroundColor(.orange)
+                        .multilineTextAlignment(.leading)
+                    Spacer()
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .padding()
+            } else {
+                // Floating Action Button
+                VStack {
+                    Spacer()
+                    
+                    if locationManager.lastLocation != nil {
+                        Button(action: {
+                            showNearbyEvents = true
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 16))
+                                Text("Close Events")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 14)
+                            .background(Color.pink)
+                            .cornerRadius(25)
+                            .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
                         }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 14)
-                        .background(Color.pink)
-                        .cornerRadius(25)
-                        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                        .padding(.bottom, 100)
                     }
-                    .padding(.bottom, 100)
                 }
             }
         }
         .onAppear {
-            locationManager.requestWhenInUseAuthorization()
-            if let userLocation = locationManager.lastLocation?.coordinate {
-                region.center = userLocation
-                region.span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-            }
-            
-            // Debug output
-            /*
-            print("Total events passed to map: \(events.count)")
-            print("Valid events with coordinates: \(validEvents.count)")
-            validEvents.forEach { event in
-                if let coords = event.location?.coordinates, coords.count == 2 {
-                    print("Event: \(event.name) at [\(coords[0]), \(coords[1])]")
+            if networkMonitor.isConnected {
+                locationManager.requestWhenInUseAuthorization()
+                if let userLocation = locationManager.lastLocation?.coordinate {
+                    region.center = userLocation
+                    region.span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                 }
-            }*/
+            } else {
+                // When offline, keep default region and avoid requesting updates
+                print(offlineMessage)
+            }
         }
         .onReceive(locationManager.$lastLocation) { location in
-            guard let coord = location?.coordinate else { return }
+            guard networkMonitor.isConnected, let coord = location?.coordinate else { return }
             withAnimation {
                 region.center = coord
             }

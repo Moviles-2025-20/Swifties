@@ -18,6 +18,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         FirebaseApp.configure()
         Analytics.setAnalyticsCollectionEnabled(true)
 
+
         // Test Firestore connection
         let db = Firestore.firestore(database: "default")
         db.collection("test").document("connection").setData(["test": "value"]) { error in
@@ -45,29 +46,21 @@ struct SwiftiesApp: App {
 
     var body: some Scene {
         WindowGroup {
-            // Use the authentication state as the key to force view refresh
-            Group {
+            NavigationStack {
                 if authViewModel.isAuthenticated && authViewModel.user != nil {
                     let needsEmailVerification = (authViewModel.user?.providerId == "password") && (authViewModel.isEmailVerified == false)
                     if needsEmailVerification {
-                        NavigationStack {
-                            VerifyEmailView()
-                                .environmentObject(authViewModel)
-                        }
+                        VerifyEmailView()
+                            .environmentObject(authViewModel)
                     } else {
-                        NavigationStack {
-                            MainView()
-                                .environmentObject(authViewModel)
-                        }
-                    }
-                } else {
-                    NavigationStack {
-                        StartView()
+                        MainView()
                             .environmentObject(authViewModel)
                     }
+                } else {
+                    StartView()
+                        .environmentObject(authViewModel)
                 }
             }
-            .id(authViewModel.isAuthenticated) // Force view recreation on auth state change
             .environmentObject(authViewModel)
         }
     }

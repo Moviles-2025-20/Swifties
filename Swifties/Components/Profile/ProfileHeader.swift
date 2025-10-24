@@ -142,7 +142,7 @@ struct ProfileHeader: View {
             // Save reference path to Firestore under profile.photo as a String containing the storage path
             let db = Firestore.firestore(database: "default")
             let userRef = db.collection("users").document(uid)
-            try await userRef.setData(["profile": ["photo": url]], merge: true)
+            try await userRef.setData(["profile": ["photo": url.absoluteString]], merge: true)
         } catch {
             print("Failed to upload or save photo: \(error)")
         }

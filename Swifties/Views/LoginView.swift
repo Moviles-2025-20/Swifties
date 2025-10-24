@@ -42,6 +42,9 @@ struct LoginView: View {
                     handleRedirect()
                 }
             }
+            .onChange(of: viewModel.isEmailVerified) {
+                handleRedirect()
+            }
             .navigationDestination(isPresented: $shouldNavigate) {
                 if let destination = navigationDestination {
                     switch destination {

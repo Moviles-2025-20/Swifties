@@ -127,7 +127,7 @@ struct LoginView: View {
             // Twitter Login Button
             Button(action: {
                 guard networkMonitor.currentConnectionAvailable() else {
-                    alertMessage = "No network connection  - Cannot log in"
+                    alertMessage = "No network connection - Cannot log in"
                     showAlert = true
                     Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
                     return
@@ -180,7 +180,7 @@ struct LoginView: View {
             
             Button {
                 guard networkMonitor.currentConnectionAvailable() else {
-                    alertMessage = "No network connection  - Cannot log in"
+                    alertMessage = "No network connection - Cannot log in"
                     showAlert = true
                     Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
                     return
@@ -229,7 +229,7 @@ struct LoginView: View {
             
             Button {
                 guard networkMonitor.currentConnectionAvailable() else {
-                    alertMessage = "No network connection  - Cannot register"
+                    alertMessage = "No network connection - Cannot register"
                     showAlert = true
                     Analytics.logEvent("network_unavailable", parameters: ["context": "register"])
                     return
@@ -295,7 +295,10 @@ struct LoginView: View {
             
             Spacer()
         }
-        .onAppear { _ = networkMonitor.isConnected }
+        .onAppear {
+            // Accessing isConnected to trigger networkMonitor initialization if needed.
+            _ = networkMonitor.isConnected
+        }
         .padding(.horizontal, 32)
         .alert("Let’s fix that", isPresented: $showAlert, actions: {
             Button("OK", role: .cancel) {}

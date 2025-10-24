@@ -31,7 +31,7 @@ struct Profile: Codable {
         case name
         case email
         case gender
-        case avatarURL = "avatar_url"
+        case avatarURL = "photo"
         case created
         case lastActive = "last_active"
         case age

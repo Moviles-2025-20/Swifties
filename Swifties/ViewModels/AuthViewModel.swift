@@ -18,6 +18,7 @@ class AuthViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var error: String?
     @Published var isFirstTimeUser: Bool = false
+    @Published var isEmailVerified: Bool = false
     
     // AuthService singleton
     private let authService = AuthService.shared
@@ -227,10 +228,7 @@ class AuthViewModel: ObservableObject {
         } catch {
             print("Error reloading user: \(error.localizedDescription)")
         }
-    }
-
-    var isEmailVerified: Bool {
-        return Auth.auth().currentUser?.isEmailVerified ?? false
+        isEmailVerified = Auth.auth().currentUser?.isEmailVerified ?? false
     }
 
     // MARK: - Logout

@@ -130,7 +130,12 @@ class RegisterViewModel: ObservableObject {
         // Validate name - trim whitespace and check if empty
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedName.isEmpty {
-            return (false, "Please enter your name (spaces only are not allowed)")
+            return (false, "Please enter your name (only blank spaces are not allowed)")
+        }
+        
+        // Check for emojis in name
+        if containsEmoji(trimmedName) {
+            return (false, "Name cannot contain emojis")
         }
         
         // Validate email
@@ -220,6 +225,29 @@ class RegisterViewModel: ObservableObject {
         let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
         return emailPredicate.evaluate(with: email)
+    }
+    
+    // MARK: - Helper: Emoji Detection
+    private func containsEmoji(_ string: String) -> Bool {
+        for scalar in string.unicodeScalars {
+            switch scalar.value {
+            case 0x1F600...0x1F64F, // Emoticons
+                 0x1F300...0x1F5FF, // Misc Symbols and Pictographs
+                 0x1F680...0x1F6FF, // Transport and Map
+                 0x1F1E0...0x1F1FF, // Regional country flags
+                 0x2600...0x26FF,   // Misc symbols
+                 0x2700...0x27BF,   // Dingbats
+                 0xFE00...0xFE0F,   // Variation selectors
+                 0x1F900...0x1F9FF, // Supplemental Symbols and Pictographs
+                 0x1F018...0x1F270, // Various asian characters
+                 0x238C...0x2454,   // Misc items
+                 0x20D0...0x20FF:   // Combining Diacritical Marks for Symbols
+                return true
+            default:
+                continue
+            }
+        }
+        return false
     }
     
     // MARK: - Save to Firebase

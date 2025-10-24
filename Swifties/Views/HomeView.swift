@@ -26,7 +26,7 @@ struct HomeView: View {
                         showNotificationButton: true, onBackTap: {
                             print("Notifications tapped")
                         })
-                    
+
                     ScrollView {
                         VStack(spacing: 0) {
                             HStack {

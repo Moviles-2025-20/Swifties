@@ -5,7 +5,6 @@
 //  Created by Natalia Villegas Calderón on 24/09/25.
 //
 
-
 import SwiftUI
 import FirebaseCore
 import FirebaseAuth

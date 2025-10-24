@@ -421,18 +421,16 @@ struct RegisterView: View {
                                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                         )
                         .onChange(of: viewModel.startTime) { oldStart, newStart in
-                            // Ensure end is always after start
-                            if viewModel.endTime <= newStart {
-                                viewModel.endTime = Calendar.current.date(byAdding: .minute, value: 30, to: newStart)
-                                    ?? Calendar.current.date(byAdding: .minute, value: 1, to: newStart)
-                                    ?? newStart
+                            // Automatically set end time to 30 minutes after start time
+                            if let newEnd = Calendar.current.date(byAdding: .minute, value: 30, to: newStart) {
+                                viewModel.endTime = newEnd
                             }
                         }
                     
                     DatePicker(
                         "End",
                         selection: $viewModel.endTime,
-                        in: viewModel.startTime...endOfDay(for: viewModel.startTime),
+                        in: minimumEndTime()...endOfDay(for: viewModel.startTime),
                         displayedComponents: .hourAndMinute
                     )
                     .padding()
@@ -451,6 +449,15 @@ struct RegisterView: View {
                         showAlert = true
                         return
                     }
+                    
+                    // Validate minimum 30 minutes duration
+                    let timeDifference = Calendar.current.dateComponents([.minute], from: viewModel.startTime, to: viewModel.endTime).minute ?? 0
+                    if timeDifference < 30 {
+                        alertMessage = "Time slot must be at least 30 minutes long."
+                        showAlert = true
+                        return
+                    }
+                    
                     viewModel.addFreeTimeSlot()
                 }) {
                     HStack {
@@ -601,6 +608,11 @@ struct RegisterView: View {
         withAnimation {
             currentStep += 1
         }
+    }
+    
+    // Helper: minimum end time (start time + 30 minutes)
+    private func minimumEndTime() -> Date {
+        Calendar.current.date(byAdding: .minute, value: 30, to: viewModel.startTime) ?? viewModel.startTime
     }
     
     // Helper: end of day for given date

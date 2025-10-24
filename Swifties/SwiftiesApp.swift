@@ -47,12 +47,19 @@ struct SwiftiesApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                if authViewModel.isAuthenticated && authViewModel.user != nil {
-                    let needsEmailVerification = (authViewModel.user?.providerId == "password") && (authViewModel.isEmailVerified == false)
+                if authViewModel.isAuthenticated, authViewModel.user != nil {
+                    let isEmailProvider = (authViewModel.user?.providerId == "password")
+                    let needsEmailVerification = isEmailProvider && (authViewModel.isEmailVerified == false)
+
                     if needsEmailVerification {
                         VerifyEmailView()
                             .environmentObject(authViewModel)
+                    } else if authViewModel.isFirstTimeUser {
+                        // New or incomplete users go to onboarding/interview
+                        RegisterView()
+                            .environmentObject(authViewModel)
                     } else {
+                        // Returning users go to the main app
                         MainView()
                             .environmentObject(authViewModel)
                     }

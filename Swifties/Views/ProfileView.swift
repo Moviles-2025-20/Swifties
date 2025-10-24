@@ -40,6 +40,18 @@ struct ProfileView: View {
                                     viewModel.loadProfile()
                                 }
                                 .buttonStyle(.borderedProminent)
+                                
+                                Spacer()
+                                
+                                ActionButton(
+                                    title: "Delete your account",
+                                    backgroundColor: Color("appRed")
+                                ) {
+                                    // Handle account deletion
+                                    Task {
+                                        await authViewModel.deleteAccount()
+                                    }
+                                }
                             }
                             .padding(.top, 40)
                         } else if let profile = viewModel.profile {

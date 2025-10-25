@@ -1,10 +1,3 @@
-//
-//  EventListView.swift
-//  Swifties
-//
-//  Created by Imac  on 1/10/25.
-//
-
 import SwiftUI
 import MapKit
 import UIKit
@@ -27,6 +20,25 @@ struct EventListView: View {
             }
         }
     }
+    
+    // MARK: - Computed Properties for Data Source (MOVIDAS AQUÍ)
+    private var dataSourceIcon: String {
+        switch viewModel.dataSource {
+        case .memoryCache: return "memorychip"
+        case .localStorage: return "internaldrive"
+        case .network: return "wifi"
+        case .none: return "questionmark"
+        }
+    }
+
+    private var dataSourceText: String {
+        switch viewModel.dataSource {
+        case .memoryCache: return "Memory Cache"
+        case .localStorage: return "Local Storage"
+        case .network: return "Updated from Network"
+        case .none: return ""
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -37,6 +49,19 @@ struct EventListView: View {
                     CustomTopBar(title: "Events", showNotificationButton: true, onBackTap:  {
                         print("Notification tapped")
                     })
+                    
+                    // Data Source Indicator
+                    if !viewModel.isLoading && !viewModel.events.isEmpty {
+                        HStack {
+                            Image(systemName: dataSourceIcon)
+                                .foregroundColor(.secondary)
+                            Text(dataSourceText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                    }
 
                     // Main content
                     if viewModel.isLoading {
@@ -104,7 +129,7 @@ struct EventListView: View {
                                                                 title: event.name,
                                                                 titleColor: Color.appOcher,
                                                                 description: event.description,
-                                                                timeText: formatEventTime(event: event),  // EDIT: Updated to include day
+                                                                timeText: formatEventTime(event: event),
                                                                 walkingMinutes: 5,
                                                                 location: event.location?.address
                                                             )
@@ -116,8 +141,6 @@ struct EventListView: View {
                                                             discoveryMethod: .manualBrowse
                                                         )
                                                     })
-
-
                                                 }
                                                 .padding(.horizontal, 16)
                                             }
@@ -133,12 +156,13 @@ struct EventListView: View {
             }
             .onAppear {
                 if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
-                    viewModel.loadEvents()
+                    // Debug storage
+                    EventStorageService.shared.debugStorage()
                     
+                    viewModel.loadEvents()
                     AnalyticsService.shared.logDiscoveryMethod(.manualBrowse)
                 }
             }
-
         }
     }
 
@@ -230,70 +254,7 @@ private struct EventListView_PreviewContainer: View {
     let viewModel: EventListViewModel = {
         let vm = EventListViewModel()
         let mockEvents: [Event] = [
-            Event(
-                activetrue: true,
-                category: "Music",
-                created: "2025-10-05T18:00:00-05:00",
-                description: "Live rock music concert",
-                eventType: "Concert",
-                location: EventLocation(
-                    address: "123 Street",
-                    city: "Bogotá",
-                    coordinates: [4.6097, -74.0817],
-                    type: "Indoor"
-                ),
-                metadata: EventMetadata(
-                    cost: EventCost(amount: 50000, currency: "COP"),
-                    durationMinutes: 120,
-                    imageUrl: "https://example.com/image.jpg",
-                    tags: ["rock", "live", "music"]
-                ),
-                name: "Rock Fest",
-                schedule: EventSchedule(
-                    days: ["Friday", "Saturday"],
-                    times: ["18:00", "20:00"]
-                ),
-                stats: EventStats(
-                    popularity: 85,
-                    rating: 4,
-                    totalCompletions: 150
-                ),
-                title: "Rock Fest 2025",
-                type: "Concert",
-                weatherDependent: false
-            ),
-            Event(
-                activetrue: true,
-                category: "Art",
-                created: "2025-10-05T10:00:00-05:00",
-                description: "Modern art exhibition",
-                eventType: "Exhibition",
-                location: EventLocation(
-                    address: "7th Avenue",
-                    city: "Bogotá",
-                    coordinates: [4.6533, -74.0836],
-                    type: "Indoor"
-                ),
-                metadata: EventMetadata(
-                    cost: EventCost(amount: 0, currency: "COP"),
-                    durationMinutes: 90,
-                    imageUrl: "https://example.com/art.jpg",
-                    tags: ["art", "modern", "exhibition"]
-                ),
-                name: "Art Expo",
-                schedule: EventSchedule(
-                    days: ["Monday", "Tuesday", "Wednesday"],
-                    times: ["10:00", "14:00"]
-                ),
-                stats: EventStats(
-                    popularity: 70,
-                    rating: 5,
-                    totalCompletions: 200
-                ),
-                title: "Art Expo 2025",
-                type: "Exhibition",
-                weatherDependent: false
-            )
+           
         ]
         vm.events = mockEvents
         return vm

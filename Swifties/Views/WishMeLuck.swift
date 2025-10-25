@@ -113,15 +113,16 @@ struct WishMeLuckView: View {
                 }
                                 
                 // Try to parse using Codable first
-                if let event = try? document.data(as: Event.self) {
-                    print("Successfully parsed event using Codable")
+                // Opción 1: Usando EventFactory (recomendado si ya lo tienes)
+                if let event = EventFactory.createEvent(from: document) {
+                    print("✅ Successfully parsed event using EventFactory")
                     fullEventForDetail = event
-
-                 
+                    
                     AnalyticsService.shared.logActivitySelection(
                         activityId: event.id ?? "unknown_event",
                         discoveryMethod: .wishMeLuck
                     )
+                
 
                     showEventDetail = true
                 } else {

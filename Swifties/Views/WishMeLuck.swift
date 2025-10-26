@@ -3,6 +3,7 @@ import SwiftUI
 import CoreMotion
 import FirebaseFirestore
 import FirebaseAnalytics
+import Network
 
 struct WishMeLuckView: View {
     @StateObject private var viewModel = WishMeLuckViewModel()
@@ -11,6 +12,9 @@ struct WishMeLuckView: View {
     @State private var showEventDetail = false
     @State private var fullEventForDetail: Event?
     @State private var isLoadingFullEvent = false
+    
+    @StateObject private var networkMonitor = NetworkMonitor.shared
+    private let offlineMessage = "No network connection - Couldn't fetch events"
     
     private let db = Firestore.firestore(database: "default")
     
@@ -33,47 +37,69 @@ struct WishMeLuckView: View {
                         onBackTap: {}
                     )
                     
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            // MARK: - Header Section
-                            HeaderSection(daysSinceLastWished: viewModel.daysSinceLastWished)
-                                .padding(.horizontal, 20)
-                            
-                            // MARK: - Magic 8-Ball
-                            Magic8BallCard(
-                                isLoading: viewModel.isLoading,
-                                animateBall: $animateBall
-                            )
-                            .padding(.horizontal, 20)
-                            
-                            // MARK: - Motivational Message
-                            if let _ = viewModel.currentEvent {
-                                MotivationalMessageCard(message: viewModel.getMotivationalMessage())
-                                    .padding(.horizontal, 20)
-                            }
-                            
-                            // MARK: - Event Preview or Empty State
-                            if let event = viewModel.currentEvent {
-                                EventPreviewCard(event: event, isLoadingDetail: isLoadingFullEvent)
-                                    .padding(.horizontal, 20)
-                                    .onTapGesture {
-                                        loadFullEventAndShowDetail(eventId: event.id)
-                                    }
-                            } else if !viewModel.isLoading {
-                                EmptyStateCard()
-                                    .padding(.horizontal, 20)
-                            }
-                            
-                            // MARK: - Wish Me Luck Button
-                            WishMeLuckButton(isLoading: viewModel.isLoading) {
-                                Task {
-                                    await triggerWish()
+                    if !networkMonitor.isConnected {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.exclamationmark")
+                                .foregroundColor(.orange)
+                            Text(offlineMessage)
+                                .font(.subheadline)
+                                .foregroundColor(.orange)
+                            Spacer()
+                            Button("Retry") {
+                                if networkMonitor.isConnected {
+                                    Task { await viewModel.calculateDaysSinceLastWished() }
                                 }
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            .buttonStyle(.bordered)
+                            .tint(.orange)
                         }
-                        .padding(.top, 10)
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                        .padding([.horizontal, .top], 20)
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 20) {
+                                // MARK: - Header Section
+                                HeaderSection(daysSinceLastWished: viewModel.daysSinceLastWished)
+                                    .padding(.horizontal, 20)
+                                
+                                // MARK: - Magic 8-Ball
+                                Magic8BallCard(
+                                    isLoading: viewModel.isLoading,
+                                    animateBall: $animateBall
+                                )
+                                .padding(.horizontal, 20)
+                                
+                                // MARK: - Motivational Message
+                                if let _ = viewModel.currentEvent {
+                                    MotivationalMessageCard(message: viewModel.getMotivationalMessage())
+                                        .padding(.horizontal, 20)
+                                }
+                                
+                                // MARK: - Event Preview or Empty State
+                                if let event = viewModel.currentEvent {
+                                    EventPreviewCard(event: event, isLoadingDetail: isLoadingFullEvent)
+                                        .padding(.horizontal, 20)
+                                        .onTapGesture {
+                                            loadFullEventAndShowDetail(eventId: event.id)
+                                        }
+                                } else if !viewModel.isLoading {
+                                    EmptyStateCard()
+                                        .padding(.horizontal, 20)
+                                }
+                                
+                                // MARK: - Wish Me Luck Button
+                                WishMeLuckButton(isLoading: viewModel.isLoading) {
+                                    Task {
+                                        await triggerWish()
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
+                            }
+                            .padding(.top, 10)
+                        }
                     }
                 }
             }
@@ -85,7 +111,9 @@ struct WishMeLuckView: View {
             }
             
             .task {
-                await viewModel.calculateDaysSinceLastWished()
+                if networkMonitor.isConnected {
+                    await viewModel.calculateDaysSinceLastWished()
+                }
                 startAccelerometerUpdates()
             }
             .onDisappear {
@@ -96,6 +124,11 @@ struct WishMeLuckView: View {
     
     // MARK: - Load Full Event and Show Detail
     private func loadFullEventAndShowDetail(eventId: String) {
+        guard networkMonitor.isConnected else {
+            print(offlineMessage)
+            return
+        }
+        
         isLoadingFullEvent = true
         
         db.collection("events").document(eventId).getDocument { document, error in
@@ -141,11 +174,9 @@ struct WishMeLuckView: View {
                         print("❌ Manual parsing also failed")
                     }
                 }
-
             }
         }
     }
-
     
     // MARK: - Manual Event Parsing (Fallback)
     private func parseEventManually(documentId: String, data: [String: Any]) -> Event? {
@@ -233,12 +264,12 @@ struct WishMeLuckView: View {
     
     // MARK: - Trigger Wish
     private func triggerWish() async {
+        guard networkMonitor.isConnected else {
+            print(offlineMessage)
+            return
+        }
+        
         AnalyticsService.shared.logWishMeLuckUsed()
-        
-        
-        
-        
-        
         
         withAnimation(.easeInOut(duration: 0.5)) {
             animateBall = true
@@ -253,7 +284,6 @@ struct WishMeLuckView: View {
         }
     }
 
-    
     // MARK: - Accelerometer
     private func startAccelerometerUpdates() {
         guard motionManager.isAccelerometerAvailable else { return }

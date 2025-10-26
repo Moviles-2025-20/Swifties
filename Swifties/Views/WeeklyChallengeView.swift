@@ -2,10 +2,13 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 import Combine
+import Network
 
 struct WeeklyChallengeView: View {
     @StateObject private var viewModel = WeeklyChallengeViewModel()
     @Environment(\.dismiss) var dismiss
+    @StateObject private var networkMonitor = NetworkMonitor.shared
+    private let offlineMessage = "No network connection - Cannot load progress"
     
     var body: some View {
         ZStack {
@@ -24,7 +27,33 @@ struct WeeklyChallengeView: View {
                     dismiss()
                 })
                 
-                if viewModel.isLoading {
+                if !networkMonitor.isConnected {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.exclamationmark")
+                                .foregroundColor(.orange)
+                            Text(offlineMessage)
+                                .font(.subheadline)
+                                .foregroundColor(.orange)
+                                .multilineTextAlignment(.leading)
+                            Spacer()
+                        }
+                        HStack {
+                            Button("Retry") {
+                                if networkMonitor.isConnected {
+                                    viewModel.loadChallenge()
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                            Spacer()
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .padding([.horizontal, .top])
+                } else if viewModel.isLoading {
                     Spacer()
                     ProgressView("Loading challenge...")
                         .foregroundColor(.primary)
@@ -316,7 +345,11 @@ struct WeeklyChallengeView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
-                viewModel.loadChallenge()
+                if networkMonitor.isConnected {
+                    viewModel.loadChallenge()
+                } else {
+                    viewModel.errorMessage = offlineMessage
+                }
             }
         }
     }

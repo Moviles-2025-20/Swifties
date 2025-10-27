@@ -1,140 +1,115 @@
-//
-//  EventListViewModel.swift
-//  Swifties
-//
-//  Created by Imac on 1/10/25.
-//
 
 import Foundation
-import FirebaseFirestore
 import Combine
 
 class EventListViewModel: ObservableObject {
     @Published var events: [Event] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
-
-    let db = Firestore.firestore(database: "default")
-
-    init() {
-        // Initialize Firestore and configure settings
-        let firestore = Firestore.firestore()
-        let settings = FirestoreSettings()
-        //settings.isPersistenceEnabled = true // optional offline cache
-        firestore.settings = settings
+    @Published var dataSource: DataSource = .none
+    
+    enum DataSource {
+        case none
+        case memoryCache
+        case localStorage
+        case network
     }
-
+    
+    private let cacheService = EventCacheService.shared
+    private let storageService = EventStorageService.shared
+    private let networkService = EventNetworkService.shared
+    private let networkMonitor = NetworkMonitorService.shared
+    
+    init() {}
+    
     func loadEvents() {
         isLoading = true
         errorMessage = nil
-
-        db.collection("events").getDocuments { [weak self] snapshot, error in
+        
+        // Paso 1: Intentar cargar desde caché en memoria
+        if let cachedEvents = cacheService.getCachedEvents() {
+            self.events = cachedEvents
+            self.dataSource = .memoryCache
+            self.isLoading = false
+            print("📱 Datos cargados desde caché de memoria")
+            return
+        }
+        
+        // Paso 2: Intentar cargar desde almacenamiento local
+        if let storedEvents = storageService.loadEventsFromStorage() {
+            self.events = storedEvents
+            self.dataSource = .localStorage
+            self.isLoading = false
+            
+            // Guardar también en caché de memoria para futuras consultas
+            cacheService.cacheEvents(storedEvents)
+            print("💾 Datos cargados desde almacenamiento local")
+            
+            // Intentar actualizar en segundo plano si hay conexión
+            refreshInBackground()
+            return
+        }
+        
+        // Paso 3: Verificar conexión y hacer petición de red
+        if networkMonitor.isConnected {
+            fetchFromNetwork()
+        } else {
+            isLoading = false
+            errorMessage = "No internet connection and no saved data found"
+            print("❌ Sin conexión y sin datos locales")
+        }
+    }
+    
+    private func fetchFromNetwork() {
+        networkService.fetchEvents { [weak self] result in
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.isLoading = false
-
-                if let error = error {
-                    self.errorMessage = "Error loading events: \(error.localizedDescription)"
-                    print(self.errorMessage ?? "")
-                    return
-                }
-
-                guard let documents = snapshot?.documents else {
-                    self.errorMessage = "No events found"
-                    return
-                }
-
                 
-                self.events = documents.compactMap { EventFactory.createEvent(from: $0) }
-
-                print("Events loaded: \(self.events.count)")
+                switch result {
+                case .success(let events):
+                    self.events = events
+                    self.dataSource = .network
+                    
+                    // Guardar en ambas capas de caché
+                    self.cacheService.cacheEvents(events)
+                    self.storageService.saveEventsToStorage(events)
+                    
+                    print("✅ \(events.count) eventos cargados desde red y guardados en caché")
+                    
+                case .failure(let error):
+                    self.errorMessage = "Error cargando eventos: \(error.localizedDescription)"
+                    print("❌ Error de red: \(error.localizedDescription)")
+                }
             }
         }
     }
     
-    func parseEvent(documentId: String, data: [String: Any]) -> Event? {
-        // Required fields
-        guard let name = data["name"] as? String,
-              let description = data["description"] as? String,
-              let category = data["category"] as? String else {
-            print("Incomplete document: \(documentId)")
-            return nil
-        }
+    private func refreshInBackground() {
+        guard networkMonitor.isConnected else { return }
         
-        // Location parsing
-        var location = EventLocation(address: "", city: "", coordinates: [], type: "")
-        if let locationData = data["location"] as? [String: Any] {
-            location = EventLocation(
-                address: locationData["address"] as? String ?? "",
-                city: locationData["city"] as? String ?? "",
-                coordinates: locationData["coordinates"] as? [Double] ?? [],
-                type: locationData["type"] as? String ?? ""
-            )
-        }
-        
-        // Schedule parsing
-        var schedule = EventSchedule(days: [], times: [])
-        if let scheduleData = data["schedule"] as? [String: Any] {
-            schedule = EventSchedule(
-                days: scheduleData["days"] as? [String] ?? [],
-                times: scheduleData["times"] as? [String] ?? []
-            )
-        }
-        
-        // Metadata parsing
-        var metadata = EventMetadata(
-            cost: EventCost(amount: 0, currency: "COP"),
-            durationMinutes: 0,
-            imageUrl: "",
-            tags: []
-        )
-        if let metadataData = data["metadata"] as? [String: Any] {
-            var cost = EventCost(amount: 0, currency: "COP")
-            if let costData = metadataData["cost"] as? [String: Any] {
-                let amount = costData["amount"] as? Int ?? 0
-                let currency = costData["currency"] as? String ?? "COP"
-                cost = EventCost(amount: amount, currency: currency)
+        networkService.fetchEvents { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                if case .success(let events) = result {
+                    self.cacheService.cacheEvents(events)
+                    self.storageService.saveEventsToStorage(events)
+                    print("🔄 Datos actualizados en segundo plano")
+                }
             }
-            
-            metadata = EventMetadata(
-                cost: cost,
-                durationMinutes: metadataData["duration_minutes"] as? Int ?? 0,
-                imageUrl: metadataData["image_url"] as? String ?? "",
-                tags: metadataData["tags"] as? [String] ?? []
-            )
         }
-        
-        // Stats parsing
-        var stats = EventStats(popularity: 0, rating: 0, totalCompletions: 0)
-        if let statsData = data["stats"] as? [String: Any] {
-            stats = EventStats(
-                popularity: statsData["popularity"] as? Int ?? 0,
-                rating: statsData["rating"] as? Int ?? 0,
-                totalCompletions: statsData["total_completions"] as? Int ?? 0
-            )
-        }
-        
-        return Event(
-            activetrue: data["active"] as? Bool ?? true,
-            category: category,
-            created: data["created"] as? String ?? "",
-            description: description,
-            eventType: data["event_type"] as? String ?? "",
-            location: location,
-            metadata: metadata,
-            name: name,
-            schedule: schedule,
-            stats: stats,
-            title: data["title"] as? String ?? "",
-            type: data["type"] as? String ?? "",
-            weatherDependent: data["weather_dependent"] as? Bool ?? false
-        )
     }
     
-    private func formatNumber(_ number: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = ","
-        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
+    func forceRefresh() {
+        cacheService.clearCache()
+        loadEvents()
+    }
+    
+    func clearAllCache() {
+        cacheService.clearCache()
+        storageService.clearStorage()
+        events = []
+        dataSource = .none
     }
 }

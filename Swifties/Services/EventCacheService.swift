@@ -27,19 +27,19 @@ class EventCacheService {
             return nil
         }
         
-        print("✅ Eventos obtenidos de caché en memoria")
+        print("Eventos obtenidos de caché en memoria")
         return memoryCache
     }
     
     func cacheEvents(_ events: [Event]) {
         memoryCache = Array(events.prefix(cacheLimit))
         lastCacheTime = Date()
-        print("💾 \(memoryCache.count) eventos guardados en caché de memoria")
+        print("\(memoryCache.count) eventos guardados en caché de memoria")
     }
     
     func clearCache() {
         memoryCache.removeAll()
         lastCacheTime = nil
-        print("🗑️ Caché de memoria limpiado")
+        print("Caché de memoria limpiado")
     }
 }

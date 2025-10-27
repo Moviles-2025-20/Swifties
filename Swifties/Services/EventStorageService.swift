@@ -29,17 +29,17 @@ class EventStorageService {
             userDefaults.set(Date(), forKey: timestampKey)
             userDefaults.synchronize()
             
-            print("💾 \(events.count) eventos guardados en almacenamiento local (\(data.count) bytes)")
+            print("\(events.count) eventos guardados en almacenamiento local (\(data.count) bytes)")
         } catch {
-            print("❌ Error guardando eventos en storage: \(error.localizedDescription)")
-            print("❌ Detalle: \(error)")
+            print("Error guardando eventos en storage: \(error.localizedDescription)")
+            print("Detalle: \(error)")
         }
     }
     
     func loadEventsFromStorage() -> [Event]? {
         if let timestamp = userDefaults.object(forKey: timestampKey) as? Date {
             let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
-            print("⏱️ Antigüedad: \(String(format: "%.1f", hoursElapsed)) horas")
+            print("Antigüedad: \(String(format: "%.1f", hoursElapsed)) horas")
             
             if hoursElapsed > storageExpirationHours {
                 clearStorage()
@@ -48,21 +48,21 @@ class EventStorageService {
         }
         
         guard let data = userDefaults.data(forKey: storageKey) else {
-            print("⚠️ No hay datos en almacenamiento local")
+            print("No hay datos en almacenamiento local")
             return nil
         }
         
-        print("📦 Datos encontrados: \(data.count) bytes")
+        print("Datos encontrados: \(data.count) bytes")
         
         do {
             let decoder = JSONDecoder()
             let codableEvents = try decoder.decode([CodableEvent].self, from: data)
             let events = codableEvents.map { Event.from(codable: $0) }
             
-            print("✅ \(events.count) eventos cargados desde almacenamiento local")
+            print("\(events.count) eventos cargados desde almacenamiento local")
             return events
         } catch {
-            print("❌ Error decodificando: \(error.localizedDescription)")
+            print("Error decodificando: \(error.localizedDescription)")
             clearStorage()
             return nil
         }
@@ -72,7 +72,7 @@ class EventStorageService {
         userDefaults.removeObject(forKey: storageKey)
         userDefaults.removeObject(forKey: timestampKey)
         userDefaults.synchronize()
-        print("🗑️ Almacenamiento local limpiado")
+        print("Almacenamiento local limpiado")
     }
     
     func debugStorage() {

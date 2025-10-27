@@ -28,7 +28,7 @@ class WishMeLuckViewModel: ObservableObject {
     
     // MARK: - Wish Me Luck with Smart Recommendations
     func wishMeLuck() async {
-        print(" === WISH ME LUCK STARTED ===")
+        print("🎯 === WISH ME LUCK STARTED ===")
         isLoading = true
         error = nil
         currentEvent = nil
@@ -40,7 +40,7 @@ class WishMeLuckViewModel: ObservableObject {
                 throw NSError(domain: "WishMeLuck", code: 401,
                             userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
             }
-            print(" User ID: \(userId)")
+            print("👤 User ID: \(userId)")
             
             // Get user data
             let userDoc = try await db.collection("users").document(userId).getDocument()
@@ -57,7 +57,7 @@ class WishMeLuckViewModel: ObservableObject {
             let lastEventId = userData["last_event"] as? String
             let lastEventCategory = userData["event_last_category"] as? String
             
-            print(" User Preferences:")
+            print("⚙️ User Preferences:")
             print("   - Favorite Categories: \(favoriteCategories)")
             print("   - Last Event ID: \(lastEventId ?? "None")")
             print("   - Last Event Category: \(lastEventCategory ?? "None")")
@@ -71,7 +71,7 @@ class WishMeLuckViewModel: ObservableObject {
             )
             
             if let event = event {
-                print(" Event Selected:")
+                print("✅ Event Selected:")
                 print("   - ID: \(event.id)")
                 print("   - Title: \(event.title)")
                 print("   - Description: \(event.description)")
@@ -83,12 +83,12 @@ class WishMeLuckViewModel: ObservableObject {
             try await updateLastWishedDate()
             await calculateDaysSinceLastWished()
             
-            print(" === WISH ME LUCK COMPLETED ===\n")
+            print("🎯 === WISH ME LUCK COMPLETED ===\n")
             
         } catch {
             self.error = "Error getting event: \(error.localizedDescription)"
             print("❌ Error Firestore: \(error)")
-            print(" === WISH ME LUCK FAILED ===\n")
+            print("🎯 === WISH ME LUCK FAILED ===\n")
         }
 
         isLoading = false
@@ -102,7 +102,7 @@ class WishMeLuckViewModel: ObservableObject {
         lastEventCategory: String?
     ) async throws -> WishMeLuckEvent? {
         
-        print(" Determining recommendation strategy...")
+        print("🔍 Determining recommendation strategy...")
         
         // Case 1: User has a last event
         if let lastCategory = lastEventCategory, !lastCategory.isEmpty {
@@ -176,7 +176,7 @@ class WishMeLuckViewModel: ObservableObject {
         
         // Pick a random category
         guard let randomCategory = categories.randomElement() else {
-            print("    No categories available, falling back to any event")
+            print("   ⚠️ No categories available, falling back to any event")
             return try await getRandomEvent(excludeEventId: excludeEventId)
         }
         
@@ -204,8 +204,8 @@ class WishMeLuckViewModel: ObservableObject {
         }
         
         // Pick random event
-        print("    Selecting random event from \(documents.count) options")
-        return try parseEventDocument(documents.randomElement())
+        print("   ✅ Selecting random event from \(documents.count) options")
+        return parseEventDocument(documents.randomElement())
     }
     
     // MARK: - Get Random Event Excluding Category
@@ -248,8 +248,8 @@ class WishMeLuckViewModel: ObservableObject {
             return try await getRandomEvent(excludeEventId: excludeEventId)
         }
         
-        print("    Selecting random event from \(documents.count) options")
-        return try parseEventDocument(documents.randomElement())
+        print("   ✅ Selecting random event from \(documents.count) options")
+        return parseEventDocument(documents.randomElement())
     }
     
     // MARK: - Get Random Event (Fallback)
@@ -268,31 +268,33 @@ class WishMeLuckViewModel: ObservableObject {
             print("   Events after excluding last event: \(documents.count)")
         }
         
-        print("    Selecting random event from \(documents.count) options")
-        return try parseEventDocument(documents.randomElement())
+        print("   ✅ Selecting random event from \(documents.count) options")
+        return parseEventDocument(documents.randomElement())
     }
     
-    // MARK: - Parse Event Document
-    private func parseEventDocument(_ document: QueryDocumentSnapshot?) throws -> WishMeLuckEvent? {
+    // MARK: - Parse Event Document (CORREGIDO)
+    private func parseEventDocument(_ document: QueryDocumentSnapshot?) -> WishMeLuckEvent? {
         guard let doc = document else {
-            print("    No document to parse")
+            print("   ⚠️ No document to parse")
             return nil
         }
         
-        print("    Parsing event document ID: \(doc.documentID)")
+        print("   📝 Parsing event document ID: \(doc.documentID)")
         
-        if let event = try? doc.data(as: Event.self) {
+        // Usar EventFactory si existe, si no, parsing manual
+        if let event = EventFactory.createEvent(from: doc) {
             let wishMeLuckEvent = WishMeLuckEvent.fromEvent(event)
-            print("   Parsed using Event.self")
+            print("   ✅ Parsed using EventFactory")
             return wishMeLuckEvent
         } else {
+            // Fallback a parsing manual
             let data = doc.data()
             let category = data["category"] as? String ?? "Unknown"
             let title = data["title"] as? String ?? data["name"] as? String ?? "Untitled Event"
             
-            print("    Parsed manually")
-            print("   - Category: \(category)")
-            print("   - Title: \(title)")
+            print("   ✅ Parsed manually")
+            print("      - Category: \(category)")
+            print("      - Title: \(title)")
             
             return WishMeLuckEvent(
                 id: doc.documentID,
@@ -309,7 +311,7 @@ class WishMeLuckViewModel: ObservableObject {
     // Note: This should only be called when user ACTUALLY ATTENDS the event
     // Not when they just get a recommendation
     func markEventAsAttended(eventId: String) async throws {
-        print("✓ Marking event as attended: \(eventId)")
+        print("✅ Marking event as attended: \(eventId)")
         
         guard let userId = Auth.auth().currentUser?.uid else {
             throw NSError(domain: "WishMeLuck", code: 401,
@@ -330,7 +332,7 @@ class WishMeLuckViewModel: ObservableObject {
             "last_event_time": Timestamp(date: Date())
         ])
         
-        print("    User last event updated")
+        print("   ✅ User last event updated")
     }
     
     // MARK: - Update Last Wished Date
@@ -346,7 +348,7 @@ class WishMeLuckViewModel: ObservableObject {
             "stats.last_wish_me_luck": Timestamp(date: Date())
         ])
         
-        print("Last wished date updated")
+        print("📅 Last wished date updated")
     }
     
     // MARK: - Calculate Days Since Last Wished
@@ -364,7 +366,7 @@ class WishMeLuckViewModel: ObservableObject {
                   let lastWishTimestamp = stats["last_wish_me_luck"] as? Timestamp else {
                 try await updateLastWishedDate()
                 daysSinceLastWished = 0
-                print("No previous wish date found, setting to 0")
+                print("📅 No previous wish date found, setting to 0")
                 return
             }
             
@@ -374,7 +376,7 @@ class WishMeLuckViewModel: ObservableObject {
             let components = calendar.dateComponents([.day], from: lastWishDate, to: now)
             
             daysSinceLastWished = components.day ?? 0
-            print("Days since last wished: \(daysSinceLastWished)")
+            print("📅 Days since last wished: \(daysSinceLastWished)")
         } catch {
             print("❌ Error calculating days since last wished: \(error)")
             daysSinceLastWished = 0
@@ -383,7 +385,7 @@ class WishMeLuckViewModel: ObservableObject {
     
     // MARK: - Clear Event
     func clearEvent() {
-        print("Clearing current event")
+        print("🗑️ Clearing current event")
         currentEvent = nil
         error = nil
     }

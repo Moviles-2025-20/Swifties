@@ -13,6 +13,25 @@ struct UserInfoView: View {
     @StateObject private var viewModel = UserInfoViewModel()
     @Environment(\.dismiss) var dismiss
     
+    // MARK: - Computed Properties for Data Source
+    private var dataSourceIcon: String {
+        switch viewModel.dataSource {
+        case .memoryCache: return "memorychip"
+        case .localStorage: return "internaldrive"
+        case .network: return "wifi"
+        case .none: return "questionmark"
+        }
+    }
+
+    private var dataSourceText: String {
+        switch viewModel.dataSource {
+        case .memoryCache: return "Memory Cache"
+        case .localStorage: return "Local Storage"
+        case .network: return "Updated from Network"
+        case .none: return ""
+        }
+    }
+    
     var body: some View {
         ZStack {
             Color("appPrimary").ignoresSafeArea()
@@ -28,6 +47,27 @@ struct UserInfoView: View {
                     dismiss()
                 })
                 
+                // Data Source Indicator
+                if !viewModel.isLoading && !viewModel.availableEvents.isEmpty {
+                    HStack {
+                        Image(systemName: dataSourceIcon)
+                            .foregroundColor(.secondary)
+                        Text(dataSourceText)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        if viewModel.isRefreshing {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Updating...")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                }
+                
                 if viewModel.isLoading {
                     Spacer()
                     ProgressView("Loading your available events...")
@@ -42,6 +82,13 @@ struct UserInfoView: View {
                             .foregroundColor(.red)
                             .multilineTextAlignment(.center)
                             .padding()
+                        Button("Retry") {
+                            viewModel.loadData()
+                        }
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
                     }
                     Spacer()
                 } else {
@@ -122,7 +169,7 @@ struct UserInfoView: View {
                                                     title: event.name,
                                                     titleColor: Color.green,
                                                     description: event.description,
-                                                    timeText: formatEventTime(event: event),  // EDIT: Updated to include day
+                                                    timeText: formatEventTime(event: event),
                                                     walkingMinutes: 5,
                                                     location: event.location?.address
                                                 )
@@ -143,12 +190,14 @@ struct UserInfoView: View {
         }
         .onAppear {
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+                viewModel.debugCache()
                 viewModel.loadData()
             }
         }
     }
 }
-// MARK: - Helper formater function for incluiding date
+
+// MARK: - Helper formatter function for including date
 private func formatEventTime(event: Event) -> String {
     let day = event.schedule.days.first ?? ""
     let time = event.schedule.times.first ?? "Time TBD"

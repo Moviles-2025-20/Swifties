@@ -2,153 +2,159 @@
 //  UserInfoViewModel.swift
 //  Swifties
 //
-//  Created
+//  Created by Imac on 28/10/25.
 //
 
 import SwiftUI
 import FirebaseAuth
-import FirebaseFirestore
 import Combine
 
 class UserInfoViewModel: ObservableObject {
     @Published var freeTimeSlots: [FreeTimeSlot] = []
     @Published var availableEvents: [Event] = []
-    @Published var allEvents: [Event] = []
-    @Published var isLoading = true
+    @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var dataSource: DataSource = .none
+    @Published var isRefreshing = false
     
-    private let db = Firestore.firestore(database: "default")
+    enum DataSource {
+        case none
+        case memoryCache
+        case localStorage
+        case network
+    }
     
-    // MARK: - Load Data
+    private let cacheService = UserEventCacheService.shared
+    private let storageService = UserEventStorageService.shared
+    private let networkService = UserEventNetworkService.shared
+    private let networkMonitor = NetworkMonitorService.shared
+    
+    init() {}
+    
+    // MARK: - Load Data (Three-Layer Cache)
+    
     func loadData() {
         isLoading = true
         errorMessage = nil
         
-        let group = DispatchGroup()
-        
-        // Load free time slots
-        group.enter()
-        fetchFreeTimeSlots { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let slots):
-                    self.freeTimeSlots = slots
-                case .failure(let error):
-                    self.errorMessage = error.localizedDescription
-                }
-            }
-            group.leave()
-        }
-        
-        // Load all events
-        group.enter()
-        fetchEvents { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let events):
-                    self.allEvents = events
-                case .failure(let error):
-                    if self.errorMessage == nil {
-                        self.errorMessage = error.localizedDescription
-                    }
-                }
-            }
-            group.leave()
-        }
-        
-        // After both complete, filter events
-        group.notify(queue: .main) {
-            self.filterAvailableEvents()
-            self.isLoading = false
-        }
-    }
-    
-    // MARK: - Fetch Free Time Slots
-    private func fetchFreeTimeSlots(completion: @escaping (Result<[FreeTimeSlot], Error>) -> Void) {
-        guard let currentUser = Auth.auth().currentUser else {
-            let error = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"])
-            completion(.failure(error))
+        guard let userId = Auth.auth().currentUser?.uid else {
+            isLoading = false
+            errorMessage = "No authenticated user"
             return
         }
         
-        let userRef = db.collection("users").document(currentUser.uid)
+        // Layer 1: Try memory cache
+        if let cached = cacheService.getCachedUserEvents() {
+            self.availableEvents = cached.availableEvents
+            self.freeTimeSlots = cached.freeTimeSlots
+            self.dataSource = .memoryCache
+            self.isLoading = false
+            print("User events loaded from memory cache")
+            return
+        }
         
-        userRef.getDocument { snapshot, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
+        // Layer 2: Try local storage (SQLite)
+        if let stored = storageService.loadUserEventsFromStorage(userId: userId) {
+            self.availableEvents = stored.events
+            self.freeTimeSlots = stored.slots
+            self.dataSource = .localStorage
+            self.isLoading = false
             
-            guard let data = snapshot?.data(),
-                  let preferences = data["preferences"] as? [String: Any],
-                  let notifications = preferences["notifications"] as? [String: Any],
-                  let slotsData = notifications["free_time_slots"] as? [[String: Any]] else {
-                let error = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Free time slots not found"])
-                completion(.failure(error))
-                return
-            }
+            // Cache in memory for next time
+            cacheService.cacheUserEvents(stored.events, freeTimeSlots: stored.slots)
+            print("User events loaded from local storage")
             
-            let slots = slotsData.map { FreeTimeSlot(data: $0) }
-            completion(.success(slots))
+            // Refresh in background if connected
+            refreshInBackground(userId: userId)
+            return
+        }
+        
+        // Layer 3: Fetch from network
+        if networkMonitor.isConnected {
+            fetchFromNetwork(userId: userId)
+        } else {
+            isLoading = false
+            errorMessage = "No internet connection and no saved data found"
+            print("No connection and no local user events")
         }
     }
     
-    // MARK: - Fetch Events
-    
-    private func fetchEvents(completion: @escaping (Result<[Event], Error>) -> Void) {
-        db.collection("events").getDocuments { snapshot, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
-            
-            guard let documents = snapshot?.documents else {
-                completion(.success([]))
-                return
-            }
-            
-          
-            let events = documents.compactMap { EventFactory.createEvent(from: $0) }
-            
-            completion(.success(events))
-        }
-    }
-    
-
-    
-    // MARK: - Filter Available Events
-    private func filterAvailableEvents() {
-        availableEvents = allEvents.filter { event in
-            // Check if event is active
-            guard event.activetrue else { return false }
-            
-            // Check if any event day/time matches user's free time
-            for eventDay in event.schedule.days {
-                for eventTime in event.schedule.times {
-                    for slot in freeTimeSlots {
-                        if eventDay.lowercased() == slot.day.lowercased() &&
-                           isTimeInRange(eventTime: eventTime, slotStart: slot.start, slotEnd: slot.end) {
-                            return true
-                        }
-                    }
+    private func fetchFromNetwork(userId: String) {
+        networkService.fetchUserEvents { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isLoading = false
+                
+                switch result {
+                case .success(let data):
+                    self.availableEvents = data.events
+                    self.freeTimeSlots = data.slots
+                    self.dataSource = .network
+                    
+                    // Save to both cache layers
+                    self.cacheService.cacheUserEvents(data.events, freeTimeSlots: data.slots)
+                    self.storageService.saveUserEventsToStorage(
+                        data.events,
+                        freeTimeSlots: data.slots,
+                        userId: userId
+                    )
+                    
+                    print("User events loaded from network and cached")
+                    
+                case .failure(let error):
+                    self.errorMessage = "Error loading user events: \(error.localizedDescription)"
+                    print("Network error: \(error.localizedDescription)")
                 }
             }
-            
-            return false
         }
     }
     
-    // MARK: - Check if Time is in Range
-    private func isTimeInRange(eventTime: String, slotStart: String, slotEnd: String) -> Bool {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
+    private func refreshInBackground(userId: String) {
+        guard networkMonitor.isConnected else { return }
         
-        guard let event = formatter.date(from: eventTime),
-              let start = formatter.date(from: slotStart),
-              let end = formatter.date(from: slotEnd) else {
-            return false
+        self.isRefreshing = true
+        networkService.fetchUserEvents { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isRefreshing = false
+                
+                if case .success(let data) = result {
+                    // Update UI
+                    self.availableEvents = data.events
+                    self.freeTimeSlots = data.slots
+                    self.dataSource = .network
+                    
+                    // Update caches
+                    self.cacheService.cacheUserEvents(data.events, freeTimeSlots: data.slots)
+                    self.storageService.saveUserEventsToStorage(
+                        data.events,
+                        freeTimeSlots: data.slots,
+                        userId: userId
+                    )
+                    
+                    print("User events updated in background")
+                }
+            }
         }
-        
-        return event >= start && event <= end
+    }
+    
+    func forceRefresh() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        cacheService.clearCache()
+        loadData()
+    }
+    
+    func clearAllCache() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        cacheService.clearCache()
+        storageService.clearStorage(userId: userId)
+        availableEvents = []
+        freeTimeSlots = []
+        dataSource = .none
+    }
+    
+    func debugCache() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        storageService.debugStorage(userId: userId)
     }
 }

@@ -165,7 +165,7 @@ class UserEventDatabaseManager {
                 events.append(event)
             }
             
-            // Load free time slots - CORREGIDO: UN SOLO BUCLE
+            // Load free time slots - FIXED: SINGLE LOOP
             let slotsQuery = freeTimeSlotsTable.filter(slotUserId == userId)
             for row in try db.prepare(slotsQuery) {
                 let slot = FreeTimeSlot(

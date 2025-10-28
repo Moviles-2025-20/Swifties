@@ -14,7 +14,7 @@ class UserEventCacheService {
     private let cacheKey = "user_events_cache_key" as NSString
     private let cacheLimit = 10
     private var lastCacheTime: Date?
-    private let cacheExpirationMinutes = 15.0 // Más corto porque depende de preferencias del usuario
+    private let cacheExpirationMinutes = 15.0 // Shorter because it depends on user preferences
     
     private init() {
         cache.countLimit = cacheLimit

@@ -21,7 +21,7 @@ struct FreeTimeSlot: Identifiable {
         self.end = data["end"] as? String ?? ""
     }
     
-    // Inicializador para SQLite (usa id explícito)
+    // Initializer for SQLite (uses explicit id)
     init(id: String, day: String, start: String, end: String) {
         self.id = id
         self.day = day

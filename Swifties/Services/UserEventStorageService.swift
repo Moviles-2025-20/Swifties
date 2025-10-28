@@ -13,7 +13,7 @@ class UserEventStorageService {
     private let databaseManager = UserEventDatabaseManager.shared
     private let userDefaults = UserDefaults.standard
     private let timestampKey = "user_events_timestamp"
-    private let storageExpirationHours = 12.0 // Más corto porque depende de preferencias
+    private let storageExpirationHours = 12.0 // Shorter because it depends on preferences
     
     private init() {}
     

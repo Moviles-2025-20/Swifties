@@ -31,7 +31,7 @@ class EventListViewModel: ObservableObject {
             self.events = cachedEvents
             self.dataSource = .memoryCache
             self.isLoading = false
-            print("📱 Datos cargados desde caché de memoria")
+            print("Datos cargados desde caché de memoria")
             return
         }
         
@@ -43,7 +43,7 @@ class EventListViewModel: ObservableObject {
             
             // Guardar también en caché de memoria para futuras consultas
             cacheService.cacheEvents(storedEvents)
-            print("💾 Datos cargados desde almacenamiento local")
+            print("Datos cargados desde almacenamiento local")
             
             // Intentar actualizar en segundo plano si hay conexión
             refreshInBackground()
@@ -56,7 +56,7 @@ class EventListViewModel: ObservableObject {
         } else {
             isLoading = false
             errorMessage = "No internet connection and no saved data found"
-            print("❌ Sin conexión y sin datos locales")
+            print("Sin conexión y sin datos locales")
         }
     }
     
@@ -75,11 +75,11 @@ class EventListViewModel: ObservableObject {
                     self.cacheService.cacheEvents(events)
                     self.storageService.saveEventsToStorage(events)
                     
-                    print("✅ \(events.count) eventos cargados desde red y guardados en caché")
+                    print("\(events.count) eventos cargados desde red y guardados en caché")
                     
                 case .failure(let error):
                     self.errorMessage = "Error cargando eventos: \(error.localizedDescription)"
-                    print("❌ Error de red: \(error.localizedDescription)")
+                    print("Error de red: \(error.localizedDescription)")
                 }
             }
         }
@@ -95,7 +95,7 @@ class EventListViewModel: ObservableObject {
                 if case .success(let events) = result {
                     self.cacheService.cacheEvents(events)
                     self.storageService.saveEventsToStorage(events)
-                    print("🔄 Datos actualizados en segundo plano")
+                    print("Datos actualizados en segundo plano")
                 }
             }
         }

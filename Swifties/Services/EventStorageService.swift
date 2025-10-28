@@ -10,81 +10,113 @@ import Foundation
 class EventStorageService {
     static let shared = EventStorageService()
     
+    private let databaseManager = EventDatabaseManager.shared
     private let userDefaults = UserDefaults.standard
-    private let storageKey = "cached_events"
     private let timestampKey = "cached_events_timestamp"
     private let storageExpirationHours = 24.0
     
     private init() {}
     
     func saveEventsToStorage(_ events: [Event]) {
-        do {
-            // Convertir Events a CodableEvents
-            let codableEvents = events.map { $0.toCodable() }
-            
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(codableEvents)
-            
-            userDefaults.set(data, forKey: storageKey)
-            userDefaults.set(Date(), forKey: timestampKey)
-            userDefaults.synchronize()
-            
-            print("\(events.count) eventos guardados en almacenamiento local (\(data.count) bytes)")
-        } catch {
-            print("Error guardando eventos en storage: \(error.localizedDescription)")
-            print("Detalle: \(error)")
-        }
+        // Save events to SQLite
+        databaseManager.saveEvents(events)
+        
+        // Save timestamp to UserDefaults
+        userDefaults.set(Date(), forKey: timestampKey)
+        userDefaults.synchronize()
+        
+        print("\(events.count) events saved to SQLite storage")
     }
     
     func loadEventsFromStorage() -> [Event]? {
+        // Check if data has expired
         if let timestamp = userDefaults.object(forKey: timestampKey) as? Date {
             let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
-            print("Antigüedad: \(String(format: "%.1f", hoursElapsed)) horas")
+            print("Storage age: \(String(format: "%.1f", hoursElapsed)) hours")
             
             if hoursElapsed > storageExpirationHours {
                 clearStorage()
                 return nil
             }
-        }
-        
-        guard let data = userDefaults.data(forKey: storageKey) else {
-            print("No hay datos en almacenamiento local")
+        } else {
+            print("No timestamp found in storage")
             return nil
         }
         
-        print("Datos encontrados: \(data.count) bytes")
-        
-        do {
-            let decoder = JSONDecoder()
-            let codableEvents = try decoder.decode([CodableEvent].self, from: data)
-            let events = codableEvents.map { Event.from(codable: $0) }
-            
-            print("\(events.count) eventos cargados desde almacenamiento local")
-            return events
-        } catch {
-            print("Error decodificando: \(error.localizedDescription)")
-            clearStorage()
+        // Load events from SQLite
+        guard let events = databaseManager.loadEvents() else {
+            print("No events found in SQLite storage")
             return nil
         }
+        
+        print("\(events.count) events loaded from SQLite storage")
+        return events
     }
     
     func clearStorage() {
-        userDefaults.removeObject(forKey: storageKey)
+        databaseManager.deleteAllEvents()
         userDefaults.removeObject(forKey: timestampKey)
         userDefaults.synchronize()
-        print("Almacenamiento local limpiado")
+        print("SQLite storage cleared")
     }
     
     func debugStorage() {
         print("\n=== DEBUG STORAGE ===")
-        if let data = userDefaults.data(forKey: storageKey) {
-            print("✓ Datos: \(data.count) bytes")
-            if let timestamp = userDefaults.object(forKey: timestampKey) as? Date {
-                print("✓ Fecha: \(timestamp)")
-            }
+        
+        // Check timestamp
+        if let timestamp = userDefaults.object(forKey: timestampKey) as? Date {
+            let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
+            print("Timestamp: \(timestamp)")
+            print("Age: \(String(format: "%.1f", hoursElapsed)) hours")
         } else {
-            print("✗ Sin datos")
+            print("No timestamp")
         }
+        
+        // Check database
+        let count = databaseManager.getEventCount()
+        print("Events in database: \(count)")
+        
+        if let lastUpdate = databaseManager.getLastUpdateTimestamp() {
+            print("Last database update: \(lastUpdate)")
+        }
+        
         print("===================\n")
+        
+        // Detailed database debug
+        databaseManager.debugDatabase()
+    }
+    
+    // MARK: - Additional helpers
+    
+    func getStorageInfo() -> StorageInfo {
+        let count = databaseManager.getEventCount()
+        let timestamp = userDefaults.object(forKey: timestampKey) as? Date
+        let isExpired: Bool
+        
+        if let timestamp = timestamp {
+            let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
+            isExpired = hoursElapsed > storageExpirationHours
+        } else {
+            isExpired = true
+        }
+        
+        return StorageInfo(
+            eventCount: count,
+            lastUpdate: timestamp,
+            isExpired: isExpired
+        )
+    }
+}
+
+// MARK: - Storage Info Model
+
+struct StorageInfo {
+    let eventCount: Int
+    let lastUpdate: Date?
+    let isExpired: Bool
+    
+    var ageInHours: Double? {
+        guard let lastUpdate = lastUpdate else { return nil }
+        return Date().timeIntervalSince(lastUpdate) / 3600
     }
 }

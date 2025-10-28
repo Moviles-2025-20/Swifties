@@ -10,36 +10,53 @@ import Foundation
 class EventCacheService {
     static let shared = EventCacheService()
     
-    private var memoryCache: [Event] = []
+    private let cache = NSCache<NSString, CachedEventWrapper>()
+    private let cacheKey = "events_cache_key" as NSString
     private let cacheLimit = 10
     private var lastCacheTime: Date?
     private let cacheExpirationMinutes = 30.0
     
-    private init() {}
+    private init() {
+        cache.countLimit = cacheLimit
+        cache.totalCostLimit = 1024 * 1024 * 10 // 10 MB
+    }
     
     func getCachedEvents() -> [Event]? {
-        guard !memoryCache.isEmpty else { return nil }
-        
-        // Verificar si el caché ha expirado
+        // Check if cache has expired
         if let lastCache = lastCacheTime,
            Date().timeIntervalSince(lastCache) > cacheExpirationMinutes * 60 {
             clearCache()
             return nil
         }
         
-        print("Eventos obtenidos de caché en memoria")
-        return memoryCache
+        guard let wrapper = cache.object(forKey: cacheKey) else {
+            return nil
+        }
+        
+        print("Events retrieved from memory cache")
+        return wrapper.events
     }
     
     func cacheEvents(_ events: [Event]) {
-        memoryCache = Array(events.prefix(cacheLimit))
+        let eventsToCache = Array(events.prefix(cacheLimit))
+        let wrapper = CachedEventWrapper(events: eventsToCache)
+        cache.setObject(wrapper, forKey: cacheKey)
         lastCacheTime = Date()
-        print("\(memoryCache.count) eventos guardados en caché de memoria")
+        print("\(eventsToCache.count) events saved to memory cache")
     }
     
     func clearCache() {
-        memoryCache.removeAll()
+        cache.removeAllObjects()
         lastCacheTime = nil
-        print("Caché de memoria limpiado")
+        print("Memory cache cleared")
+    }
+}
+
+// Wrapper class to store events in NSCache (NSCache requires reference types)
+class CachedEventWrapper {
+    let events: [Event]
+    
+    init(events: [Event]) {
+        self.events = events
     }
 }

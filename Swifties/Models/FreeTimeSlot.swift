@@ -13,7 +13,7 @@ struct FreeTimeSlot: Identifiable {
     let start: String
     let end: String
     
-    // Inicializador para Firebase/JSON (genera UUID automático)
+    // Initializer for Firebase/JSON (generates automatic UUID)
     init(data: [String: Any]) {
         self.id = UUID().uuidString
         self.day = data["day"] as? String ?? ""

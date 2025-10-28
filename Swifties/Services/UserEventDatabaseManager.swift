@@ -155,7 +155,7 @@ class UserEventDatabaseManager {
             var events: [Event] = []
             var slots: [FreeTimeSlot] = []
             
-            // Load events - DECODIFICAR COMO CODABLE
+            // Load events - DECODE AS CODABLE
             let eventsQuery = userEventsTable.filter(self.userId == userId)
             for row in try db.prepare(eventsQuery) {
                 guard let data = row[eventData].data(using: .utf8) else { continue }

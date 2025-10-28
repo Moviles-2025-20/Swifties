@@ -102,7 +102,7 @@ class UserEventDatabaseManager {
                 try db.run(userEventsTable.filter(self.userId == userId).delete())
                 try db.run(freeTimeSlotsTable.filter(self.slotUserId == userId).delete())
                 
-                // Insert events - CONVERTIR A CODABLE
+                // Insert events - CONVERT TO CODABLE
                 let encoder = JSONEncoder()
                 for event in events {
                     guard let eventIdValue = event.id else { continue }

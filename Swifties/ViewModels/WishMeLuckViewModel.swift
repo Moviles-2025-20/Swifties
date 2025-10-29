@@ -272,7 +272,7 @@ class WishMeLuckViewModel: ObservableObject {
         return parseEventDocument(documents.randomElement())
     }
     
-    // MARK: - Parse Event Document (CORREGIDO)
+    // MARK: - Parse Event Document (FIXED)
     private func parseEventDocument(_ document: QueryDocumentSnapshot?) -> WishMeLuckEvent? {
         guard let doc = document else {
             print("   ⚠️ No document to parse")
@@ -281,13 +281,13 @@ class WishMeLuckViewModel: ObservableObject {
         
         print("   📝 Parsing event document ID: \(doc.documentID)")
         
-        // Usar EventFactory si existe, si no, parsing manual
+        // Use EventFactory if available, otherwise manual parsing
         if let event = EventFactory.createEvent(from: doc) {
             let wishMeLuckEvent = WishMeLuckEvent.fromEvent(event)
             print("   ✅ Parsed using EventFactory")
             return wishMeLuckEvent
         } else {
-            // Fallback a parsing manual
+            // Fallback to manual parsing
             let data = doc.data()
             let category = data["category"] as? String ?? "Unknown"
             let title = data["title"] as? String ?? data["name"] as? String ?? "Untitled Event"
@@ -311,7 +311,7 @@ class WishMeLuckViewModel: ObservableObject {
     // Note: This should only be called when user ACTUALLY ATTENDS the event
     // Not when they just get a recommendation
     func markEventAsAttended(eventId: String) async throws {
-        print("✅ Marking event as attended: \(eventId)")
+        print("Marking event as attended: \(eventId)")
         
         guard let userId = Auth.auth().currentUser?.uid else {
             throw NSError(domain: "WishMeLuck", code: 401,
@@ -332,7 +332,7 @@ class WishMeLuckViewModel: ObservableObject {
             "last_event_time": Timestamp(date: Date())
         ])
         
-        print("   ✅ User last event updated")
+        print("   😊 User last event updated")
     }
     
     // MARK: - Update Last Wished Date
@@ -385,7 +385,7 @@ class WishMeLuckViewModel: ObservableObject {
     
     // MARK: - Clear Event
     func clearEvent() {
-        print("🗑️ Clearing current event")
+        print("Clearing current event")
         currentEvent = nil
         error = nil
     }

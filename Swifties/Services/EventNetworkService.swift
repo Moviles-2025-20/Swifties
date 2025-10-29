@@ -29,13 +29,13 @@ class EventNetworkService {
                 completion(.failure(NSError(
                     domain: "EventNetworkService",
                     code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "No se encontraron documentos"]
+                    userInfo: [NSLocalizedDescriptionKey: "No documents found"]
                 )))
                 return
             }
             
             let events = documents.compactMap { EventFactory.createEvent(from: $0) }
-            print("\(events.count) eventos obtenidos de Firestore")
+            print("\(events.count) events fetched from Firestore")
             completion(.success(events))
         }
     }

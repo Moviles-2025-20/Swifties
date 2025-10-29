@@ -173,7 +173,7 @@ struct HomeView: View {
                                 .padding(.vertical, 40)
                             } else {
                                 VStack(spacing: 12) {
-                                    ForEach(homeViewModel.recommendations, id: \.title) { event in
+                                    ForEach(homeViewModel.recommendations, id: \.id) { event in
                                         NavigationLink(destination: EventDetailView(event: event)) {
                                             EventInfo(
                                                 imagePath: event.metadata.imageUrl,

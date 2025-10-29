@@ -8,7 +8,7 @@ import SwiftUI
 
 struct StartView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @StateObject private var networkMonitor = NetworkMonitor.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @State private var showNoConnectionAlert = false
     
     var body: some View {

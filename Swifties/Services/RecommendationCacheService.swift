@@ -18,7 +18,7 @@ class RecommendationCacheService {
     private init() {
         // Calculate cache size dynamically based on available memory
         let maxMemory = ProcessInfo.processInfo.physicalMemory
-        let cacheSize = Int(maxMemory / 1024 / 8) // Use 1/8th of available memory for cache
+        let cacheSize = Int(maxMemory / 8) // Use 1/8th of available memory for cache (in bytes)
         
         cache.countLimit = 10 // Limit to 10 items
         cache.totalCostLimit = cacheSize

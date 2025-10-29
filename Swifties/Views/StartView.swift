@@ -1,14 +1,15 @@
 //
-//  StartView.swift
-//  Swifties
-//
-//  Created by Juan Esteban Vasquez Parra on 29/09/25.
+// StartView.swift
+// Swifties
+// Created by Natalia Villegas Calderón on 1/10/25.
 //
 
 import SwiftUI
 
 struct StartView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @State private var showNoConnectionAlert = false
     
     var body: some View {
         ZStack {
@@ -39,23 +40,54 @@ struct StartView: View {
                 
                 Spacer()
                 
-                HStack(spacing: 12) {
-                    NavigationLink(destination: LoginView()
-                        .environmentObject(authViewModel)) {
-                        Text("Log In")
-                            .font(.title3.weight(.bold))
-                            .foregroundColor(.white)
-                            .frame(width: 120, height: 45)
+                // Connection status indicator
+                if !networkMonitor.isConnected {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.slash")
+                            .foregroundColor(.red)
+                        Text("No Internet Connection")
+                            .font(.callout)
+                            .foregroundColor(.red)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color("appBlue"))
-                    
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                
+                HStack(spacing: 12) {
+                    if networkMonitor.isConnected {
+                        NavigationLink(destination: LoginView()
+                            .environmentObject(authViewModel)) {
+                            Text("Log In")
+                                .font(.title3.weight(.bold))
+                                .foregroundColor(.white)
+                                .frame(width: 120, height: 45)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color("appBlue"))
+                    } else {
+                        Button {
+                            showNoConnectionAlert = true
+                        } label: {
+                            Text("Log In")
+                                .font(.title3.weight(.bold))
+                                .foregroundColor(.white)
+                                .frame(width: 120, height: 45)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.gray)
+                        // Remove .disabled(true) so the button can be tapped
+                    }
                 }
                 
                 Spacer()
-
-            
             }
+        }
+        .alert("No Internet Connection", isPresented: $showNoConnectionAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Please check your internet connection and try again.")
         }
     }
 }

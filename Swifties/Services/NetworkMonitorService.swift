@@ -28,9 +28,9 @@ class NetworkMonitorService {
             
             DispatchQueue.main.async {
                 if self?.isConnected == true {
-                    print("Conexión a Internet disponible")
+                    print("Internet connection available")
                 } else {
-                    print("Sin conexión a Internet")
+                    print("No Internet connection")
                 }
             }
         }

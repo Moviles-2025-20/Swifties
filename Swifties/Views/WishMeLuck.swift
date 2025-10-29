@@ -145,8 +145,7 @@ struct WishMeLuckView: View {
                     return
                 }
                                 
-                // Try to parse using Codable first
-                // Opción 1: Usando EventFactory (recomendado si ya lo tienes)
+                // Option 1: Using EventFactory (recommended if you already have it)
                 if let event = EventFactory.createEvent(from: document) {
                     print("✅ Successfully parsed event using EventFactory")
                     fullEventForDetail = event

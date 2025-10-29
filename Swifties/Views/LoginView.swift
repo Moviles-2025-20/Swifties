@@ -38,6 +38,26 @@ struct LoginView: View {
                 } else {
                     loginView
                 }
+                
+                // Floating connection status banner at the top
+                if !networkMonitor.isConnected {
+                    VStack {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.slash")
+                                .foregroundColor(.red)
+                            Text("No Internet Connection")
+                                .font(.callout)
+                                .foregroundColor(.red)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.top, 8)
+                        
+                        Spacer()
+                    }
+                }
             }
             .onChange(of: viewModel.isAuthenticated) { _, isAuth in
                 if isAuth {
@@ -77,230 +97,250 @@ struct LoginView: View {
     
     // MARK: - Login View
     private var loginView: some View {
-        VStack(spacing: 24) {
-            Spacer().frame(height: 40)
-            
-            Text("Choose your login method")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(.black.opacity(0.7))
-            
-            Spacer().frame(height: 30)
-            
-            // Google Login Button
-            Button(action: {
-                guard networkMonitor.currentConnectionAvailable() else {
-                    alertMessage = "No network connection - Cannot log in"
-                    showAlert = true
-                    Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
-                    return
-                }
-                Task {
-                    await viewModel.loginWithGoogle()
-                }
-            }) {
-                HStack(spacing: 12) {
-                    Group {
-                        if let _ = UIImage(named: "Google") {
-                            Image("Google")
-                                .resizable()
-                                .frame(width: 24, height: 24)
-                        } else {
-                            Image(systemName: "g.circle.fill")
-                                .font(.system(size: 24))
-                        }
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 40)
+                
+                Text("Choose your login method")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(.black.opacity(0.7))
+                
+                Spacer().frame(height: 30)
+                
+                // Google Login Button
+                Button(action: {
+                    guard networkMonitor.currentConnectionAvailable() else {
+                        alertMessage = "No network connection - Cannot log in"
+                        showAlert = true
+                        Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
+                        return
                     }
-                    
-                    Text("Login with Google")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                }
-                .foregroundColor(.white)
-                .padding(.vertical, 16)
-                .padding(.horizontal, 20)
-                .frame(maxWidth: .infinity)
-                .background(.appRed)
-                .cornerRadius(12)
-            }
-            .disabled(viewModel.isLoading)
-            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-            
-            // Twitter Login Button
-            Button(action: {
-                guard networkMonitor.currentConnectionAvailable() else {
-                    alertMessage = "No network connection - Cannot log in"
-                    showAlert = true
-                    Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
-                    return
-                }
-                Task {
-                    await viewModel.loginWithTwitter()
-                }
-            }) {
-                HStack(spacing: 12) {
-                    Group {
-                        if let _ = UIImage(named: "Twitter") {
-                            Image("Twitter")
-                                .resizable()
-                                .frame(width: 24, height: 24)
-                        } else {
-                            Image(systemName: "bird.fill")
-                                .font(.system(size: 24))
-                        }
+                    Task {
+                        await viewModel.loginWithGoogle()
                     }
-                    
-                    Text("Login with Twitter")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                }
-                .foregroundColor(.white)
-                .padding(.vertical, 16)
-                .padding(.horizontal, 20)
-                .frame(maxWidth: .infinity)
-                .background(.blue)
-                .cornerRadius(12)
-            }
-            .disabled(viewModel.isLoading)
-            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-            
-            Divider()
-                .padding(.horizontal, 20)
-            
-            // Email Login
-            TextField("Email", text: $emailText)
-                .autocapitalization(.none)
-                .disableAutocorrection(true)
-                .padding()
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(8)
+                }) {
+                    HStack(spacing: 12) {
+                        Group {
+                            if let _ = UIImage(named: "Google") {
+                                Image("Google")
+                                    .resizable()
+                                    .frame(width: 24, height: 24)
+                            } else {
+                                Image(systemName: "g.circle.fill")
+                                    .font(.system(size: 24))
+                            }
+                        }
                         
-            SecureField("Password", text: $passwordText)
-                .padding()
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(8)
-            
-            Button {
-                guard networkMonitor.currentConnectionAvailable() else {
-                    alertMessage = "No network connection - Cannot log in"
-                    showAlert = true
-                    Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
-                    return
+                        Text("Login with Google")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.vertical, 16)
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity)
+                    .background(.appRed)
+                    .cornerRadius(12)
                 }
-                let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
-                let trimmedPassword = passwordText.trimmingCharacters(in: .whitespacesAndNewlines)
-                // Basic validations
-                if trimmedEmail.isEmpty || trimmedPassword.isEmpty {
-                    alertMessage = "Please enter both your email and password."
-                    showAlert = true
-                    return
+                .disabled(viewModel.isLoading)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                
+                // Twitter Login Button
+                Button(action: {
+                    guard networkMonitor.currentConnectionAvailable() else {
+                        alertMessage = "No network connection - Cannot log in"
+                        showAlert = true
+                        Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
+                        return
+                    }
+                    Task {
+                        await viewModel.loginWithTwitter()
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        Group {
+                            if let _ = UIImage(named: "Twitter") {
+                                Image("Twitter")
+                                    .resizable()
+                                    .frame(width: 24, height: 24)
+                            } else {
+                                Image(systemName: "bird.fill")
+                                    .font(.system(size: 24))
+                            }
+                        }
+                        
+                        Text("Login with Twitter")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.vertical, 16)
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity)
+                    .background(.blue)
+                    .cornerRadius(12)
                 }
-                if !trimmedEmail.contains("@") || !trimmedEmail.contains(".") {
-                    alertMessage = "That doesn’t look like a valid email address. Please check and try again."
-                    showAlert = true
-                    return
+                .disabled(viewModel.isLoading)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                
+                Divider()
+                    .padding(.horizontal, 20)
+                
+                // Email Login
+                TextField("Email", text: $emailText)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(8)
+                        
+                SecureField("Password", text: $passwordText)
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(8)
+                
+                Button {
+                    guard networkMonitor.currentConnectionAvailable() else {
+                        alertMessage = "No network connection - Cannot log in"
+                        showAlert = true
+                        Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
+                        return
+                    }
+                    let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let trimmedPassword = passwordText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    // Basic validations
+                    if trimmedEmail.isEmpty || trimmedPassword.isEmpty {
+                        alertMessage = "Please enter both your email and password."
+                        showAlert = true
+                        return
+                    }
+                    if !trimmedEmail.contains("@") || !trimmedEmail.contains(".") {
+                        alertMessage = "That doesn't look like a valid email address. Please check and try again."
+                        showAlert = true
+                        return
+                    }
+                    if trimmedPassword.count < 6 {
+                        alertMessage = "Your password must be at least 6 characters long (no blank spaces or new lines)."
+                        showAlert = true
+                        return
+                    }
+                    Task {
+                        await viewModel.loginWithEmail(email: trimmedEmail, password: trimmedPassword)
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "envelope.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 24)
+                        
+                        Text("Login with Email")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.vertical, 16)
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity)
+                    .background(.gray)
+                    .cornerRadius(12)
                 }
-                if trimmedPassword.count < 6 {
-                    alertMessage = "Your password must be at least 6 characters long (no blank spaces or new lines)."
-                    showAlert = true
-                    return
+                .disabled(viewModel.isLoading)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                
+                Button {
+                    guard networkMonitor.currentConnectionAvailable() else {
+                        alertMessage = "No network connection - Cannot register"
+                        showAlert = true
+                        Analytics.logEvent("network_unavailable", parameters: ["context": "register"])
+                        return
+                    }
+                    let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let trimmedPassword = passwordText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmedEmail.isEmpty || trimmedPassword.isEmpty {
+                        alertMessage = "Please provide both an email and a password to create your account."
+                        showAlert = true
+                        return
+                    }
+                    if !trimmedEmail.contains("@") || !trimmedEmail.contains(".") {
+                        alertMessage = "Please enter a valid email address before registering."
+                        showAlert = true
+                        return
+                    }
+                    if trimmedPassword.count < 6 {
+                        alertMessage = "Passwords need to be at least 6 characters. Try adding a few more without spaces or new lines."
+                        showAlert = true
+                        return
+                    }
+                    Task {
+                        await viewModel.registerWithEmail(email: trimmedEmail, password: trimmedPassword)
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "envelope")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 24)
+                        
+                        Text("Register with Email")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .foregroundColor(.black.opacity(0.8))
+                    .padding(.vertical, 16)
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity)
+                    .background(.gray)
+                    .cornerRadius(12)
                 }
-                Task {
-                    await viewModel.loginWithEmail(email: trimmedEmail, password: trimmedPassword)
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "envelope.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 24)
+                .disabled(viewModel.isLoading)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                
+                Button {
+                    // Check network connectivity FIRST
+                    guard networkMonitor.currentConnectionAvailable() else {
+                        alertMessage = "No network connection - Cannot send password reset"
+                        showAlert = true
+                        Analytics.logEvent("network_unavailable", parameters: ["context": "forgot_password"])
+                        return
+                    }
                     
-                    Text("Login with Email")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                }
-                .foregroundColor(.white)
-                .padding(.vertical, 16)
-                .padding(.horizontal, 20)
-                .frame(maxWidth: .infinity)
-                .background(.gray)
-                .cornerRadius(12)
-            }
-            .disabled(viewModel.isLoading)
-            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-            
-            Button {
-                guard networkMonitor.currentConnectionAvailable() else {
-                    alertMessage = "No network connection - Cannot register"
-                    showAlert = true
-                    Analytics.logEvent("network_unavailable", parameters: ["context": "register"])
-                    return
-                }
-                let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
-                let trimmedPassword = passwordText.trimmingCharacters(in: .whitespacesAndNewlines)
-                if trimmedEmail.isEmpty || trimmedPassword.isEmpty {
-                    alertMessage = "Please provide both an email and a password to create your account."
-                    showAlert = true
-                    return
-                }
-                if !trimmedEmail.contains("@") || !trimmedEmail.contains(".") {
-                    alertMessage = "Please enter a valid email address before registering."
-                    showAlert = true
-                    return
-                }
-                if trimmedPassword.count < 6 {
-                    alertMessage = "Passwords need to be at least 6 characters. Try adding a few more without spaces or new lines."
-                    showAlert = true
-                    return
-                }
-                Task {
-                    await viewModel.registerWithEmail(email: trimmedEmail, password: trimmedPassword)
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "envelope")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 24)
+                    // Then validate email
+                    let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
                     
-                    Text("Register with Email")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(maxWidth: .infinity)
+                    if trimmedEmail.isEmpty {
+                        alertMessage = "Please enter your email address to reset your password."
+                        showAlert = true
+                        return
+                    }
+                    if !trimmedEmail.contains("@") || !trimmedEmail.contains(".") {
+                        alertMessage = "Please enter a valid email address."
+                        showAlert = true
+                        return
+                    }
+                    
+                    Task {
+                        await viewModel.sendPasswordReset(email: trimmedEmail)
+                    }
+                } label: {
+                    Text("Forgot Password?")
+                        .foregroundColor(.red)
+                        .underline()
                 }
-                .foregroundColor(.black.opacity(0.8))
-                .padding(.vertical, 16)
-                .padding(.horizontal, 20)
-                .frame(maxWidth: .infinity)
-                .background(.gray)
-                .cornerRadius(12)
-            }
-            .disabled(viewModel.isLoading)
-            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-            
-            Button {
-                Task {
-                    await viewModel.sendPasswordReset(email: emailText)
+                
+                Spacer().frame(height: 20)
+                
+                // Loading indicator
+                if viewModel.isLoading {
+                    ProgressView()
+                        .tint(.appRed)
                 }
-            } label: {
-                Text("Forgot Password?")
-                    .foregroundColor(.red)
-                    .underline()
+                
+                Spacer()
             }
-            
-            Spacer().frame(height: 20)
-            
-            // Loading indicator
-            if viewModel.isLoading {
-                ProgressView()
-                    .tint(.appRed)
-            }
-            
-            Spacer()
+            .padding(.horizontal, 32)
         }
-        .onAppear {
-            // Accessing isConnected to trigger networkMonitor initialization if needed.
-            _ = networkMonitor.isConnected
-        }
-        .padding(.horizontal, 32)
-        .alert("Let’s fix that", isPresented: $showAlert, actions: {
+        .alert("Let's fix that", isPresented: $showAlert, actions: {
             Button("OK", role: .cancel) {}
         }, message: {
             Text(alertMessage)

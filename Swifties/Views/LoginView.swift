@@ -340,10 +340,6 @@ struct LoginView: View {
             }
             .padding(.horizontal, 32)
         }
-        .onAppear {
-            // Accessing isConnected to trigger networkMonitor initialization if needed.
-            _ = networkMonitor.isConnected
-        }
         .alert("Let's fix that", isPresented: $showAlert, actions: {
             Button("OK", role: .cancel) {}
         }, message: {

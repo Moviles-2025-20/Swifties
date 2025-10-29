@@ -297,6 +297,7 @@ struct LoginView: View {
                 .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                 
                 Button {
+                    // Check network connectivity FIRST
                     guard networkMonitor.currentConnectionAvailable() else {
                         alertMessage = "No network connection - Cannot send password reset"
                         showAlert = true
@@ -304,7 +305,9 @@ struct LoginView: View {
                         return
                     }
                     
+                    // Then validate email
                     let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    
                     if trimmedEmail.isEmpty {
                         alertMessage = "Please enter your email address to reset your password."
                         showAlert = true

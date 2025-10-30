@@ -414,7 +414,7 @@ struct WeeklyChallengeView: View {
         .onAppear {
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
                 viewModel.debugCache()
-                // SIEMPRE intentar cargar (usa caché si está disponible)
+                // Always try to load (uses cache if available)
                 viewModel.loadChallenge()
             }
         }

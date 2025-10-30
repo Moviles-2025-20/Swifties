@@ -54,7 +54,7 @@ struct WeeklyChallengeCache {
     let timestamp: Date
     
     var isValid: Bool {
-        // Cache válido por 1 hora
+        // Cache valid for 1 hour
         Date().timeIntervalSince(timestamp) < 3600
     }
 }

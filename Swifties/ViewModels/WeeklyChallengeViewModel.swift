@@ -144,7 +144,7 @@ class WeeklyChallengeViewModel: ObservableObject {
                 self.isRefreshing = false
                 
                 if case .success(let data) = result {
-                    // Update data silently (sin cambiar la UI visiblemente)
+                    // Update data silently (without visibly changing the UI)
                     self.challengeEvent = data.event
                     self.hasAttended = data.hasAttended
                     self.totalChallenges = data.totalChallenges

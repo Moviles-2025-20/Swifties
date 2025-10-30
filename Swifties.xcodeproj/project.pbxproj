@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		882B00692EB10437003042A5 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 882B00682EB10437003042A5 /* SQLite */; };
 		E165F9152E921FD4001D8B00 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = E165F9142E921FD4001D8B00 /* FirebaseCrashlytics */; };
 		E168A9662E8DC88A00BAF013 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E168A9652E8DC88A00BAF013 /* GoogleSignIn */; };
 		E168A9682E8DC88A00BAF013 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E168A9672E8DC88A00BAF013 /* GoogleSignInSwift */; };
@@ -85,7 +84,6 @@
 				E1822BF62E8C4CF6008FC420 /* FirebaseAuth in Frameworks */,
 				E1822BFA2E8C4CF6008FC420 /* FirebaseStorage in Frameworks */,
 				E165F9152E921FD4001D8B00 /* FirebaseCrashlytics in Frameworks */,
-				882B00692EB10437003042A5 /* SQLite in Frameworks */,
 				E1822BF22E8C4CF6008FC420 /* FirebaseAI in Frameworks */,
 				E168A9662E8DC88A00BAF013 /* GoogleSignIn in Frameworks */,
 			);
@@ -149,7 +147,6 @@
 				E168A9652E8DC88A00BAF013 /* GoogleSignIn */,
 				E168A9672E8DC88A00BAF013 /* GoogleSignInSwift */,
 				E165F9142E921FD4001D8B00 /* FirebaseCrashlytics */,
-				882B00682EB10437003042A5 /* SQLite */,
 			);
 			productName = Swifties;
 			productReference = E1544D252E885ABB00B3320D /* Swifties.app */;
@@ -237,7 +234,6 @@
 			packageReferences = (
 				E1822BF02E8C4CF6008FC420 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				E168A9642E8DC88A00BAF013 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
-				882B00672EB10437003042A5 /* XCRemoteSwiftPackageReference "SQLite" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E1A16D442E84BD9A003D5B39;
@@ -679,14 +675,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		882B00672EB10437003042A5 /* XCRemoteSwiftPackageReference "SQLite" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/stephencelis/SQLite.swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.15.4;
-			};
-		};
 		E168A9642E8DC88A00BAF013 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
@@ -706,11 +694,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		882B00682EB10437003042A5 /* SQLite */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 882B00672EB10437003042A5 /* XCRemoteSwiftPackageReference "SQLite" */;
-			productName = SQLite;
-		};
 		E165F9142E921FD4001D8B00 /* FirebaseCrashlytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E1822BF02E8C4CF6008FC420 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

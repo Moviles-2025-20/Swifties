@@ -149,7 +149,7 @@ class WeeklyChallengeViewModel: ObservableObject {
                     self.hasAttended = data.hasAttended
                     self.totalChallenges = data.totalChallenges
                     self.last30DaysData = data.chartData
-                    // NO cambiar dataSource - mantener el indicador de caché
+                    // Do NOT change dataSource - keep the cache indicator
                     
                     // Update caches for next time
                     self.cacheService.cacheChallenge(

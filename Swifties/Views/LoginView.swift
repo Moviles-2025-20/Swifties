@@ -19,7 +19,7 @@ struct LoginView: View {
 
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @StateObject private var networkMonitor = NetworkMonitor.shared
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
     
     enum NavigationDestination {
         case home

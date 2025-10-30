@@ -7,7 +7,7 @@ import Network
 struct WeeklyChallengeView: View {
     @StateObject private var viewModel = WeeklyChallengeViewModel()
     @Environment(\.dismiss) var dismiss
-    @StateObject private var networkMonitor = NetworkMonitor.shared
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
     private let offlineMessage = "No network connection - Cannot load progress"
     
     var body: some View {

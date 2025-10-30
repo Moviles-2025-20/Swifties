@@ -11,7 +11,7 @@ struct EventDetailView: View {
     @State private var hasAttended: Bool = false
     @State private var isCheckingAttendance: Bool = true
     @State private var showAuthAlert: Bool = false
-    @StateObject private var networkMonitor = NetworkMonitor.shared
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
     private let offlineMessage = "No network connection  - Cannot fetch details"
 
     private let db = Firestore.firestore(database: "default")

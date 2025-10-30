@@ -22,7 +22,7 @@ struct EventMapView: View {
     @State private var showNearbyEvents = false
     @Environment(\.dismiss) var dismiss
 
-    @StateObject private var networkMonitor = NetworkMonitor.shared
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
     private let offlineMessage = "No network connection  - Cannot load map view"
     
     // Filter events with valid coordinates

@@ -1,10 +1,3 @@
-//
-//  NetworkMonitorService.swift
-//  Swifties
-//
-//  Created by Imac  on 25/10/25.
-//
-
 import Foundation
 import Network
 

@@ -13,7 +13,7 @@ struct WishMeLuckView: View {
     @State private var fullEventForDetail: Event?
     @State private var isLoadingFullEvent = false
     
-    @StateObject private var networkMonitor = NetworkMonitor.shared
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
     private let offlineMessage = "No network connection - Couldn't fetch events"
     
     private let db = Firestore.firestore(database: "default")

@@ -36,18 +36,22 @@ class WishMeLuckNetworkService {
                 return
             }
             
-            // Extract last wish timestamp
+            // Extract last wish timestamp safely
             var lastWishDate: Date?
             var daysSince = 0
             
             if let stats = data["stats"] as? [String: Any],
                let lastWishTimestamp = stats["last_wish_me_luck"] as? Timestamp {
-                lastWishDate = lastWishTimestamp.dateValue()
+                
+                let lastWishDateValue = lastWishTimestamp.dateValue()
+                lastWishDate = lastWishDateValue
                 
                 let now = Date()
                 let calendar = Calendar.current
-                let components = calendar.dateComponents([.day], from: lastWishDate!, to: now)
-                daysSince = components.day ?? 0
+                
+                // Use the safely unwrapped value
+                let components = calendar.dateComponents([.day], from: lastWishDateValue, to: now)
+                daysSince = max(0, components.day ?? 0) // Ensure non-negative
                 
                 print("✅ Network fetch completed - \(daysSince) days since last wished")
             } else {

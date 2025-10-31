@@ -250,14 +250,14 @@ struct WishMeLuckView: View {
                 Text("Please check your internet connection and try again.")
             }
             .task {
+                // Always calculate days (works from cache or network)
+                await viewModel.calculateDaysSinceLastWished()
+                
+                // Only sync pending updates if connected
                 if networkMonitor.isConnected {
-                    await viewModel.calculateDaysSinceLastWished()
-                    // Sync pending updates if any
                     await viewModel.syncPendingUpdates()
-                } else {
-                    // Try to load from cache
-                    await viewModel.calculateDaysSinceLastWished()
                 }
+                
                 startAccelerometerUpdates()
             }
             .onDisappear {

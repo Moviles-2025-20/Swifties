@@ -7,7 +7,7 @@
 
 import Foundation
 
-class WishMeLuckCacheService {
+actor WishMeLuckCacheService {
     static let shared = WishMeLuckCacheService()
     
     private var cache: [String: WishMeLuckCache] = [:]

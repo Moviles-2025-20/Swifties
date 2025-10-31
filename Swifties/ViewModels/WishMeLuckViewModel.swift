@@ -54,7 +54,7 @@ class WishMeLuckViewModel: ObservableObject {
         print("🚀 Loading days since last wished for user: \(userId)")
         
         // Layer 1: Try memory cache
-        if let cached = cacheService.getCachedDaysSinceLastWished(userId: userId) {
+        if let cached = await cacheService.getCachedDaysSinceLastWished(userId: userId) {
             self.daysSinceLastWished = cached.daysSinceLastWished
             self.dataSource = .memoryCache
             print("✅ Loaded from memory cache: \(cached.daysSinceLastWished) days")
@@ -70,7 +70,7 @@ class WishMeLuckViewModel: ObservableObject {
             self.dataSource = .realmStorage
             
             // Cache in memory for next time
-            cacheService.cacheDaysSinceLastWished(
+            await cacheService.cacheDaysSinceLastWished(
                 userId: userId,
                 days: stored.days,
                 lastWishedDate: stored.lastWishedDate
@@ -105,7 +105,7 @@ class WishMeLuckViewModel: ObservableObject {
                         self.dataSource = .network
                         
                         // Save to both cache layers
-                        self.cacheService.cacheDaysSinceLastWished(
+                        await self.cacheService.cacheDaysSinceLastWished(
                             userId: userId,
                             days: data.days,
                             lastWishedDate: data.lastWishedDate
@@ -141,12 +141,17 @@ class WishMeLuckViewModel: ObservableObject {
                 self.isRefreshing = false
                 
                 if case .success(let data) = result {
-                    // Update data silently
+                    // Check if data actually changed
+                    let dataChanged = self.daysSinceLastWished != data.days
+                    
+                    // Update data
                     self.daysSinceLastWished = data.days
-                    // Do NOT change dataSource - keep the cache indicator
+                    
+                    // ALWAYS update data source to network after successful refresh
+                    self.dataSource = .network
                     
                     // Update caches for next time
-                    self.cacheService.cacheDaysSinceLastWished(
+                    await self.cacheService.cacheDaysSinceLastWished(
                         userId: userId,
                         days: data.days,
                         lastWishedDate: data.lastWishedDate
@@ -158,13 +163,14 @@ class WishMeLuckViewModel: ObservableObject {
                         lastWishedDate: data.lastWishedDate
                     )
                     
-                    print("✅ Updated days in background: \(data.days)")
+                    let updateStatus = dataChanged ? "✅ Updated" : "✅ Confirmed"
+                    print("\(updateStatus) days in background: \(data.days)")
                 }
             }
         }
     }
     
-    // MARK: - Wish Me Luck with Smart Recommendations
+    // MARK: - Wish Me Luck with Smart Recommendations (with Rollback)
     
     func wishMeLuck() async {
         print("🎯 === WISH ME LUCK STARTED ===")
@@ -184,20 +190,14 @@ class WishMeLuckViewModel: ObservableObject {
         errorMessage = nil
         currentEvent = nil
 
-        // IMMEDIATELY save days to 0 in cache (offline support)
-        print("💾 Saving days to 0 in cache (offline support)")
+        // Store previous values for rollback
+        let previousDays = daysSinceLastWished
+        let previousCache = await cacheService.getCachedDaysSinceLastWished(userId: userId)
+        
+        // Optimistically update UI
+        print("💾 Optimistically updating to 0 days")
         daysSinceLastWished = 0
-        cacheService.cacheDaysSinceLastWished(
-            userId: userId,
-            days: 0,
-            lastWishedDate: Date()
-        )
-        storageService.saveDaysSinceLastWished(
-            userId: userId,
-            days: 0,
-            lastWishedDate: Date()
-        )
-
+        
         do {
             try await Task.sleep(nanoseconds: 1_500_000_000)
             
@@ -240,20 +240,44 @@ class WishMeLuckViewModel: ObservableObject {
             } else {
                 print("❌ No event was selected")
                 errorMessage = "No events available at this time"
+                // Rollback on failure
+                daysSinceLastWished = previousDays
+                throw NSError(domain: "WishMeLuck", code: 404,
+                            userInfo: [NSLocalizedDescriptionKey: "No events available"])
             }
 
-            // Update last wished date in network (if connected)
-            if networkMonitor.isConnected {
-                await updateLastWishedDateOnNetwork(userId: userId)
-            } else {
-                // Mark that we have a pending update
-                hasPendingWishUpdate = true
-                print("⚠️ Offline: Marked wish for later sync")
-            }
+            // Only update cache/storage after successful event selection
+            try await updateLastWishedDateOnNetwork(userId: userId)
             
+            // If network update succeeds, persist to cache
+            await cacheService.cacheDaysSinceLastWished(
+                userId: userId,
+                days: 0,
+                lastWishedDate: Date()
+            )
+            storageService.saveDaysSinceLastWished(
+                userId: userId,
+                days: 0,
+                lastWishedDate: Date()
+            )
+            
+            print("✅ Cache and storage updated after successful wish")
             print("🎯 === WISH ME LUCK COMPLETED ===\n")
             
         } catch {
+            // Rollback on any error
+            print("❌ Error occurred, rolling back...")
+            daysSinceLastWished = previousDays
+            
+            // Restore previous cache if it existed
+            if let previousCache = previousCache {
+                await cacheService.cacheDaysSinceLastWished(
+                    userId: userId,
+                    days: previousCache.daysSinceLastWished,
+                    lastWishedDate: previousCache.lastWishedDate
+                )
+            }
+            
             self.errorMessage = "Failed to load event: \(error.localizedDescription)"
             print("❌ Error Firestore: \(error)")
             print("🎯 === WISH ME LUCK FAILED ===\n")
@@ -262,21 +286,20 @@ class WishMeLuckViewModel: ObservableObject {
         isLoading = false
     }
     
-    private func updateLastWishedDateOnNetwork(userId: String) async {
-        await withCheckedContinuation { continuation in
-            networkService.updateLastWishedDate(userId: userId) { [weak self] result in
+    private func updateLastWishedDateOnNetwork(userId: String) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            networkService.updateLastWishedDate(userId: userId) { result in
                 Task { @MainActor in
-                    guard let self = self else { return }
-                    
-                    if case .success = result {
+                    switch result {
+                    case .success:
                         print("✅ Last wished date updated on server")
                         self.hasPendingWishUpdate = false
-                    } else if case .failure(let error) = result {
+                        continuation.resume()
+                    case .failure(let error):
                         print("❌ Failed to update server: \(error.localizedDescription)")
                         self.hasPendingWishUpdate = true
+                        continuation.resume(throwing: error)
                     }
-                    
-                    continuation.resume()
                 }
             }
         }
@@ -292,7 +315,11 @@ class WishMeLuckViewModel: ObservableObject {
         }
         
         print("🔄 Syncing pending wish update...")
-        await updateLastWishedDateOnNetwork(userId: userId)
+        do {
+            try await updateLastWishedDateOnNetwork(userId: userId)
+        } catch {
+            print("❌ Sync failed: \(error.localizedDescription)")
+        }
     }
     
     // MARK: - Get Recommended Event (existing code)
@@ -511,7 +538,9 @@ class WishMeLuckViewModel: ObservableObject {
     
     func forceRefresh() {
         guard let userId = Auth.auth().currentUser?.uid else { return }
-        cacheService.clearCache(userId: userId)
+        Task {
+            await cacheService.clearCache(userId: userId)
+        }
         storageService.deleteDaysSinceLastWished(userId: userId)
         Task {
             await calculateDaysSinceLastWished()
@@ -520,7 +549,9 @@ class WishMeLuckViewModel: ObservableObject {
     
     func clearAllCache() {
         guard let userId = Auth.auth().currentUser?.uid else { return }
-        cacheService.clearCache(userId: userId)
+        Task {
+            await cacheService.clearCache(userId: userId)
+        }
         storageService.deleteDaysSinceLastWished(userId: userId)
         daysSinceLastWished = 0
         dataSource = .none
@@ -528,7 +559,9 @@ class WishMeLuckViewModel: ObservableObject {
     
     func debugCache() {
         guard let userId = Auth.auth().currentUser?.uid else { return }
-        cacheService.debugCache(userId: userId)
+        Task {
+            await cacheService.debugCache(userId: userId)
+        }
         storageService.debugStorage(userId: userId)
     }
     

@@ -95,7 +95,7 @@ class EventDatabaseManager {
             try db.run("CREATE INDEX IF NOT EXISTS idx_timestamp ON events(timestamp)")
             print("Indexes created successfully")
         } catch {
-            print("rror creating indexes: \(error)")
+            print("Error creating indexes: \(error)")
         }
     }
     

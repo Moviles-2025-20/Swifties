@@ -38,10 +38,8 @@ final class HomeViewModel: ObservableObject {
         errorMessage = nil
         
         guard let userId = Auth.auth().currentUser?.uid else {
-            await MainActor.run {
-                isLoading = false
-                errorMessage = "No authenticated user"
-            }
+            isLoading = false
+            errorMessage = "No authenticated user"
             return
         }
         
@@ -53,7 +51,9 @@ final class HomeViewModel: ObservableObject {
             print("✅ Recommendations loaded from memory cache (\(cached.count) items)")
             
             // Refresh in background if connected
-            await refreshInBackground(userId: userId)
+            Task {
+                await refreshInBackground(userId: userId)
+            }
             return
         }
         
@@ -68,7 +68,9 @@ final class HomeViewModel: ObservableObject {
             print("✅ Recommendations loaded from local storage (\(stored.count) items)")
             
             // Refresh in background if connected
-            await refreshInBackground(userId: userId)
+            Task {
+                await refreshInBackground(userId: userId)
+            }
             return
         }
         
@@ -84,44 +86,44 @@ final class HomeViewModel: ObservableObject {
     }
     
     private func fetchFromNetwork(userId: String) async {
-        await withCheckedContinuation { continuation in
-            networkService.fetchRecommendations(userId: userId) { [weak self] result in
-                Task { @MainActor in
-                    guard let self = self else {
-                        continuation.resume()
-                        return
-                    }
-                    
-                    self.isLoading = false
-                    
+        do {
+            let events = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[Event], Error>) in
+                networkService.fetchRecommendations(userId: userId) { result in
                     switch result {
                     case .success(let events):
-                        if events.isEmpty {
-                            // Network returned empty array
-                            self.errorMessage = "No recommendations available at this time"
-                            self.dataSource = .network
-                            print("⚠️ Network returned 0 recommendations")
-                        } else {
-                            // Success with data
-                            self.recommendations = events
-                            self.dataSource = .network
-                            
-                            // Save to both cache layers
-                            self.cacheService.cacheRecommendations(events)
-                            self.storageService.saveRecommendationsToStorage(events, userId: userId)
-                            
-                            print("✅ \(events.count) recommendations loaded from network and cached")
-                        }
-                        
+                        continuation.resume(returning: events)
                     case .failure(let error):
-                        self.errorMessage = "Failed to load recommendations: \(error.localizedDescription)"
-                        self.dataSource = .none
-                        print("❌ Network error: \(error.localizedDescription)")
+                        continuation.resume(throwing: error)
                     }
-                    
-                    continuation.resume()
                 }
             }
+            
+            // Handle successful response
+            isLoading = false
+            
+            if events.isEmpty {
+                // Network returned empty array
+                errorMessage = "No recommendations available at this time"
+                dataSource = .network
+                print("⚠️ Network returned 0 recommendations")
+            } else {
+                // Success with data
+                recommendations = events
+                dataSource = .network
+                
+                // Save to both cache layers
+                cacheService.cacheRecommendations(events)
+                storageService.saveRecommendationsToStorage(events, userId: userId)
+                
+                print("✅ \(events.count) recommendations loaded from network and cached")
+            }
+            
+        } catch {
+            // Handle error
+            isLoading = false
+            errorMessage = "Failed to load recommendations: \(error.localizedDescription)"
+            dataSource = .none
+            print("❌ Network error: \(error.localizedDescription)")
         }
     }
     
@@ -130,35 +132,37 @@ final class HomeViewModel: ObservableObject {
         
         isRefreshing = true
         
-        await withCheckedContinuation { continuation in
-            networkService.fetchRecommendations(userId: userId) { [weak self] result in
-                Task { @MainActor in
-                    guard let self = self else {
-                        continuation.resume()
-                        return
+        do {
+            let events = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[Event], Error>) in
+                networkService.fetchRecommendations(userId: userId) { result in
+                    switch result {
+                    case .success(let events):
+                        continuation.resume(returning: events)
+                    case .failure(let error):
+                        continuation.resume(throwing: error)
                     }
-                    
-                    self.isRefreshing = false
-                    
-                    if case .success(let events) = result, !events.isEmpty {
-                        // Update UI only if we got valid data
-                        self.recommendations = events
-                        self.dataSource = .network
-                        
-                        // Update caches
-                        self.cacheService.cacheRecommendations(events)
-                        self.storageService.saveRecommendationsToStorage(events, userId: userId)
-                        
-                        print("✅ Recommendations updated in background (\(events.count) items)")
-                    } else if case .success(let events) = result, events.isEmpty {
-                        print("⚠️ Background refresh returned 0 recommendations - keeping existing data")
-                    } else if case .failure(let error) = result {
-                        print("⚠️ Background refresh failed: \(error.localizedDescription) - keeping existing data")
-                    }
-                    
-                    continuation.resume()
                 }
             }
+            
+            isRefreshing = false
+            
+            if !events.isEmpty {
+                // Update UI only if we got valid data
+                recommendations = events
+                dataSource = .network
+                
+                // Update caches
+                cacheService.cacheRecommendations(events)
+                storageService.saveRecommendationsToStorage(events, userId: userId)
+                
+                print("✅ Recommendations updated in background (\(events.count) items)")
+            } else {
+                print("⚠️ Background refresh returned 0 recommendations - keeping existing data")
+            }
+            
+        } catch {
+            isRefreshing = false
+            print("⚠️ Background refresh failed: \(error.localizedDescription) - keeping existing data")
         }
     }
     

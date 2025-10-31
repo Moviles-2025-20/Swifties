@@ -47,8 +47,6 @@ class AnalyticsService {
         Analytics.setUserID(userId)
     }
 
-
-
     func logError(_ error: Error, platform: String) {
         Analytics.logEvent("app_exception", parameters: [
             "error_type": String(describing: type(of: error)),
@@ -62,7 +60,18 @@ class AnalyticsService {
             "category": category
         ])
     }
+    
+    // Log when the user requests directions to an event
+    func logDirectionRequest(eventId: String, eventName: String) {
+        Analytics.logEvent("event_direction_requested", parameters: [
+            "event_id": eventId,
+            "event_name": eventName,
+            "timestamp": Date().timeIntervalSince1970
+        ])
+        // Debug print removed for production consistency
+    }
 }
+
 func activarFirebase() {
     Analytics.setAnalyticsCollectionEnabled(true)
 }

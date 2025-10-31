@@ -2,7 +2,7 @@
 //  EventStorageService.swift
 //  Swifties
 //
-//  Created by Imac  on 26/10/25.
+//  Modified with multithreading support
 //
 
 import Foundation
@@ -11,112 +11,77 @@ class EventStorageService {
     static let shared = EventStorageService()
     
     private let databaseManager = EventDatabaseManager.shared
-    private let userDefaults = UserDefaults.standard
-    private let timestampKey = "cached_events_timestamp"
-    private let storageExpirationHours = 24.0
+    private let threadManager = ThreadManager.shared
     
     private init() {}
     
-    func saveEventsToStorage(_ events: [Event]) {
-        // Save events to SQLite
-        databaseManager.saveEvents(events)
-        
-        // Save timestamp to UserDefaults
-        userDefaults.set(Date(), forKey: timestampKey)
-        userDefaults.synchronize()
-        
-        print("\(events.count) events saved to SQLite storage")
+    // MARK: - Threaded Storage Operations
+    
+    /// Guarda eventos en almacenamiento local (SQLite) en background
+    func saveEventsToStorage(_ events: [Event], completion: ((Bool) -> Void)? = nil) {
+        databaseManager.saveEvents(events) { success in
+            completion?(success)
+        }
     }
     
+    /// Carga eventos desde almacenamiento local en background
+    func loadEventsFromStorage(completion: @escaping ([Event]?) -> Void) {
+        databaseManager.loadEvents { events in
+            completion(events)
+        }
+    }
+    
+    /// Versión síncrona (deprecada, usar la versión async)
+    @available(*, deprecated, message: "Use loadEventsFromStorage(completion:) instead")
     func loadEventsFromStorage() -> [Event]? {
-        // Check if data has expired
-        if let timestamp = userDefaults.object(forKey: timestampKey) as? Date {
-            let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
-            print("Storage age: \(String(format: "%.1f", hoursElapsed)) hours")
-            
-            if hoursElapsed > storageExpirationHours {
-                clearStorage()
-                return nil
-            }
-        } else {
-            print("No timestamp found in storage")
-            return nil
+        var result: [Event]?
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        databaseManager.loadEvents { events in
+            result = events
+            semaphore.signal()
         }
         
-        // Load events from SQLite
-        guard let events = databaseManager.loadEvents() else {
-            print("No events found in SQLite storage")
-            return nil
-        }
-        
-        print("\(events.count) events loaded from SQLite storage")
-        return events
+        semaphore.wait()
+        return result
     }
     
-    func clearStorage() {
-        databaseManager.deleteAllEvents()
-        userDefaults.removeObject(forKey: timestampKey)
-        userDefaults.synchronize()
-        print("SQLite storage cleared")
+    /// Limpia el almacenamiento local
+    func clearStorage(completion: ((Bool) -> Void)? = nil) {
+        databaseManager.deleteAllEvents { success in
+            completion?(success)
+        }
     }
+    
+    /// Obtiene el número de eventos almacenados
+    func getStoredEventCount(completion: @escaping (Int) -> Void) {
+        databaseManager.getEventCount { count in
+            completion(count)
+        }
+    }
+    
+    /// Obtiene la fecha de última actualización
+    func getLastUpdateTimestamp(completion: @escaping (Date?) -> Void) {
+        databaseManager.getLastUpdateTimestamp { date in
+            completion(date)
+        }
+    }
+    
+    // MARK: - Debug
     
     func debugStorage() {
-        print("\n=== DEBUG STORAGE ===")
-        
-        // Check timestamp
-        if let timestamp = userDefaults.object(forKey: timestampKey) as? Date {
-            let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
-            print("Timestamp: \(timestamp)")
-            print("Age: \(String(format: "%.1f", hoursElapsed)) hours")
-        } else {
-            print("No timestamp")
-        }
-        
-        // Check database
-        let count = databaseManager.getEventCount()
-        print("Events in database: \(count)")
-        
-        if let lastUpdate = databaseManager.getLastUpdateTimestamp() {
-            print("Last database update: \(lastUpdate)")
-        }
-        
-        print("===================\n")
-        
-        // Detailed database debug
         databaseManager.debugDatabase()
-    }
-    
-    // MARK: - Additional helpers
-    
-    func getStorageInfo() -> StorageInfo {
-        let count = databaseManager.getEventCount()
-        let timestamp = userDefaults.object(forKey: timestampKey) as? Date
-        let isExpired: Bool
         
-        if let timestamp = timestamp {
-            let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
-            isExpired = hoursElapsed > storageExpirationHours
-        } else {
-            isExpired = true
+        getStoredEventCount { count in
+            print("📊 Total events in storage: \(count)")
         }
         
-        return StorageInfo(
-            eventCount: count,
-            lastUpdate: timestamp,
-            isExpired: isExpired
-        )
-    }
-}
-
-// MARK: - Storage Info Model
-
-struct StorageInfo {
-    let eventCount: Int
-    let lastUpdate: Date?
-    let isExpired: Bool
-    
-    var ageInHours: Double? {
-        guard let lastUpdate = lastUpdate else { return nil }
-        return Date().timeIntervalSince(lastUpdate) / 3600
+        getLastUpdateTimestamp { date in
+            if let date = date {
+                print("🕐 Last update: \(date)")
+            } else {
+                print("⚠️ No update timestamp found")
+            }
+        }
     }
 }

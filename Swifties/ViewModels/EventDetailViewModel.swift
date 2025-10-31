@@ -85,7 +85,7 @@ class EventDetailViewModel: ObservableObject {
                 do {
                     return try doc.data(as: Comment.self)
                 } catch {
-                    print("⚠️ Failed to parse comment \(doc.documentID): \(error)")
+                    print("Failed to parse comment \(doc.documentID): \(error)")
                     return nil
                 }
             }
@@ -93,7 +93,7 @@ class EventDetailViewModel: ObservableObject {
             await MainActor.run {
                 self.comments = parsed
                 self.recalculateRatings()
-                print("✅ Loaded \(parsed.count) comments for event \(event_id)")
+                print("Loaded \(parsed.count) comments for event \(event_id)")
             }
         } catch {
             print("❌ Error fetching comments: \(error.localizedDescription)")

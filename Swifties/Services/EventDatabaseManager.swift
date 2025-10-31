@@ -3,6 +3,7 @@
 //  Swifties
 //
 //  Created by Imac on 28/10/25.
+//  Modified with multithreading support
 //
 
 import Foundation
@@ -12,6 +13,7 @@ class EventDatabaseManager {
     static let shared = EventDatabaseManager()
     
     private var db: Connection?
+    private let threadManager = ThreadManager.shared
     
     // Table definition
     private let eventsTable = Table("events")
@@ -93,32 +95,45 @@ class EventDatabaseManager {
             try db.run("CREATE INDEX IF NOT EXISTS idx_timestamp ON events(timestamp)")
             print("Indexes created successfully")
         } catch {
-            print("Error creating indexes: \(error)")
+            print("rror creating indexes: \(error)")
         }
     }
     
-    // MARK: - CRUD Operations
+    // MARK: - CRUD Operations (Threaded)
     
-    func saveEvents(_ events: [Event]) {
-        guard let db = db else {
-            print("Database connection not available")
-            return
-        }
-        
-        do {
-            try db.transaction {
-                // Clear existing events
-                try db.run(eventsTable.delete())
-                
-                // Insert new events
-                for event in events {
-                    try insertEvent(event)
+    /// Guarda eventos en background con completion en main thread
+    func saveEvents(_ events: [Event], completion: ((Bool) -> Void)? = nil) {
+        threadManager.executeDatabaseOperation {
+            guard let db = self.db else {
+                print("Database connection not available")
+                self.threadManager.executeOnMain {
+                    completion?(false)
                 }
+                return
             }
             
-            print("\(events.count) events saved to SQLite database")
-        } catch {
-            print("Error saving events: \(error)")
+            do {
+                try db.transaction {
+                    // Clear existing events
+                    try db.run(self.eventsTable.delete())
+                    
+                    // Insert new events
+                    for event in events {
+                        try self.insertEvent(event)
+                    }
+                }
+                
+                print("\(events.count) events saved to SQLite (background thread)")
+                
+                self.threadManager.executeOnMain {
+                    completion?(true)
+                }
+            } catch {
+                print("Error saving events: \(error)")
+                self.threadManager.executeOnMain {
+                    completion?(false)
+                }
+            }
         }
     }
     
@@ -167,130 +182,181 @@ class EventDatabaseManager {
         try db.run(insert)
     }
     
-    func loadEvents() -> [Event]? {
-        guard let db = db else {
-            print("Database connection not available")
-            return nil
-        }
-        
-        do {
-            let decoder = JSONDecoder()
-            var events: [Event] = []
-            
-            for row in try db.prepare(eventsTable) {
-                let locationObj: EventLocation? = try {
-                    guard let locationJSON = row[locationData] else { return nil }
-                    guard let data = locationJSON.data(using: .utf8) else { return nil }
-                    return try decoder.decode(EventLocation.self, from: data)
-                }()
-                
-                let metadataObj: EventMetadata = try {
-                    let data = row[metadataData].data(using: .utf8)!
-                    return try decoder.decode(EventMetadata.self, from: data)
-                }()
-                
-                let scheduleObj: EventSchedule = try {
-                    let data = row[scheduleData].data(using: .utf8)!
-                    return try decoder.decode(EventSchedule.self, from: data)
-                }()
-                
-                let statsObj: EventStats = try {
-                    let data = row[statsData].data(using: .utf8)!
-                    return try decoder.decode(EventStats.self, from: data)
-                }()
-                
-                // Create event with id parameter
-                let event = Event(
-                    id: row[id],
-                    activetrue: row[activetrue],
-                    category: row[category],
-                    created: row[created],
-                    description: row[description],
-                    eventType: row[eventType],
-                    location: locationObj,
-                    metadata: metadataObj,
-                    name: row[name],
-                    schedule: scheduleObj,
-                    stats: statsObj,
-                    title: row[title],
-                    type: row[type],
-                    weatherDependent: row[weatherDependent]
-                )
-                
-                events.append(event)
+    /// Carga eventos en background con completion en main thread
+    func loadEvents(completion: @escaping ([Event]?) -> Void) {
+        threadManager.executeDatabaseOperation {
+            guard let db = self.db else {
+                print("Database connection not available")
+                self.threadManager.executeOnMain {
+                    completion(nil)
+                }
+                return
             }
             
-            print("\(events.count) events loaded from SQLite database")
-            return events.isEmpty ? nil : events
-        } catch {
-            print("Error loading events: \(error)")
-            return nil
-        }
-    }
-    
-    func deleteAllEvents() {
-        guard let db = db else { return }
-        
-        do {
-            try db.run(eventsTable.delete())
-            print("All events deleted from SQLite database")
-        } catch {
-            print("Error deleting events: \(error)")
-        }
-    }
-    
-    func getEventCount() -> Int {
-        guard let db = db else { return 0 }
-        
-        do {
-            return try db.scalar(eventsTable.count)
-        } catch {
-            print("Error getting event count: \(error)")
-            return 0
-        }
-    }
-    
-    func getLastUpdateTimestamp() -> Date? {
-        guard let db = db else { return nil }
-        
-        do {
-            if let row = try db.pluck(eventsTable.select(timestamp).order(timestamp.desc)) {
-                return row[timestamp]
+            do {
+                let decoder = JSONDecoder()
+                var events: [Event] = []
+                
+                for row in try db.prepare(self.eventsTable) {
+                    let locationObj: EventLocation? = try {
+                        guard let locationJSON = row[self.locationData] else { return nil }
+                        guard let data = locationJSON.data(using: .utf8) else { return nil }
+                        return try decoder.decode(EventLocation.self, from: data)
+                    }()
+                    
+                    let metadataObj: EventMetadata = try {
+                        let data = row[self.metadataData].data(using: .utf8)!
+                        return try decoder.decode(EventMetadata.self, from: data)
+                    }()
+                    
+                    let scheduleObj: EventSchedule = try {
+                        let data = row[self.scheduleData].data(using: .utf8)!
+                        return try decoder.decode(EventSchedule.self, from: data)
+                    }()
+                    
+                    let statsObj: EventStats = try {
+                        let data = row[self.statsData].data(using: .utf8)!
+                        return try decoder.decode(EventStats.self, from: data)
+                    }()
+                    
+                    let event = Event(
+                        id: row[self.id],
+                        activetrue: row[self.activetrue],
+                        category: row[self.category],
+                        created: row[self.created],
+                        description: row[self.description],
+                        eventType: row[self.eventType],
+                        location: locationObj,
+                        metadata: metadataObj,
+                        name: row[self.name],
+                        schedule: scheduleObj,
+                        stats: statsObj,
+                        title: row[self.title],
+                        type: row[self.type],
+                        weatherDependent: row[self.weatherDependent]
+                    )
+                    
+                    events.append(event)
+                }
+                
+                print("\(events.count) events loaded from SQLite (background thread)")
+                
+                self.threadManager.executeOnMain {
+                    completion(events.isEmpty ? nil : events)
+                }
+            } catch {
+                print("Error loading events: \(error)")
+                self.threadManager.executeOnMain {
+                    completion(nil)
+                }
             }
-            return nil
-        } catch {
-            print("Error getting timestamp: \(error)")
-            return nil
+        }
+    }
+    
+    func deleteAllEvents(completion: ((Bool) -> Void)? = nil) {
+        threadManager.executeDatabaseOperation {
+            guard let db = self.db else {
+                self.threadManager.executeOnMain {
+                    completion?(false)
+                }
+                return
+            }
+            
+            do {
+                try db.run(self.eventsTable.delete())
+                print("All events deleted from SQLite")
+                self.threadManager.executeOnMain {
+                    completion?(true)
+                }
+            } catch {
+                print("Error deleting events: \(error)")
+                self.threadManager.executeOnMain {
+                    completion?(false)
+                }
+            }
+        }
+    }
+    
+    func getEventCount(completion: @escaping (Int) -> Void) {
+        threadManager.executeDatabaseOperation {
+            guard let db = self.db else {
+                self.threadManager.executeOnMain {
+                    completion(0)
+                }
+                return
+            }
+            
+            do {
+                let count = try db.scalar(self.eventsTable.count)
+                self.threadManager.executeOnMain {
+                    completion(count)
+                }
+            } catch {
+                print("Error getting event count: \(error)")
+                self.threadManager.executeOnMain {
+                    completion(0)
+                }
+            }
+        }
+    }
+    
+    func getLastUpdateTimestamp(completion: @escaping (Date?) -> Void) {
+        threadManager.executeDatabaseOperation {
+            guard let db = self.db else {
+                self.threadManager.executeOnMain {
+                    completion(nil)
+                }
+                return
+            }
+            
+            do {
+                if let row = try db.pluck(self.eventsTable.select(self.timestamp).order(self.timestamp.desc)) {
+                    let date = row[self.timestamp]
+                    self.threadManager.executeOnMain {
+                        completion(date)
+                    }
+                } else {
+                    self.threadManager.executeOnMain {
+                        completion(nil)
+                    }
+                }
+            } catch {
+                print("Error getting timestamp: \(error)")
+                self.threadManager.executeOnMain {
+                    completion(nil)
+                }
+            }
         }
     }
     
     // MARK: - Debug
     
     func debugDatabase() {
-        guard let db = db else {
-            print("Database connection not available")
-            return
-        }
-        
-        print("\n=== DEBUG SQLite DATABASE ===")
-        
-        do {
-            let count = try db.scalar(eventsTable.count)
-            print("Total events: \(count)")
-            
-            if let lastUpdate = getLastUpdateTimestamp() {
-                print("Last update: \(lastUpdate)")
+        threadManager.executeDatabaseOperation {
+            guard let db = self.db else {
+                print("Database connection not available")
+                return
             }
             
-            // Show first 3 events
-            let query = eventsTable.limit(3)
-            for row in try db.prepare(query) {
-                print("Event: \(row[name]) - Category: \(row[category])")
+            print("\n=== DEBUG SQLite DATABASE ===")
+            
+            do {
+                let count = try db.scalar(self.eventsTable.count)
+                print("Total events: \(count)")
+                
+                if let row = try db.pluck(self.eventsTable.select(self.timestamp).order(self.timestamp.desc)) {
+                    print("Last update: \(row[self.timestamp])")
+                }
+                
+                let query = self.eventsTable.limit(3)
+                for row in try db.prepare(query) {
+                    print("Event: \(row[self.name]) - Category: \(row[self.category])")
+                }
+            } catch {
+                print("Error debugging database: \(error)")
             }
-        } catch {
-            print("Error debugging database: \(error)")
+            
+            print("============================\n")
         }
-        
-        print("============================\n")
     }
 }

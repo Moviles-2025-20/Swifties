@@ -17,7 +17,6 @@ class EventCacheService {
     // Lock para thread-safety (alternativa a ThreadManager para operaciones síncronas)
     private let lock = NSLock()
     
-    private let threadManager = ThreadManager.shared
     
     private init() {}
     

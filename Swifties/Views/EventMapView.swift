@@ -70,7 +70,7 @@ struct EventMapView: View {
         let mapItem = MKMapItem(placemark: placemark)
         mapItem.name = event.name
         
-        // Log analytics cuando se solicita direcciones
+        // Log analytics when directions are requested
         print("📊 About to call AnalyticsService.logDirectionRequest")
         let eventIdToLog = event.id ?? "unknown"
         print("   - Event ID: \(eventIdToLog)")

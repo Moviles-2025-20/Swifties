@@ -45,7 +45,7 @@ struct ProfileView: View {
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, 20)
                                 
-                                if !NetworkMonitorService.shared.isConnected {
+                                if !networkMonitor.isConnected {
                                     Text("You're offline. Some actions are disabled.")
                                         .foregroundColor(.secondary)
                                 }
@@ -103,7 +103,7 @@ struct ProfileView: View {
                                     // Handle profile info change
                                     print("Change profile info tapped")
                                 }
-                                .disabled(!NetworkMonitorService.shared.isConnected)
+                                .disabled(!networkMonitor.isConnected)
 
                                 ActionButton(
                                     title: "Log Out",
@@ -114,7 +114,7 @@ struct ProfileView: View {
                                         await authViewModel.logout()
                                     }
                                 }
-                                .disabled(!NetworkMonitorService.shared.isConnected)
+                                .disabled(!networkMonitor.isConnected)
 
                                 ActionButton(
                                     title: "Delete your account",
@@ -125,7 +125,7 @@ struct ProfileView: View {
                                         await authViewModel.deleteAccount()
                                     }
                                 }
-                                .disabled(!NetworkMonitorService.shared.isConnected)
+                                .disabled(!networkMonitor.isConnected)
                             }
                             .padding(.horizontal, 20)
 

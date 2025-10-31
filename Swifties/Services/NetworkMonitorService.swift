@@ -35,10 +35,6 @@ class NetworkMonitorService: ObservableObject  {
         monitor.cancel()
     }
     
-    func currentConnectionAvailable() -> Bool {
-        return isConnected
-    }
-    
     deinit {
         stopMonitoring()
     }

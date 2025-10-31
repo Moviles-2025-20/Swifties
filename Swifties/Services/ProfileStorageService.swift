@@ -47,7 +47,6 @@ final class ProfileStorageService {
             }
 
             userDefaults.set(Date(), forKey: timestampKey)
-            userDefaults.synchronize()
             print("Profile saved to SQLite storage")
         } catch {
             print("Error saving profile: \(error)")
@@ -83,7 +82,6 @@ final class ProfileStorageService {
         do {
             try db.run(table.delete())
             userDefaults.removeObject(forKey: timestampKey)
-            userDefaults.synchronize()
             print("Profile SQLite storage cleared")
         } catch {
             print("Error clearing profile storage: \(error)")

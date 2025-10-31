@@ -168,14 +168,12 @@ final class UserProfileRepository {
     }
 }
 
-
 @MainActor
 final class ProfileViewModel: ObservableObject {
     @Published var profile: UserModel?
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var dataSource: DataSource = .none
-    @Published var isConnected: Bool = NetworkMonitorService.shared.isConnected
 
     enum DataSource {
         case none, memoryCache, localStorage, network
@@ -189,7 +187,6 @@ final class ProfileViewModel: ObservableObject {
     func loadProfile() {
         isLoading = true
         errorMessage = nil
-        isConnected = networkMonitor.isConnected
 
         // 1) Memory cache
         if let cached = cacheService.getCachedProfile() {

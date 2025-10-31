@@ -10,7 +10,7 @@ import SwiftUI
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     @EnvironmentObject var authViewModel: AuthViewModel
-    @State private var isConnectedBinding: Bool = NetworkMonitorService.shared.isConnected
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
         
     var body: some View {
         
@@ -27,7 +27,7 @@ struct ProfileView: View {
                 ScrollView {
                     VStack(spacing: 25) {
                         
-                        if !NetworkMonitorService.shared.isConnected {
+                        if !networkMonitor.isConnected {
                             Text("Offline mode: Showing cached data if available")
                                 .font(.footnote)
                                 .foregroundColor(.yellow)
@@ -94,7 +94,7 @@ struct ProfileView: View {
                                     // Handle password change
                                     print("Change password tapped")
                                 }
-                                .disabled(!NetworkMonitorService.shared.isConnected)
+                                .disabled(!networkMonitor.isConnected)
 
                                 ActionButton(
                                     title: "Change your profile information",

@@ -15,13 +15,14 @@ class EventStorageService {
     
     private init() {}
     
-    // MARK: - Threaded Storage Operations
-    
-    /// Guarda eventos en almacenamiento local (SQLite) en background
-    func saveEventsToStorage(_ events: [Event], completion: ((Bool) -> Void)? = nil) {
-        databaseManager.saveEvents(events) { success in
-            completion?(success)
-        }
+    func saveEventsToStorage(_ events: [Event]) {
+        // Save events to SQLite
+        databaseManager.saveEvents(events)
+        
+        // Save timestamp to UserDefaults
+        userDefaults.set(Date(), forKey: timestampKey)
+        
+        print("\(events.count) events saved to SQLite storage")
     }
     
     /// Carga eventos desde almacenamiento local en background
@@ -46,11 +47,10 @@ class EventStorageService {
         return result
     }
     
-    /// Limpia el almacenamiento local
-    func clearStorage(completion: ((Bool) -> Void)? = nil) {
-        databaseManager.deleteAllEvents { success in
-            completion?(success)
-        }
+    func clearStorage() {
+        databaseManager.deleteAllEvents()
+        userDefaults.removeObject(forKey: timestampKey)
+        print("SQLite storage cleared")
     }
     
     /// Obtiene el número de eventos almacenados

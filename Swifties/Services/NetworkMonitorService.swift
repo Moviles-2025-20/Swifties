@@ -17,11 +17,11 @@ class NetworkMonitorService: ObservableObject  {
     
     func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
-            self?.isConnected = path.status == .satisfied
-            self?.connectionType = path.availableInterfaces.first?.type
-            
-            DispatchQueue.main.async {
-                if self?.isConnected == true {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.isConnected = path.status == .satisfied
+                self.connectionType = path.availableInterfaces.first?.type
+                if self.isConnected {
                     print("Internet connection available")
                 } else {
                     print("No Internet connection")

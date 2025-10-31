@@ -167,7 +167,7 @@ final class HomeViewModel: ObservableObject {
     }
     
     func forceRefresh() async {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
+        guard Auth.auth().currentUser?.uid != nil else { return }
         
         // Clear caches to force network fetch
         cacheService.clearCache()

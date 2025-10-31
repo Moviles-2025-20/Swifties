@@ -26,7 +26,7 @@ class WishMeLuckViewModel: ObservableObject {
     private let cacheService = WishMeLuckCacheService.shared
     private let storageService = WishMeLuckStorageService.shared
     private let networkService = WishMeLuckNetworkService.shared
-    private let networkMonitor = NetworkMonitor.shared
+    private let networkMonitor = NetworkMonitorService.shared
     
     // MARK: - Motivational Messages
     func getMotivationalMessage() -> String {

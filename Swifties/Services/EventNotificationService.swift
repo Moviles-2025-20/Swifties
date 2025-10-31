@@ -10,13 +10,15 @@ import Foundation
 class EventNotificationService {
 
     func checkEventsForUser(user: UserModel, events: [Event]) {
-        let freeSlots = user.preferences.notifications.freeTimeSlots
+        // TODO: Check if useful
+        _ = user.preferences.notifications.freeTimeSlots
 
         for event in events {
             for day in event.schedule.days {
                 for time in event.schedule.times {
 
-                    let eventSlot = "\(day) \(time)"
+                    // TODO: Check for use
+                    _ = "\(day) \(time)"
 
                     // TODO: FIX THE CORRECT FREE SLOT
                     //if freeSlots.contains(eventSlot) {

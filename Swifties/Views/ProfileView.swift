@@ -147,7 +147,6 @@ struct ProfileView: View {
                 .background(Color("appPrimary"))
                 .task {
                     viewModel.loadProfile()
-                    isConnectedBinding = NetworkMonitorService.shared.isConnected
                 }
             }
             .ignoresSafeArea(.all, edges: .bottom)

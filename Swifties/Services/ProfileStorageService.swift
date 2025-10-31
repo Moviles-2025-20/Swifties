@@ -20,7 +20,10 @@ final class ProfileStorageService {
 
     private func setupDatabase() {
         do {
-            let path = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
+            guard let path = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first else {
+                print("Error: Documents directory unavailable.")
+                return
+            }
             let dbPath = "\(path)/profile.sqlite3"
             db = try Connection(dbPath)
             try db?.run(table.create(ifNotExists: true) { t in

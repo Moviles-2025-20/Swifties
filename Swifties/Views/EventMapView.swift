@@ -54,7 +54,7 @@ struct EventMapView: View {
         return Array(withDistance.prefix(count).map { ($0, $1) })
     }
     
-    // Función para abrir direcciones en Apple Maps
+    // Function to open directions in Apple Maps
     private func openDirections(to event: Event) {
         print("🔵 [DEBUG] openDirections called for event: \(event.name)")
         

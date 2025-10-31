@@ -334,7 +334,7 @@ struct NearbyEventRow: View {
             
             Spacer()
             
-            // Botón de direcciones
+            // Direction button
             Button(action: onDirectionTap) {
                 Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
                     .font(.system(size: 28))

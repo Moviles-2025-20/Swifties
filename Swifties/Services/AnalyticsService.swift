@@ -68,7 +68,7 @@ class AnalyticsService {
             "event_name": eventName,
             "timestamp": Date().timeIntervalSince1970
         ])
-        print("📍 Analytics: Direction requested for event: \(eventName)")
+        // Debug print removed for production consistency
     }
 }
 

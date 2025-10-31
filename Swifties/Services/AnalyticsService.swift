@@ -61,7 +61,7 @@ class AnalyticsService {
         ])
     }
     
-    // Log cuando el usuario solicita direcciones a un evento
+    // Log when the user requests directions to an event
     func logDirectionRequest(eventId: String, eventName: String) {
         Analytics.logEvent("event_direction_requested", parameters: [
             "event_id": eventId,

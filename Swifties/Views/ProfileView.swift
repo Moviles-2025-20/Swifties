@@ -10,6 +10,7 @@ import SwiftUI
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
         
     var body: some View {
         
@@ -25,6 +26,14 @@ struct ProfileView: View {
                 
                 ScrollView {
                     VStack(spacing: 25) {
+                        
+                        if !networkMonitor.isConnected {
+                            Text("Offline mode: Showing cached data if available")
+                                .font(.footnote)
+                                .foregroundColor(.yellow)
+                                .padding(.top, 8)
+                        }
+                        
                         // Loading / Error / Content States
                         if viewModel.isLoading {
                             ProgressView("Loading profile…")
@@ -35,6 +44,11 @@ struct ProfileView: View {
                                     .foregroundColor(.red)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, 20)
+                                
+                                if !networkMonitor.isConnected {
+                                    Text("You're offline. Some actions are disabled.")
+                                        .foregroundColor(.secondary)
+                                }
                                 
                                 Button("Retry") {
                                     viewModel.loadProfile()
@@ -80,6 +94,7 @@ struct ProfileView: View {
                                     // Handle password change
                                     print("Change password tapped")
                                 }
+                                .disabled(!networkMonitor.isConnected)
 
                                 ActionButton(
                                     title: "Change your profile information",
@@ -88,6 +103,7 @@ struct ProfileView: View {
                                     // Handle profile info change
                                     print("Change profile info tapped")
                                 }
+                                .disabled(!networkMonitor.isConnected)
 
                                 ActionButton(
                                     title: "Log Out",
@@ -98,6 +114,7 @@ struct ProfileView: View {
                                         await authViewModel.logout()
                                     }
                                 }
+                                .disabled(!networkMonitor.isConnected)
 
                                 ActionButton(
                                     title: "Delete your account",
@@ -108,6 +125,7 @@ struct ProfileView: View {
                                         await authViewModel.deleteAccount()
                                     }
                                 }
+                                .disabled(!networkMonitor.isConnected)
                             }
                             .padding(.horizontal, 20)
 
@@ -127,7 +145,9 @@ struct ProfileView: View {
                     }
                 }
                 .background(Color("appPrimary"))
-                .task { viewModel.loadProfile() }
+                .task {
+                    viewModel.loadProfile()
+                }
             }
             .ignoresSafeArea(.all, edges: .bottom)
         }

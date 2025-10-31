@@ -139,7 +139,7 @@ class UserInfoViewModel: ObservableObject {
     }
     
     func forceRefresh() {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
+        guard Auth.auth().currentUser?.uid != nil else { return }
         cacheService.clearCache()
         loadData()
     }

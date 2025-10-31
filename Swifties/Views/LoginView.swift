@@ -19,7 +19,7 @@ struct LoginView: View {
 
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @StateObject private var networkMonitor = NetworkMonitor.shared
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
     
     enum NavigationDestination {
         case home
@@ -109,7 +109,7 @@ struct LoginView: View {
                 
                 // Google Login Button
                 Button(action: {
-                    guard networkMonitor.currentConnectionAvailable() else {
+                    guard networkMonitor.isConnected else {
                         alertMessage = "No network connection - Cannot log in"
                         showAlert = true
                         Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
@@ -147,7 +147,7 @@ struct LoginView: View {
                 
                 // Twitter Login Button
                 Button(action: {
-                    guard networkMonitor.currentConnectionAvailable() else {
+                    guard networkMonitor.isConnected else {
                         alertMessage = "No network connection - Cannot log in"
                         showAlert = true
                         Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
@@ -200,7 +200,7 @@ struct LoginView: View {
                     .cornerRadius(8)
                 
                 Button {
-                    guard networkMonitor.currentConnectionAvailable() else {
+                    guard networkMonitor.isConnected else {
                         alertMessage = "No network connection - Cannot log in"
                         showAlert = true
                         Analytics.logEvent("network_unavailable", parameters: ["context": "login"])
@@ -249,7 +249,7 @@ struct LoginView: View {
                 .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                 
                 Button {
-                    guard networkMonitor.currentConnectionAvailable() else {
+                    guard networkMonitor.isConnected else {
                         alertMessage = "No network connection - Cannot register"
                         showAlert = true
                         Analytics.logEvent("network_unavailable", parameters: ["context": "register"])
@@ -298,7 +298,7 @@ struct LoginView: View {
                 
                 Button {
                     // Check network connectivity FIRST
-                    guard networkMonitor.currentConnectionAvailable() else {
+                    guard networkMonitor.isConnected else {
                         alertMessage = "No network connection - Cannot send password reset"
                         showAlert = true
                         Analytics.logEvent("network_unavailable", parameters: ["context": "forgot_password"])

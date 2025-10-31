@@ -23,7 +23,7 @@ class WeeklyChallengeViewModel: ObservableObject {
     private let cacheService = WeeklyChallengeCacheService.shared
     private let storageService = WeeklyChallengeStorageService.shared
     private let networkService = WeeklyChallengeNetworkService.shared
-    private let networkMonitor = NetworkMonitor.shared
+    private let networkMonitor = NetworkMonitorService.shared
     
     private var currentUserId: String? {
         Auth.auth().currentUser?.uid

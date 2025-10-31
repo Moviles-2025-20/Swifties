@@ -233,7 +233,7 @@ class RecommendationDatabaseManager {
             ) as! Int64 > 0
             
             if oldTableExists {
-                print("🔄 Starting migration to composite key schema...")
+                print("!!!! Starting migration to composite key schema...")
                 
                 // Rename old table
                 try db.run("ALTER TABLE recommendations RENAME TO recommendations_old")

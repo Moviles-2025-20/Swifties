@@ -12,7 +12,7 @@ struct HomeView: View {
     @State private var selectedTab = 0
     @StateObject var homeViewModel = HomeViewModel()
     @StateObject var profileViewModel = ProfileViewModel()
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @ObservedObject private var networkMonitor = NetworkMonitorService.shared
     
     // MARK: - Computed Properties for Data Source
     private var dataSourceIcon: String {
@@ -154,57 +154,118 @@ struct HomeView: View {
                             }
                             .padding(.top, 20)
                             
-                            // Recommendations Section
-                            if homeViewModel.isLoading {
-                                ProgressView("Loading recommendations…")
+                            // MARK: - Recommendations Section with Improved Messages
+                            VStack(spacing: 12) {
+                                if homeViewModel.isLoading {
+                                    // Loading state
+                                    VStack(spacing: 16) {
+                                        ProgressView()
+                                            .scaleEffect(1.2)
+                                        Text("Loading recommendations…")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 60)
+                                    
+                                } else if let error = homeViewModel.errorMessage {
+                                    // Error state with context-aware messages
+                                    VStack(spacing: 16) {
+                                        Image(systemName: getErrorIcon(for: error))
+                                            .font(.system(size: 50))
+                                            .foregroundColor(.secondary)
+                                        
+                                        Text(error)
+                                            .font(.body)
+                                            .foregroundColor(.red)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, 24)
+                                        
+                                        Text(getErrorHint(for: error))
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, 24)
+                                        
+                                        if homeViewModel.dataSource == .none && networkMonitor.isConnected {
+                                            Button {
+                                                Task {
+                                                    await homeViewModel.getRecommendations()
+                                                }
+                                            } label: {
+                                                HStack {
+                                                    Image(systemName: "arrow.clockwise")
+                                                    Text("Try Again")
+                                                }
+                                                .padding(.horizontal, 24)
+                                                .padding(.vertical, 12)
+                                                .background(Color.blue)
+                                                .foregroundColor(.white)
+                                                .cornerRadius(10)
+                                            }
+                                            .padding(.top, 8)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
                                     .padding(.vertical, 40)
-                            } else if let error = homeViewModel.errorMessage {
-                                VStack(spacing: 12) {
-                                    Image(systemName: "exclamationmark.triangle")
-                                        .font(.system(size: 50))
-                                        .foregroundColor(.secondary)
-                                    Text(error)
-                                        .foregroundColor(.red)
-                                        .multilineTextAlignment(.center)
-                                        .padding()
-                                    Button("Retry") {
-                                        Task {
-                                            await homeViewModel.getRecommendations()
+                                    
+                                } else if homeViewModel.recommendations.isEmpty {
+                                    // Empty state (no error, just no data)
+                                    VStack(spacing: 16) {
+                                        Image(systemName: "star.slash")
+                                            .font(.system(size: 50))
+                                            .foregroundColor(.secondary)
+                                        
+                                        Text("No recommendations yet")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        
+                                        Text("We're working on finding the perfect events for you")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, 24)
+                                        
+                                        if networkMonitor.isConnected {
+                                            Button {
+                                                Task {
+                                                    await homeViewModel.forceRefresh()
+                                                }
+                                            } label: {
+                                                HStack {
+                                                    Image(systemName: "arrow.clockwise")
+                                                    Text("Refresh")
+                                                }
+                                                .padding(.horizontal, 24)
+                                                .padding(.vertical, 12)
+                                                .background(Color.blue)
+                                                .foregroundColor(.white)
+                                                .cornerRadius(10)
+                                            }
+                                            .padding(.top, 8)
                                         }
                                     }
-                                    .padding()
-                                    .background(Color.blue)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(8)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 40)
-                            } else if homeViewModel.recommendations.isEmpty {
-                                VStack(spacing: 12) {
-                                    Image(systemName: "star.slash")
-                                        .font(.system(size: 50))
-                                        .foregroundColor(.secondary)
-                                    Text("No recommendations available")
-                                        .foregroundColor(.secondary)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 40)
-                            } else {
-                                VStack(spacing: 12) {
-                                    ForEach(homeViewModel.recommendations, id: \.title) { event in
-                                        NavigationLink(destination: EventDetailView(event: event)) {
-                                            EventInfo(
-                                                imagePath: event.metadata.imageUrl,
-                                                title: event.name,
-                                                titleColor: Color.orange,
-                                                description: event.description,
-                                                timeText: formatEventTime(event: event),
-                                                walkingMinutes: 5,
-                                                location: event.location?.address
-                                            )
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 40)
+                                    
+                                } else {
+                                    // Success state - show recommendations
+                                    VStack(spacing: 12) {
+                                        ForEach(homeViewModel.recommendations, id: \.title) { event in
+                                            NavigationLink(destination: EventDetailView(event: event)) {
+                                                EventInfo(
+                                                    imagePath: event.metadata.imageUrl,
+                                                    title: event.name,
+                                                    titleColor: Color.orange,
+                                                    description: event.description,
+                                                    timeText: formatEventTime(event: event),
+                                                    walkingMinutes: 5,
+                                                    location: event.location?.address
+                                                )
+                                            }
                                         }
+                                        .padding(.horizontal, 16)
                                     }
-                                    .padding(.horizontal, 16)
                                 }
                             }
                             
@@ -226,7 +287,8 @@ struct HomeView: View {
         }
     }
     
-    // MARK: - Helper Function
+    // MARK: - Helper Functions
+    
     private func getUserFirstName() -> String {
         // Priority 1: Profile name from Firestore
         if let profileName = profileViewModel.profile?.profile.name, !profileName.isEmpty {
@@ -248,6 +310,32 @@ struct HomeView: View {
         
         // Fallback
         return "User"
+    }
+    
+    private func getErrorIcon(for error: String) -> String {
+        if error.contains("No internet connection") {
+            return "wifi.slash"
+        } else if error.contains("No authenticated user") {
+            return "person.crop.circle.badge.exclamationmark"
+        } else if error.contains("No recommendations available") {
+            return "tray"
+        } else {
+            return "exclamationmark.triangle"
+        }
+    }
+    
+    private func getErrorHint(for error: String) -> String {
+        if error.contains("No internet connection") {
+            return "Please check your connection and try again"
+        } else if error.contains("No authenticated user") {
+            return "Please sign in to view personalized recommendations"
+        } else if error.contains("No recommendations available") {
+            return "Check back later or try refreshing"
+        } else if error.contains("Failed to load") {
+            return "We're having trouble reaching our servers"
+        } else {
+            return "Something went wrong. Please try again"
+        }
     }
 }
 

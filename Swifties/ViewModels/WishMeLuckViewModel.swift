@@ -7,11 +7,27 @@ import Combine
 class WishMeLuckViewModel: ObservableObject {
     @Published var currentEvent: WishMeLuckEvent?
     @Published var isLoading = false
-    @Published var error: String?
+    @Published var errorMessage: String?
     @Published var daysSinceLastWished: Int = 0
+    @Published var dataSource: DataSource = .none
+    @Published var isRefreshing = false
+    @Published var hasPendingWishUpdate = false
+    
+    enum DataSource {
+        case none
+        case memoryCache
+        case realmStorage
+        case network
+    }
     
     private let db = Firestore.firestore(database: "default")
-
+    
+    // Three-layer cache services
+    private let cacheService = WishMeLuckCacheService.shared
+    private let storageService = WishMeLuckStorageService.shared
+    private let networkService = WishMeLuckNetworkService.shared
+    private let networkMonitor = NetworkMonitor.shared
+    
     // MARK: - Motivational Messages
     func getMotivationalMessage() -> String {
         guard let event = currentEvent else { return "" }
@@ -26,20 +42,174 @@ class WishMeLuckViewModel: ObservableObject {
         return messages.randomElement() ?? messages[0]
     }
     
-    // MARK: - Wish Me Luck with Smart Recommendations
+    // MARK: - Calculate Days Since Last Wished (Three-Layer Cache)
+    
+    func calculateDaysSinceLastWished() async {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            daysSinceLastWished = 0
+            dataSource = .none
+            return
+        }
+        
+        print("🚀 Loading days since last wished for user: \(userId)")
+        
+        // Layer 1: Try memory cache
+        if let cached = await cacheService.getCachedDaysSinceLastWished(userId: userId) {
+            self.daysSinceLastWished = cached.daysSinceLastWished
+            self.dataSource = .memoryCache
+            print("✅ Loaded from memory cache: \(cached.daysSinceLastWished) days")
+            
+            // Try to refresh in background if connected
+            refreshDaysInBackground(userId: userId)
+            return
+        }
+        
+        // Layer 2: Try Realm storage
+        if let stored = storageService.loadDaysSinceLastWished(userId: userId) {
+            self.daysSinceLastWished = stored.days
+            self.dataSource = .realmStorage
+            
+            // Cache in memory for next time
+            await cacheService.cacheDaysSinceLastWished(
+                userId: userId,
+                days: stored.days,
+                lastWishedDate: stored.lastWishedDate
+            )
+            
+            print("✅ Loaded from Realm storage: \(stored.days) days")
+            
+            // Try to refresh in background if connected
+            refreshDaysInBackground(userId: userId)
+            return
+        }
+        
+        // Layer 3: Fetch from network
+        if networkMonitor.isConnected {
+            await fetchDaysFromNetwork(userId: userId)
+        } else {
+            self.daysSinceLastWished = 0
+            self.dataSource = .none
+            print("❌ No connection and no local data")
+        }
+    }
+    
+    // FIX 1: Always resume continuation to prevent hanging
+    private func fetchDaysFromNetwork(userId: String) async {
+        await withCheckedContinuation { continuation in
+            networkService.fetchDaysSinceLastWished(userId: userId) { [weak self] result in
+                Task { @MainActor in
+                    guard let self = self else {
+                        continuation.resume()
+                        return
+                    }
+                    
+                    switch result {
+                    case .success(let data):
+                        self.daysSinceLastWished = data.days
+                        self.dataSource = .network
+                        
+                        // Save to both cache layers
+                        await self.cacheService.cacheDaysSinceLastWished(
+                            userId: userId,
+                            days: data.days,
+                            lastWishedDate: data.lastWishedDate
+                        )
+                        
+                        self.storageService.saveDaysSinceLastWished(
+                            userId: userId,
+                            days: data.days,
+                            lastWishedDate: data.lastWishedDate
+                        )
+                        
+                        print("✅ Loaded from network and cached: \(data.days) days")
+                        
+                    case .failure(let error):
+                        print("❌ Network error: \(error.localizedDescription)")
+                        self.daysSinceLastWished = 0
+                        self.dataSource = .none
+                    }
+                    
+                    continuation.resume()
+                }
+            }
+        }
+    }
+    
+    // FIX 2: Use defer to ensure isRefreshing is always reset
+    private func refreshDaysInBackground(userId: String) {
+        guard networkMonitor.isConnected else { return }
+        
+        self.isRefreshing = true
+        networkService.fetchDaysSinceLastWished(userId: userId) { [weak self] result in
+            Task { @MainActor in
+                defer {
+                    self?.isRefreshing = false
+                }
+                
+                guard let self = self else { return }
+                
+                if case .success(let data) = result {
+                    // Check if data actually changed
+                    let dataChanged = self.daysSinceLastWished != data.days
+                    
+                    // Update data
+                    self.daysSinceLastWished = data.days
+                    
+                    // ALWAYS update data source to network after successful refresh
+                    self.dataSource = .network
+                    
+                    // Update caches for next time
+                    await self.cacheService.cacheDaysSinceLastWished(
+                        userId: userId,
+                        days: data.days,
+                        lastWishedDate: data.lastWishedDate
+                    )
+                    
+                    self.storageService.saveDaysSinceLastWished(
+                        userId: userId,
+                        days: data.days,
+                        lastWishedDate: data.lastWishedDate
+                    )
+                    
+                    let updateStatus = dataChanged ? "✅ Updated" : "✅ Confirmed"
+                    print("\(updateStatus) days in background: \(data.days)")
+                }
+            }
+        }
+    }
+    
+    // MARK: - Wish Me Luck with Smart Recommendations (with Rollback)
+    
+    // FIX 3: Optimized rollback - removed unnecessary cache fetch
     func wishMeLuck() async {
         print("🎯 === WISH ME LUCK STARTED ===")
+        
+        guard let userId = Auth.auth().currentUser?.uid else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        
+        // Check connection before proceeding
+        guard networkMonitor.isConnected else {
+            errorMessage = "No internet connection"
+            return
+        }
+        
         isLoading = true
-        error = nil
+        errorMessage = nil
         currentEvent = nil
 
+        // Store previous values for rollback
+        let previousDays = daysSinceLastWished
+        let previousDataSource = dataSource
+        
+        // Optimistically update UI
+        print("💾 Optimistically updating to 0 days")
+        daysSinceLastWished = 0
+        
         do {
             try await Task.sleep(nanoseconds: 1_500_000_000)
-
-            guard let userId = Auth.auth().currentUser?.uid else {
-                throw NSError(domain: "WishMeLuck", code: 401,
-                            userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
-            }
+            
             print("👤 User ID: \(userId)")
             
             // Get user data
@@ -78,15 +248,39 @@ class WishMeLuckViewModel: ObservableObject {
                 currentEvent = event
             } else {
                 print("❌ No event was selected")
+                errorMessage = "No events available at this time"
+                // Rollback on failure
+                daysSinceLastWished = previousDays
+                dataSource = previousDataSource
+                throw NSError(domain: "WishMeLuck", code: 404,
+                            userInfo: [NSLocalizedDescriptionKey: "No events available"])
             }
 
-            try await updateLastWishedDate()
-            await calculateDaysSinceLastWished()
+            // Only update cache/storage after successful event selection
+            try await updateLastWishedDateOnNetwork(userId: userId)
             
+            // If network update succeeds, persist to cache
+            await cacheService.cacheDaysSinceLastWished(
+                userId: userId,
+                days: 0,
+                lastWishedDate: Date()
+            )
+            storageService.saveDaysSinceLastWished(
+                userId: userId,
+                days: 0,
+                lastWishedDate: Date()
+            )
+            
+            print("✅ Cache and storage updated after successful wish")
             print("🎯 === WISH ME LUCK COMPLETED ===\n")
             
         } catch {
-            self.error = "Error getting event: \(error.localizedDescription)"
+            // Rollback on any error
+            print("❌ Error occurred, rolling back...")
+            daysSinceLastWished = previousDays
+            dataSource = previousDataSource
+            
+            self.errorMessage = "Failed to load event: \(error.localizedDescription)"
             print("❌ Error Firestore: \(error)")
             print("🎯 === WISH ME LUCK FAILED ===\n")
         }
@@ -94,7 +288,44 @@ class WishMeLuckViewModel: ObservableObject {
         isLoading = false
     }
     
-    // MARK: - Get Recommended Event
+    private func updateLastWishedDateOnNetwork(userId: String) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            networkService.updateLastWishedDate(userId: userId) { result in
+                Task { @MainActor in
+                    switch result {
+                    case .success:
+                        print("✅ Last wished date updated on server")
+                        self.hasPendingWishUpdate = false
+                        continuation.resume()
+                    case .failure(let error):
+                        print("❌ Failed to update server: \(error.localizedDescription)")
+                        self.hasPendingWishUpdate = true
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Sync Pending Updates (call when network returns)
+    
+    func syncPendingUpdates() async {
+        guard hasPendingWishUpdate,
+              networkMonitor.isConnected,
+              let userId = Auth.auth().currentUser?.uid else {
+            return
+        }
+        
+        print("🔄 Syncing pending wish update...")
+        do {
+            try await updateLastWishedDateOnNetwork(userId: userId)
+        } catch {
+            print("❌ Sync failed: \(error.localizedDescription)")
+        }
+    }
+    
+    // MARK: - Get Recommended Event (existing code)
+    
     private func getRecommendedEvent(
         userId: String,
         favoriteCategories: [String],
@@ -104,19 +335,15 @@ class WishMeLuckViewModel: ObservableObject {
         
         print("🔍 Determining recommendation strategy...")
         
-        // Case 1: User has a last event
         if let lastCategory = lastEventCategory, !lastCategory.isEmpty {
             print("📌 Case 1: User has last event category: '\(lastCategory)'")
             
-            // Check if user has favorite categories
             if !favoriteCategories.isEmpty {
                 print("   User has favorite categories: \(favoriteCategories)")
                 
-                // Get categories excluding the last one
                 let availableCategories = favoriteCategories.filter { $0 != lastCategory }
                 print("   Available categories (excluding last): \(availableCategories)")
                 
-                // If there are other favorite categories, pick from them
                 if !availableCategories.isEmpty {
                     print("   👀 Strategy: Pick from available favorite categories")
                     return try await getRandomEventFromCategories(
@@ -124,8 +351,6 @@ class WishMeLuckViewModel: ObservableObject {
                         excludeEventId: lastEventId
                     )
                 } else {
-                    // All favorite categories match the last category
-                    // Pick from any category EXCEPT the last one
                     print("   ⚠️ All favorites match last category")
                     print("   👀 Strategy: Pick from ANY category except '\(lastCategory)'")
                     return try await getRandomEventExcludingCategory(
@@ -134,8 +359,6 @@ class WishMeLuckViewModel: ObservableObject {
                     )
                 }
             } else {
-                // No favorite categories defined
-                // Pick from any category except the last one
                 print("   ⚠️ No favorite categories defined")
                 print("   👀 Strategy: Pick from ANY category except '\(lastCategory)'")
                 return try await getRandomEventExcludingCategory(
@@ -143,13 +366,9 @@ class WishMeLuckViewModel: ObservableObject {
                     excludeEventId: lastEventId
                 )
             }
-        }
-        
-        // Case 2: User has no last event
-        else {
+        } else {
             print("📌 Case 2: User has NO last event")
             
-            // If user has favorite categories, pick from them
             if !favoriteCategories.isEmpty {
                 print("   User has favorite categories: \(favoriteCategories)")
                 print("   👀 Strategy: Pick from favorite categories")
@@ -158,7 +377,6 @@ class WishMeLuckViewModel: ObservableObject {
                     excludeEventId: nil
                 )
             } else {
-                // No preferences at all, pick any random event
                 print("   ⚠️ No preferences defined")
                 print("   👀 Strategy: Pick ANY random event")
                 return try await getRandomEvent(excludeEventId: nil)
@@ -166,7 +384,6 @@ class WishMeLuckViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Get Random Event from Specific Categories
     private func getRandomEventFromCategories(
         categories: [String],
         excludeEventId: String?
@@ -174,7 +391,6 @@ class WishMeLuckViewModel: ObservableObject {
         
         print("🎲 Getting random event from categories: \(categories)")
         
-        // Pick a random category
         guard let randomCategory = categories.randomElement() else {
             print("   ⚠️ No categories available, falling back to any event")
             return try await getRandomEvent(excludeEventId: excludeEventId)
@@ -182,7 +398,6 @@ class WishMeLuckViewModel: ObservableObject {
         
         print("   Selected category: '\(randomCategory)'")
         
-        // Query events from that category
         let query = db.collection("events")
             .whereField("active", isEqualTo: true)
             .whereField("category", isEqualTo: randomCategory)
@@ -190,25 +405,21 @@ class WishMeLuckViewModel: ObservableObject {
         let snapshot = try await query.getDocuments()
         print("   Found \(snapshot.documents.count) events in category '\(randomCategory)'")
         
-        // Filter out the last event if needed
         var documents = snapshot.documents
         if let excludeId = excludeEventId {
             documents = documents.filter { $0.documentID != excludeId }
             print("   Filtered out last event, now \(documents.count) events available")
         }
         
-        // If no events found in this category, fallback to any event
         if documents.isEmpty {
             print("   ⚠️ No events available in category, falling back to any event")
             return try await getRandomEvent(excludeEventId: excludeEventId)
         }
         
-        // Pick random event
         print("   ✅ Selecting random event from \(documents.count) options")
         return parseEventDocument(documents.randomElement())
     }
     
-    // MARK: - Get Random Event Excluding Category
     private func getRandomEventExcludingCategory(
         excludeCategory: String,
         excludeEventId: String?
@@ -216,14 +427,12 @@ class WishMeLuckViewModel: ObservableObject {
         
         print("🚫 Getting random event EXCLUDING category: '\(excludeCategory)'")
         
-        // Get all active events
         let snapshot = try await db.collection("events")
             .whereField("active", isEqualTo: true)
             .getDocuments()
         
         print("   Total active events: \(snapshot.documents.count)")
         
-        // Filter by category and event ID
         var documents = snapshot.documents.filter { doc in
             let category = doc.data()["category"] as? String ?? ""
             return category != excludeCategory
@@ -236,13 +445,11 @@ class WishMeLuckViewModel: ObservableObject {
             print("   Events after excluding last event ID: \(documents.count)")
         }
         
-        // Debug: Print categories of available events
         let availableCategories = Set(documents.compactMap { doc in
             doc.data()["category"] as? String
         })
         print("   Available categories: \(Array(availableCategories))")
         
-        // If no events found, fallback to any event (shouldn't happen normally)
         if documents.isEmpty {
             print("   ⚠️ No events available, falling back to any event")
             return try await getRandomEvent(excludeEventId: excludeEventId)
@@ -252,7 +459,6 @@ class WishMeLuckViewModel: ObservableObject {
         return parseEventDocument(documents.randomElement())
     }
     
-    // MARK: - Get Random Event (Fallback)
     private func getRandomEvent(excludeEventId: String?) async throws -> WishMeLuckEvent? {
         print("🎲 Getting any random event (fallback)")
         
@@ -272,7 +478,6 @@ class WishMeLuckViewModel: ObservableObject {
         return parseEventDocument(documents.randomElement())
     }
     
-    // MARK: - Parse Event Document (FIXED)
     private func parseEventDocument(_ document: QueryDocumentSnapshot?) -> WishMeLuckEvent? {
         guard let doc = document else {
             print("   ⚠️ No document to parse")
@@ -281,13 +486,11 @@ class WishMeLuckViewModel: ObservableObject {
         
         print("   📝 Parsing event document ID: \(doc.documentID)")
         
-        // Use EventFactory if available, otherwise manual parsing
         if let event = EventFactory.createEvent(from: doc) {
             let wishMeLuckEvent = WishMeLuckEvent.fromEvent(event)
             print("   ✅ Parsed using EventFactory")
             return wishMeLuckEvent
         } else {
-            // Fallback to manual parsing
             let data = doc.data()
             let category = data["category"] as? String ?? "Unknown"
             let title = data["title"] as? String ?? data["name"] as? String ?? "Untitled Event"
@@ -307,9 +510,8 @@ class WishMeLuckViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Update User's Last Event
-    // Note: This should only be called when user ACTUALLY ATTENDS the event
-    // Not when they just get a recommendation
+    // MARK: - Mark Event as Attended
+    
     func markEventAsAttended(eventId: String) async throws {
         print("Marking event as attended: \(eventId)")
         
@@ -320,7 +522,6 @@ class WishMeLuckViewModel: ObservableObject {
         
         let userRef = db.collection("users").document(userId)
         
-        // Get the event document to find its category
         let eventDoc = try await db.collection("events").document(eventId).getDocument()
         let eventCategory = eventDoc.data()?["category"] as? String ?? ""
         
@@ -335,58 +536,42 @@ class WishMeLuckViewModel: ObservableObject {
         print("   😊 User last event updated")
     }
     
-    // MARK: - Update Last Wished Date
-    private func updateLastWishedDate() async throws {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            throw NSError(domain: "WishMeLuck", code: 401,
-                        userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+    // MARK: - Cache Management
+    
+    func forceRefresh() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        Task {
+            await cacheService.clearCache(userId: userId)
         }
-        
-        let userRef = db.collection("users").document(userId)
-        
-        try await userRef.updateData([
-            "stats.last_wish_me_luck": Timestamp(date: Date())
-        ])
-        
-        print("📅 Last wished date updated")
+        storageService.deleteDaysSinceLastWished(userId: userId)
+        Task {
+            await calculateDaysSinceLastWished()
+        }
     }
     
-    // MARK: - Calculate Days Since Last Wished
-    func calculateDaysSinceLastWished() async {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            daysSinceLastWished = 0
-            return
+    func clearAllCache() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        Task {
+            await cacheService.clearCache(userId: userId)
         }
-        
-        do {
-            let userDoc = try await db.collection("users").document(userId).getDocument()
-            
-            guard let data = userDoc.data(),
-                  let stats = data["stats"] as? [String: Any],
-                  let lastWishTimestamp = stats["last_wish_me_luck"] as? Timestamp else {
-                try await updateLastWishedDate()
-                daysSinceLastWished = 0
-                print("📅 No previous wish date found, setting to 0")
-                return
-            }
-            
-            let lastWishDate = lastWishTimestamp.dateValue()
-            let now = Date()
-            let calendar = Calendar.current
-            let components = calendar.dateComponents([.day], from: lastWishDate, to: now)
-            
-            daysSinceLastWished = components.day ?? 0
-            print("📅 Days since last wished: \(daysSinceLastWished)")
-        } catch {
-            print("❌ Error calculating days since last wished: \(error)")
-            daysSinceLastWished = 0
+        storageService.deleteDaysSinceLastWished(userId: userId)
+        daysSinceLastWished = 0
+        dataSource = .none
+    }
+    
+    func debugCache() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        Task {
+            await cacheService.debugCache(userId: userId)
         }
+        storageService.debugStorage(userId: userId)
     }
     
     // MARK: - Clear Event
+    
     func clearEvent() {
         print("Clearing current event")
         currentEvent = nil
-        error = nil
+        errorMessage = nil
     }
 }

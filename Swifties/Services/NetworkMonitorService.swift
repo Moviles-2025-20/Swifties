@@ -7,8 +7,9 @@
 
 import Foundation
 import Network
+import Combine
 
-class NetworkMonitorService {
+class NetworkMonitorService: ObservableObject  {
     static let shared = NetworkMonitorService()
     
     private let monitor = NWPathMonitor()

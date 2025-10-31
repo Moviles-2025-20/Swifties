@@ -23,7 +23,6 @@ class EventStorageService {
         
         // Save timestamp to UserDefaults
         userDefaults.set(Date(), forKey: timestampKey)
-        userDefaults.synchronize()
         
         print("\(events.count) events saved to SQLite storage")
     }
@@ -56,7 +55,6 @@ class EventStorageService {
     func clearStorage() {
         databaseManager.deleteAllEvents()
         userDefaults.removeObject(forKey: timestampKey)
-        userDefaults.synchronize()
         print("SQLite storage cleared")
     }
     

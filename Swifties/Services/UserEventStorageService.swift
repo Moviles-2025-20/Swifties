@@ -39,7 +39,6 @@ class UserEventStorageService {
             userDefaults.set(eventsData, forKey: eventsKey)
             userDefaults.set(slotsData, forKey: slotsKey)
             userDefaults.set(Date(), forKey: timestampKey)
-            userDefaults.synchronize()
             
             print("User events saved to UserDefaults: \(events.count) events, \(freeTimeSlots.count) slots")
         } catch {
@@ -101,7 +100,6 @@ class UserEventStorageService {
         userDefaults.removeObject(forKey: eventsKey)
         userDefaults.removeObject(forKey: slotsKey)
         userDefaults.removeObject(forKey: timestampKey)
-        userDefaults.synchronize()
         
         print("User events storage cleared for user: \(userId)")
     }

@@ -2,7 +2,7 @@
 //  RecommendationDatabaseManager.swift
 //  Swifties
 //
-//  Created by Imac on 28/10/25.
+//  Created by Natalia Villegas Calderón on 30/10/25.
 //
 
 import Foundation
@@ -52,15 +52,19 @@ class RecommendationDatabaseManager {
         
         do {
             try db.run(recommendationsTable.create(ifNotExists: true) { table in
-                table.column(id, primaryKey: true)
+                table.column(id)
                 table.column(userId)
                 table.column(eventData)
                 table.column(score)
                 table.column(position)
                 table.column(timestamp)
+                
+                // Composite primary key: (user_id, id)
+                // This ensures each user can have their own copy of the same event
+                table.primaryKey(userId, id)
             })
             
-            print("Recommendations table created successfully")
+            print("Recommendations table created successfully with composite primary key")
         } catch {
             print("Error creating recommendations table: \(error)")
         }
@@ -70,9 +74,15 @@ class RecommendationDatabaseManager {
         guard let db = db else { return }
         
         do {
+            // Index on user_id for faster user-specific queries
             try db.run("CREATE INDEX IF NOT EXISTS idx_recommendations_user_id ON recommendations(user_id)")
+            
+            // Index on timestamp for expiration checks
             try db.run("CREATE INDEX IF NOT EXISTS idx_recommendations_timestamp ON recommendations(timestamp)")
-            try db.run("CREATE INDEX IF NOT EXISTS idx_recommendations_position ON recommendations(position)")
+            
+            // Composite index on user_id and position for ordered retrieval
+            try db.run("CREATE INDEX IF NOT EXISTS idx_recommendations_user_position ON recommendations(user_id, position)")
+            
             print("Recommendations indexes created successfully")
         } catch {
             print("Error creating recommendations indexes: \(error)")
@@ -94,8 +104,13 @@ class RecommendationDatabaseManager {
                 
                 // Insert new recommendations with position tracking
                 let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                
                 for (index, event) in recommendations.enumerated() {
-                    guard let eventId = event.id else { continue }
+                    guard let eventId = event.id else {
+                        print("⚠️ Skipping event without ID at position \(index)")
+                        continue
+                    }
                     
                     // Convert Event to CodableEvent
                     let codableEvent = event.toCodable()
@@ -117,9 +132,9 @@ class RecommendationDatabaseManager {
                 }
             }
             
-            print("\(recommendations.count) recommendations saved to SQLite database")
+            print("✅ \(recommendations.count) recommendations saved to SQLite for user \(userId)")
         } catch {
-            print("Error saving recommendations: \(error)")
+            print("❌ Error saving recommendations: \(error)")
         }
     }
     
@@ -131,6 +146,7 @@ class RecommendationDatabaseManager {
         
         do {
             let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
             var events: [Event] = []
             
             // Load recommendations ordered by position
@@ -139,17 +155,26 @@ class RecommendationDatabaseManager {
                 .order(position.asc)
             
             for row in try db.prepare(query) {
-                guard let data = row[eventData].data(using: .utf8) else { continue }
-                // Decode as CodableEvent and convert to Event
-                let codableEvent = try decoder.decode(CodableEvent.self, from: data)
-                let event = Event.from(codable: codableEvent)
-                events.append(event)
+                guard let data = row[eventData].data(using: .utf8) else {
+                    print("⚠️ Failed to decode event data at position \(row[position])")
+                    continue
+                }
+                
+                do {
+                    // Decode as CodableEvent and convert to Event
+                    let codableEvent = try decoder.decode(CodableEvent.self, from: data)
+                    let event = Event.from(codable: codableEvent)
+                    events.append(event)
+                } catch {
+                    print("⚠️ Failed to decode event at position \(row[position]): \(error)")
+                    continue
+                }
             }
             
-            print("\(events.count) recommendations loaded from SQLite database")
+            print("✅ \(events.count) recommendations loaded from SQLite for user \(userId)")
             return events.isEmpty ? nil : events
         } catch {
-            print("Error loading recommendations: \(error)")
+            print("❌ Error loading recommendations: \(error)")
             return nil
         }
     }
@@ -158,10 +183,10 @@ class RecommendationDatabaseManager {
         guard let db = db else { return }
         
         do {
-            try db.run(recommendationsTable.filter(self.userId == userId).delete())
-            print("Recommendations deleted from SQLite for user: \(userId)")
+            let deleted = try db.run(recommendationsTable.filter(self.userId == userId).delete())
+            print("✅ \(deleted) recommendations deleted from SQLite for user \(userId)")
         } catch {
-            print("Error deleting recommendations: \(error)")
+            print("❌ Error deleting recommendations: \(error)")
         }
     }
     
@@ -171,7 +196,7 @@ class RecommendationDatabaseManager {
         do {
             return try db.scalar(recommendationsTable.filter(self.userId == userId).count)
         } catch {
-            print("Error getting recommendation count: \(error)")
+            print("❌ Error getting recommendation count: \(error)")
             return 0
         }
     }
@@ -190,8 +215,46 @@ class RecommendationDatabaseManager {
             }
             return nil
         } catch {
-            print("Error getting recommendations timestamp: \(error)")
+            print("❌ Error getting recommendations timestamp: \(error)")
             return nil
+        }
+    }
+    
+    // MARK: - Migration Helper (if needed)
+    
+    /// Call this once if you need to migrate from old schema to new composite key schema
+    func migrateToCompositeKey() {
+        guard let db = db else { return }
+        
+        do {
+            // Check if migration is needed by trying to detect old schema
+            let oldTableExists = try db.scalar(
+                "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='recommendations'"
+            ) as! Int64 > 0
+            
+            if oldTableExists {
+                print("🔄 Starting migration to composite key schema...")
+                
+                // Rename old table
+                try db.run("ALTER TABLE recommendations RENAME TO recommendations_old")
+                
+                // Create new table with composite key
+                createTable()
+                
+                // Copy data from old table (this will group by user_id automatically)
+                try db.run("""
+                    INSERT INTO recommendations (id, user_id, event_data, score, position, timestamp)
+                    SELECT id, user_id, event_data, score, position, timestamp
+                    FROM recommendations_old
+                """)
+                
+                // Drop old table
+                try db.run("DROP TABLE recommendations_old")
+                
+                print("✅ Migration completed successfully")
+            }
+        } catch {
+            print("❌ Migration error: \(error)")
         }
     }
     
@@ -211,23 +274,35 @@ class RecommendationDatabaseManager {
             print("Total recommendations: \(count)")
             
             if let lastUpdate = getLastUpdateTimestamp(userId: userId) {
-                print("Last update: \(lastUpdate)")
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+                print("Last update: \(formatter.string(from: lastUpdate))")
             }
             
-            // Show first 3 recommendations
+            // Show first 5 recommendations
             let query = recommendationsTable
                 .filter(self.userId == userId)
                 .order(position.asc)
-                .limit(3)
+                .limit(5)
             
+            print("\nFirst 5 recommendations:")
             for row in try db.prepare(query) {
                 guard let data = row[eventData].data(using: .utf8) else { continue }
                 let decoder = JSONDecoder()
-                let codableEvent = try decoder.decode(CodableEvent.self, from: data)
-                print("Position \(row[position]): \(codableEvent.name)")
+                decoder.dateDecodingStrategy = .iso8601
+                
+                if let codableEvent = try? decoder.decode(CodableEvent.self, from: data) {
+                    print("  Position \(row[position]): \(codableEvent.name) (ID: \(row[id]))")
+                }
             }
+            
+            // Check total database size
+            let allUsersCount = try db.scalar(recommendationsTable.count)
+            print("\nTotal recommendations across all users: \(allUsersCount)")
+            
         } catch {
-            print("Error debugging recommendations database: \(error)")
+            print("❌ Error debugging recommendations database: \(error)")
         }
         
         print("======================================\n")

@@ -2,7 +2,7 @@
 //  RecommendationCacheService.swift
 //  Swifties
 //
-//  Created by Imac on 28/10/25.
+//  Created by Natalia Villegas Calderón on 30/10/25.
 //
 
 import Foundation
@@ -20,7 +20,7 @@ class RecommendationCacheService {
         let maxMemory = ProcessInfo.processInfo.physicalMemory
         let cacheSize = Int(maxMemory / 1024 / 8) // Use 1/8th of available memory for cache
         
-        cache.countLimit = 10 // Limit to 10 items
+        cache.countLimit = 5 // Limit to 5 items
         cache.totalCostLimit = cacheSize
         
         print("Recommendation cache initialized with limit: \(cacheSize) bytes")

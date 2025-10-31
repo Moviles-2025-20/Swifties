@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		882B00692EB10437003042A5 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 882B00682EB10437003042A5 /* SQLite */; };
 		884694CB2EB3D84A0068BD86 /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 884694CA2EB3D84A0068BD86 /* RealmSwift */; };
+		E162020F2EB42F9000EDBA93 /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = 884694CA2EB3D84A0068BD86 /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		E165F9152E921FD4001D8B00 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = E165F9142E921FD4001D8B00 /* FirebaseCrashlytics */; };
 		E168A9662E8DC88A00BAF013 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E168A9652E8DC88A00BAF013 /* GoogleSignIn */; };
 		E168A9682E8DC88A00BAF013 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E168A9672E8DC88A00BAF013 /* GoogleSignInSwift */; };
@@ -36,6 +37,20 @@
 			remoteInfo = Swifties;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E16202102EB42F9000EDBA93 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				E162020F2EB42F9000EDBA93 /* RealmSwift in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		E1544D252E885ABB00B3320D /* Swifties.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Swifties.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -133,6 +148,7 @@
 				E1A16D492E84BD9A003D5B39 /* Sources */,
 				E1A16D4A2E84BD9A003D5B39 /* Frameworks */,
 				E1A16D4B2E84BD9A003D5B39 /* Resources */,
+				E16202102EB42F9000EDBA93 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);

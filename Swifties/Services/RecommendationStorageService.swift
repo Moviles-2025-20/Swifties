@@ -2,7 +2,7 @@
 //  RecommendationStorageService.swift
 //  Swifties
 //
-//  Created by Imac on 28/10/25.
+//  Created by Natalia Villegas Calderón on 30/10/25.
 //
 
 import Foundation
@@ -24,7 +24,6 @@ class RecommendationStorageService {
         // Save timestamp
         let key = "\(timestampKey)_\(userId)"
         userDefaults.set(Date(), forKey: key)
-        userDefaults.synchronize()
         
         print("\(recommendations.count) recommendations saved to storage")
     }
@@ -59,7 +58,6 @@ class RecommendationStorageService {
         databaseManager.deleteRecommendations(userId: userId)
         let key = "\(timestampKey)_\(userId)"
         userDefaults.removeObject(forKey: key)
-        userDefaults.synchronize()
         print("Recommendations storage cleared for user: \(userId)")
     }
     

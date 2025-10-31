@@ -1,8 +1,8 @@
 //
-//  RecommendationNetworkService.swift
+//  RecommendationResponse.swift
 //  Swifties
 //
-//  Created by Imac on 28/10/25.
+//  Created by Natalia Villegas Calderón on 30/10/25.
 //
 
 import Foundation

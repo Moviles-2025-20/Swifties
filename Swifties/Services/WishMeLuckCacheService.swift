@@ -2,7 +2,7 @@
 //  WishMeLuckCacheService.swift
 //  Swifties
 //
-//  Layer 1: In-Memory Cache for Wish Me Luck
+//  Created by Natalia Villegas Calderón on 30/10/25.
 //
 
 import Foundation

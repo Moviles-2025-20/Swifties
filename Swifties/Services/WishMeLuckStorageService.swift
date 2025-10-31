@@ -2,8 +2,9 @@
 //  WishMeLuckStorageService.swift
 //  Swifties
 //
-//  Layer 2: Realm Storage for Wish Me Luck
+//  Created by Natalia Villegas Calderón on 30/10/25.
 //
+
 
 import Foundation
 import RealmSwift

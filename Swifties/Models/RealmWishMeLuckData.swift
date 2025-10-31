@@ -1,8 +1,8 @@
 //
-//  WishMeLuckModels.swift
+//  RealmWishMeLuckData.swift
 //  Swifties
 //
-//  Models for Wish Me Luck with Realm support
+//  Created by Natalia Villegas Calderón on 30/10/25.
 //
 
 import Foundation

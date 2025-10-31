@@ -93,11 +93,15 @@ class WishMeLuckViewModel: ObservableObject {
         }
     }
     
+    // FIX 1: Always resume continuation to prevent hanging
     private func fetchDaysFromNetwork(userId: String) async {
         await withCheckedContinuation { continuation in
             networkService.fetchDaysSinceLastWished(userId: userId) { [weak self] result in
                 Task { @MainActor in
-                    guard let self = self else { return }
+                    guard let self = self else {
+                        continuation.resume()
+                        return
+                    }
                     
                     switch result {
                     case .success(let data):
@@ -131,14 +135,18 @@ class WishMeLuckViewModel: ObservableObject {
         }
     }
     
+    // FIX 2: Use defer to ensure isRefreshing is always reset
     private func refreshDaysInBackground(userId: String) {
         guard networkMonitor.isConnected else { return }
         
         self.isRefreshing = true
         networkService.fetchDaysSinceLastWished(userId: userId) { [weak self] result in
             Task { @MainActor in
+                defer {
+                    self?.isRefreshing = false
+                }
+                
                 guard let self = self else { return }
-                self.isRefreshing = false
                 
                 if case .success(let data) = result {
                     // Check if data actually changed
@@ -172,6 +180,7 @@ class WishMeLuckViewModel: ObservableObject {
     
     // MARK: - Wish Me Luck with Smart Recommendations (with Rollback)
     
+    // FIX 3: Optimized rollback - removed unnecessary cache fetch
     func wishMeLuck() async {
         print("🎯 === WISH ME LUCK STARTED ===")
         
@@ -192,7 +201,7 @@ class WishMeLuckViewModel: ObservableObject {
 
         // Store previous values for rollback
         let previousDays = daysSinceLastWished
-        let previousCache = await cacheService.getCachedDaysSinceLastWished(userId: userId)
+        let previousDataSource = dataSource
         
         // Optimistically update UI
         print("💾 Optimistically updating to 0 days")
@@ -242,6 +251,7 @@ class WishMeLuckViewModel: ObservableObject {
                 errorMessage = "No events available at this time"
                 // Rollback on failure
                 daysSinceLastWished = previousDays
+                dataSource = previousDataSource
                 throw NSError(domain: "WishMeLuck", code: 404,
                             userInfo: [NSLocalizedDescriptionKey: "No events available"])
             }
@@ -268,15 +278,7 @@ class WishMeLuckViewModel: ObservableObject {
             // Rollback on any error
             print("❌ Error occurred, rolling back...")
             daysSinceLastWished = previousDays
-            
-            // Restore previous cache if it existed
-            if let previousCache = previousCache {
-                await cacheService.cacheDaysSinceLastWished(
-                    userId: userId,
-                    days: previousCache.daysSinceLastWished,
-                    lastWishedDate: previousCache.lastWishedDate
-                )
-            }
+            dataSource = previousDataSource
             
             self.errorMessage = "Failed to load event: \(error.localizedDescription)"
             print("❌ Error Firestore: \(error)")

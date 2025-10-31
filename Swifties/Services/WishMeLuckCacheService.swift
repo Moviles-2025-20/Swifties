@@ -64,11 +64,13 @@ actor WishMeLuckCacheService {
         
         if let cached = cache[userId] {
             let age = Date().timeIntervalSince(cached.timestamp)
+            let isValid = age <= cacheExpirationSeconds
+            
             print("Found: YES")
             print("Age: \(String(format: "%.1f", age/60)) minutes")
             print("Days Since Last Wished: \(cached.daysSinceLastWished)")
             print("Last Wished Date: \(cached.lastWishedDate?.description ?? "nil")")
-            print("Valid: \(cached.isValid)")
+            print("Valid: \(isValid)")
         } else {
             print("Found: NO")
         }

@@ -26,16 +26,12 @@ class RealmWishMeLuckData: Object {
 }
 
 // MARK: - Wish Me Luck Cache Model (In-Memory)
+// FIX 5: Removed redundant isValid property
 
 struct WishMeLuckCache {
     let daysSinceLastWished: Int
     let lastWishedDate: Date?
     let timestamp: Date
-    
-    var isValid: Bool {
-        // Cache valid for 1 hour
-        Date().timeIntervalSince(timestamp) < 3600
-    }
 }
 
 // MARK: - Conversion Extensions

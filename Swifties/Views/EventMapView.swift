@@ -84,7 +84,7 @@ struct EventMapView: View {
         print("✅ AnalyticsService.logDirectionRequest called successfully")
         
         mapItem.openInMaps(launchOptions: [
-            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
+            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
         ])
         
         print("🚗 Apple Maps opened")

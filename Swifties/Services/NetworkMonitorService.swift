@@ -1,13 +1,14 @@
 import Foundation
 import Network
+import Combine
 
-class NetworkMonitorService {
+class NetworkMonitorService: ObservableObject {
     static let shared = NetworkMonitorService()
     
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "NetworkMonitor")
     
-    private(set) var isConnected: Bool = true
+    @Published private(set) var isConnected: Bool = true
     private(set) var connectionType: NWInterface.InterfaceType?
     
     private init() {
@@ -32,6 +33,10 @@ class NetworkMonitorService {
     
     func stopMonitoring() {
         monitor.cancel()
+    }
+    
+    func currentConnectionAvailable() -> Bool {
+        return isConnected
     }
     
     deinit {

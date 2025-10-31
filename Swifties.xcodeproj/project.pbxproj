@@ -16,6 +16,7 @@
 		E1822BF62E8C4CF6008FC420 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = E1822BF52E8C4CF6008FC420 /* FirebaseAuth */; };
 		E1822BF82E8C4CF6008FC420 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E1822BF72E8C4CF6008FC420 /* FirebaseFirestore */; };
 		E1822BFA2E8C4CF6008FC420 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = E1822BF92E8C4CF6008FC420 /* FirebaseStorage */; };
+		FE81A5FC2EB50EFA00099CDF /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = FE81A5FB2EB50EFA00099CDF /* SQLite */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,6 +85,7 @@
 				E1822BF62E8C4CF6008FC420 /* FirebaseAuth in Frameworks */,
 				E1822BFA2E8C4CF6008FC420 /* FirebaseStorage in Frameworks */,
 				E165F9152E921FD4001D8B00 /* FirebaseCrashlytics in Frameworks */,
+				FE81A5FC2EB50EFA00099CDF /* SQLite in Frameworks */,
 				E1822BF22E8C4CF6008FC420 /* FirebaseAI in Frameworks */,
 				E168A9662E8DC88A00BAF013 /* GoogleSignIn in Frameworks */,
 			);
@@ -116,7 +118,15 @@
 				E1E5F5062E885E9F0095FBC4 /* SwiftiesUITests.xctest */,
 				E1E5F5072E885E9F0095FBC4 /* SwiftiesUITests */,
 				E168A9692E8DC94D00BAF013 /* GoogleService-Info.plist */,
+				FE81A5FA2EB50EFA00099CDF /* Frameworks */,
 			);
+			sourceTree = "<group>";
+		};
+		FE81A5FA2EB50EFA00099CDF /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -147,6 +157,7 @@
 				E168A9652E8DC88A00BAF013 /* GoogleSignIn */,
 				E168A9672E8DC88A00BAF013 /* GoogleSignInSwift */,
 				E165F9142E921FD4001D8B00 /* FirebaseCrashlytics */,
+				FE81A5FB2EB50EFA00099CDF /* SQLite */,
 			);
 			productName = Swifties;
 			productReference = E1544D252E885ABB00B3320D /* Swifties.app */;
@@ -234,6 +245,7 @@
 			packageReferences = (
 				E1822BF02E8C4CF6008FC420 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				E168A9642E8DC88A00BAF013 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				FE81A5F92EB50BB600099CDF /* XCRemoteSwiftPackageReference "SQLite" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E1A16D442E84BD9A003D5B39;
@@ -691,6 +703,14 @@
 				minimumVersion = 12.3.0;
 			};
 		};
+		FE81A5F92EB50BB600099CDF /* XCRemoteSwiftPackageReference "SQLite" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stephencelis/SQLite.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.15.4;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -733,6 +753,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E1822BF02E8C4CF6008FC420 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		FE81A5FB2EB50EFA00099CDF /* SQLite */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FE81A5F92EB50BB600099CDF /* XCRemoteSwiftPackageReference "SQLite" */;
+			productName = SQLite;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

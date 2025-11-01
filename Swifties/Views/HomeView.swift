@@ -39,17 +39,7 @@ struct HomeView: View {
                 Color("appPrimary")
                     .ignoresSafeArea()
                 VStack {
-                    ActionButton(
-                        title: "Log Out",
-                        backgroundColor: Color("appRed")
-                    ) {
-                        // Handle log out
-                        Task {
-                            await viewModel.logout()
-                        }
-                    }
-                    .disabled(!networkMonitor.isConnected)
-
+                    
                     CustomTopBar(
                         title: "Hi, \(getUserFirstName())!",
                         showNotificationButton: true, onBackTap: {

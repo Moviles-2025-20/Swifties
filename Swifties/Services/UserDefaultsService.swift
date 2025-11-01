@@ -4,7 +4,6 @@
 //
 //  Created by Natalia Villegas Calderón on 31/10/25.
 //
-
 import Foundation
 
 class UserDefaultsService {
@@ -12,12 +11,12 @@ class UserDefaultsService {
     
     private let defaults = UserDefaults.standard
     
-    // Keys for storing registration data
+    // Keys for storing REGISTRATION data (not events)
     private enum Keys {
         static let registrationData = "pending_registration_data"
         static let hasPendingRegistration = "has_pending_registration"
         static let lastSaveAttempt = "last_save_attempt"
-        static let registrationCompleted = "registration_completed_locally" // NEW KEY
+        static let registrationCompleted = "registration_completed_locally"
     }
     
     private init() {}
@@ -84,7 +83,7 @@ class UserDefaultsService {
         // even after data is synced
     }
     
-    // MARK: - Clear All Data (on sign out)
+    // MARK: - Clear All Registration Data (on sign out)
     func clearAllData() {
         defaults.removeObject(forKey: Keys.registrationData)
         defaults.removeObject(forKey: Keys.hasPendingRegistration)
@@ -101,10 +100,24 @@ class UserDefaultsService {
     
     // MARK: - Debug Info
     func printDebugInfo() {
-        print("=== UserDefaults Debug Info ===")
+        print("\n=== UserDefaults Debug Info (REGISTRATION) ===")
         print("Has Pending Registration: \(hasPendingRegistration())")
         print("Registration Completed Locally: \(hasCompletedRegistrationLocally())")
         print("Last Save Attempt: \(getLastSaveAttempt()?.description ?? "None")")
-        print("===============================")
+        
+        if let data = getPendingRegistrationData() {
+            print("Pending Data Keys: \(data.keys.joined(separator: ", "))")
+            if let profile = data["profile"] as? [String: Any] {
+                print("  Profile Name: \(profile["name"] ?? "N/A")")
+                print("  Profile Email: \(profile["email"] ?? "N/A")")
+            }
+            if let prefs = data["preferences"] as? [String: Any],
+               let notifications = prefs["notifications"] as? [String: Any],
+               let slots = notifications["free_time_slots"] as? [[String: String]] {
+                print("  Free Time Slots: \(slots.count)")
+            }
+        }
+        
+        print("=============================================\n")
     }
 }

@@ -11,11 +11,16 @@ class CommentRealmStorage {
         do {
             realm = try Realm()
         } catch {
-            print("Failed to initialize Realm: \(error)")
-            // Fallback to in-memory Realm to avoid crashes
-            realm = try! Realm(configuration: Realm.Configuration(inMemoryIdentifier: "InMemoryRealm"))
+            print("⚠️ Failed to initialize Realm: \(error)")
+            do {
+                realm = try Realm(configuration: Realm.Configuration(inMemoryIdentifier: "InMemoryRealm"))
+                print("✅ Using in-memory Realm fallback")
+            } catch {
+                fatalError("❌ Failed to initialize even in-memory Realm: \(error)")
+            }
         }
     }
+
     
     func save(comment: StoredComment, id: String) {
         do {

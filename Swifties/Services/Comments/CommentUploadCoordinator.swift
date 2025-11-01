@@ -7,15 +7,23 @@ final class CommentSubmitCoordinator {
     static let shared = CommentSubmitCoordinator()
 
     @Published private(set) var isConnected: Bool = false
-
     private var cancellables = Set<AnyCancellable>()
-    private let commentViewModel = CommentViewModel()
-    private let networkMonitor = NetworkMonitorService.shared
-    private let cache = CommentCacheService.shared
-    private let realmStorage = CommentRealmStorage.shared
+    
+    private lazy var commentViewModel = CommentViewModel()
+    private lazy var networkMonitor = NetworkMonitorService.shared
+    private lazy var cache = CommentCacheService.shared
+    private lazy var realmStorage = CommentRealmStorage.shared
     private let queue = DispatchQueue(label: "CommentSubmitCoordinator.queue")
 
     private init() {
+        // Delay subscription to allow init to complete
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.observeNetworkChanges()
+        }
+    }
+
+    private func observeNetworkChanges() {
         networkMonitor.$isConnected
             .receive(on: DispatchQueue.main)
             .sink { [weak self] connected in
@@ -130,7 +138,7 @@ final class CommentSubmitCoordinator {
             print("Attempting to resubmit comment (local id: \(stored.id ?? "unknown"), eventId: \(stored.eventId))")
 
             do {
-                try await commentViewModel.submit(payload: payload)
+                try await commentViewModel.submit(payload)
                 print("Resubmission succeeded, removing from cache and realm")
                         
                 // Remove by stored id (ensure stored.id exists)

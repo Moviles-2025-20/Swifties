@@ -24,7 +24,7 @@ final class CommentViewModel: ObservableObject {
     }
     
     // Public method forwarding to internal submit
-    public func submit(payload: SubmissionPayload) async throws {
+    public func submit(_ payload: SubmissionPayload) async throws {
         if networkMonitor.isConnected {
             // Online: perform online submit directly (throws upward on error)
             try await onlineSubmit(payload)

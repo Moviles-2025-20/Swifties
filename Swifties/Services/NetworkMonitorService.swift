@@ -7,15 +7,14 @@ class NetworkMonitorService: ObservableObject  {
     
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "NetworkMonitor")
-    
     @Published private(set) var isConnected: Bool = true
     private(set) var connectionType: NWInterface.InterfaceType?
-    
-    private init() {
-        startMonitoring()
-    }
+    private var hasStarted: Bool = false
     
     func startMonitoring() {
+        guard !hasStarted else { return }
+        hasStarted = true
+        
         monitor.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }

@@ -23,7 +23,11 @@ struct EventMapView: View {
     @Environment(\.dismiss) var dismiss
 
     @StateObject private var networkMonitor = NetworkMonitorService.shared
-    private let offlineMessage = "No network connection  - Cannot load map view"
+    private var offlineMessage: String {
+        validEvents.isEmpty
+            ? "No network connection - Cannot load map view"
+            : "No network connection - Showing cached version"
+    }
     
     // Filter events with valid coordinates
     private var validEvents: [Event] {
@@ -129,11 +133,11 @@ struct EventMapView: View {
             
             if !networkMonitor.isConnected {
                 HStack(spacing: 8) {
-                    Image(systemName: "wifi.exclamationmark")
-                        .foregroundColor(.orange)
+                    Image(systemName: "wifi.slash")
+                        .foregroundColor(.red)
                     Text(offlineMessage)
                         .font(.subheadline)
-                        .foregroundColor(.orange)
+                        .foregroundColor(.red)
                         .multilineTextAlignment(.leading)
                     Spacer()
                 }

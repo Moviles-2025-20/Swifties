@@ -8,6 +8,7 @@ struct EventListView: View {
     @State private var searchText = ""
     @State private var isMapView = false
     @State private var mapOpenedTime: Date?
+    @ObservedObject private var networkMonitor = NetworkMonitorService.shared
 
     // Filter events by search
     var filteredEvents: [Event] {
@@ -51,8 +52,25 @@ struct EventListView: View {
                         print("Notification tapped")
                     })
                     
+                    // Connection status indicator
+                    if !networkMonitor.isConnected && !isMapView {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.slash")
+                                .foregroundColor(.red)
+                            Text("No Internet Connection")
+                                .font(.callout)
+                                .foregroundColor(.red)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                    }
+                    
                     // Data Source Indicator
-                    if !viewModel.isLoading && !viewModel.events.isEmpty  {
+                    if !viewModel.isLoading && !viewModel.events.isEmpty && !isMapView {
                         HStack {
                             Image(systemName: dataSourceIcon)
                                 .foregroundColor(.secondary)

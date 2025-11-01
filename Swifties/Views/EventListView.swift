@@ -52,7 +52,7 @@ struct EventListView: View {
                     })
                     
                     // Connection status indicator
-                    if !networkMonitor.isConnected {
+                    if !networkMonitor.isConnected && !isMapView {
                         HStack(spacing: 8) {
                             Image(systemName: "wifi.slash")
                                 .foregroundColor(.red)
@@ -69,7 +69,7 @@ struct EventListView: View {
                     }
                     
                     // Data Source Indicator
-                    if !viewModel.isLoading && !viewModel.events.isEmpty {
+                    if !viewModel.isLoading && !viewModel.events.isEmpty && !isMapView {
                         HStack {
                             Image(systemName: dataSourceIcon)
                                 .foregroundColor(.secondary)

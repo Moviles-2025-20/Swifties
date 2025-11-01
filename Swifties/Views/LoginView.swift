@@ -401,6 +401,25 @@ struct LoginView: View {
                 .cornerRadius(8)
             }
             
+            if !networkMonitor.isConnected && viewModel.isFirstTimeUser {
+                VStack(spacing: 8) {
+                    Image(systemName: "info.circle")
+                        .foregroundColor(.orange)
+                    Text("First time connecting after reinstall?")
+                        .font(.callout.weight(.medium))
+                        .foregroundColor(.orange)
+                    Text("Connect to the internet once to verify your account")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+                .padding(.horizontal)
+            }
+            
             // Countdown progress
             CountdownView(onComplete: {
                 handleImmediateNavigation()

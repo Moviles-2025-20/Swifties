@@ -32,6 +32,7 @@ class RegisterViewModel: ObservableObject {
     let db = Firestore.firestore(database: "default")
     private let syncService = RegistrationSyncService.shared
     private let networkMonitor = NetworkMonitorService.shared
+    private let userDefaultsService = UserDefaultsService.shared
 
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -64,8 +65,8 @@ class RegisterViewModel: ObservableObject {
                 isProviderEmail = false
             }
             
-            print("📧 Email initialized from provider: \(email)")
-            print("🔒 Email from provider locked: \(isProviderEmail)")
+            print(" Email initialized from provider: \(email)")
+            print(" Email from provider locked: \(isProviderEmail)")
         }
     }
     
@@ -239,7 +240,7 @@ class RegisterViewModel: ObservableObject {
         return false
     }
     
-    // MARK: - Save to Firebase (THREE-LAYER STRATEGY - UPDATED)
+    // MARK: - Save to Firebase (THREE-LAYER STRATEGY - UPDATED WITH CACHE)
     func saveUserData() async throws {
         isLoading = true
         defer { isLoading = false }
@@ -250,7 +251,7 @@ class RegisterViewModel: ObservableObject {
                          userInfo: [NSLocalizedDescriptionKey: "No authenticated user found"])
         }
         
-        print("🔑 User ID: \(uid)")
+        print(" User ID: \(uid)")
         
         // Final validation before saving
         let validation = validateAllFields()
@@ -293,15 +294,19 @@ class RegisterViewModel: ObservableObject {
             ]
         ]
         
-        print("💾 Implementing THREE-LAYER persistence strategy...")
+        print(" Implementing THREE-LAYER persistence strategy...")
         
         // Use the sync service to handle three-layer strategy
         do {
             try await syncService.saveRegistrationData(userData)
             
+            // CRITICAL: Cache registration status for this user (NEW)
+            userDefaultsService.cacheRegistrationStatus(uid: uid, completed: true)
+            print("✅ Cached registration status for user \(uid)")
+            
             // CRITICAL: Mark registration as completed in UserDefaults
             // This ensures the app knows registration is done even if offline
-            UserDefaultsService.shared.markRegistrationCompleted()
+            userDefaultsService.markRegistrationCompleted()
             
             print("✅ Registration data saved successfully!")
             

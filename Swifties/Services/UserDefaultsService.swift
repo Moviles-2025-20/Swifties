@@ -117,4 +117,19 @@ class UserDefaultsService {
         
         print("=============================================\n")
     }
+    // MARK: - Extra methods for saving the session when you delete and reinstall
+    
+    private func registrationCompletedKey(uid: String) -> String {
+        return "registration_completed_\(uid)"
+    }
+    
+    func hasCompletedRegistration(uid: String) -> Bool {
+        return UserDefaults.standard.bool(forKey: registrationCompletedKey(uid: uid))
+    }
+    
+    func cacheRegistrationStatus(uid: String, completed: Bool) {
+        UserDefaults.standard.set(completed, forKey: registrationCompletedKey(uid: uid))
+        print(" Cached registration status for \(uid): \(completed)")
+    }
+    
 }

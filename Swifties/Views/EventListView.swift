@@ -51,7 +51,7 @@ struct EventListView: View {
                     })
                     
                     // Data Source Indicator
-                    if !viewModel.isLoading && !viewModel.events.isEmpty {
+                    if !viewModel.isLoading && !viewModel.events.isEmpty  {
                         HStack {
                             Image(systemName: dataSourceIcon)
                                 .foregroundColor(.secondary)

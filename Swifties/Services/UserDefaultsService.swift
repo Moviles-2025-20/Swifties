@@ -28,7 +28,6 @@ class UserDefaultsService {
             defaults.set(jsonData, forKey: Keys.registrationData)
             defaults.set(true, forKey: Keys.hasPendingRegistration)
             defaults.set(Date(), forKey: Keys.lastSaveAttempt)
-            defaults.synchronize()
             print("✅ Registration data saved to UserDefaults")
         } catch {
             print("❌ Failed to save registration data to UserDefaults: \(error)")
@@ -38,7 +37,6 @@ class UserDefaultsService {
     // MARK: - Mark Registration as Completed Locally
     func markRegistrationCompleted() {
         defaults.set(true, forKey: Keys.registrationCompleted)
-        defaults.synchronize()
         print("✅ Registration marked as completed locally")
     }
     
@@ -89,7 +87,6 @@ class UserDefaultsService {
         defaults.removeObject(forKey: Keys.hasPendingRegistration)
         defaults.removeObject(forKey: Keys.lastSaveAttempt)
         defaults.removeObject(forKey: Keys.registrationCompleted)
-        defaults.synchronize()
         print("✅ Cleared all registration data from UserDefaults")
     }
     

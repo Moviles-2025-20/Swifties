@@ -1,15 +1,5 @@
-//
-//  EventMapView.swift
-//  Swifties
-//
-//
-
 import SwiftUI
 import MapKit
-import Network
-
-/// The geographic coordinates for Bogotá, Colombia.
-private let bogotaCoordinates = CLLocationCoordinate2D(latitude: 4.6533, longitude: -74.0836)
 
 struct EventMapView: View {
     let events: [Event]
@@ -17,28 +7,27 @@ struct EventMapView: View {
     var onSelect: ((Event) -> Void)?
     
     @StateObject private var locationManager = LocationManager()
-    @State private var region = MKCoordinateRegion(center: bogotaCoordinates,
-                                                   span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
+    @State private var region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 4.6533, longitude: -74.0836),
+        span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
+    )
     @State private var showNearbyEvents = false
+    @State private var mapLoadFailed = false
+    @State private var mapLoadTimer: Timer?
     @Environment(\.dismiss) var dismiss
 
-    @StateObject private var networkMonitor = NetworkMonitorService.shared
-    private let offlineMessage = "No network connection  - Cannot load map view"
-    
-    // Filter events with valid coordinates
     private var validEvents: [Event] {
         events.filter { event in
             guard let coords = event.location?.coordinates,
                   coords.count == 2,
                   coords[0] != 0 || coords[1] != 0 else {
-                print("Invalid coordinates for event: \(event.name)")
                 return false
             }
             return true
         }
     }
     
-    // Calculate nearest N events using Haversine distance
     private func nearestEvents(from location: CLLocation?, count: Int) -> [(event: Event, distance: CLLocationDistance)] {
         guard let location = location else {
             return validEvents.prefix(count).map { ($0, 0) }
@@ -54,99 +43,114 @@ struct EventMapView: View {
         return Array(withDistance.prefix(count).map { ($0, $1) })
     }
     
-    // Function to open directions in Apple Maps
     private func openDirections(to event: Event) {
-        print("🔵 [DEBUG] openDirections called for event: \(event.name)")
-        
         guard let coords = event.location?.coordinates, coords.count == 2 else {
             print("❌ Cannot open directions: Invalid coordinates")
             return
         }
-        
-        print("🗺️ Valid coordinates found: \(coords)")
         
         let coordinate = CLLocationCoordinate2D(latitude: coords[0], longitude: coords[1])
         let placemark = MKPlacemark(coordinate: coordinate)
         let mapItem = MKMapItem(placemark: placemark)
         mapItem.name = event.name
         
-        // Log analytics when directions are requested
-        print("📊 About to call AnalyticsService.logDirectionRequest")
-        let eventIdToLog = event.id ?? "unknown"
-        print("   - Event ID: \(eventIdToLog)")
-        print("   - Event Name: \(event.name)")
-        
         AnalyticsService.shared.logDirectionRequest(
-            eventId: eventIdToLog,
+            eventId: event.id ?? "unknown",
             eventName: event.name
         )
-        
-        print("✅ AnalyticsService.logDirectionRequest called successfully")
         
         mapItem.openInMaps(launchOptions: [
             MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
         ])
-        
-        print("🚗 Apple Maps opened")
     }
     
     var body: some View {
         ZStack(alignment: .top) {
-            // Map
-            Map(initialPosition: .region(region)) {
-                ForEach(validEvents) { event in
-                    if let coords = event.location?.coordinates,
-                       coords.count == 2 {
-                        let coordinate = CLLocationCoordinate2D(latitude: coords[0], longitude: coords[1])
-                        
-                        Annotation(event.title, coordinate: coordinate) {
-                            Button {
-                                selectedEvent = event
-                                onSelect?(event)
-                            } label: {
-                                Image(systemName: "mappin.circle.fill")
-                                    .font(.title)
-                                    .foregroundColor(.pink)
-                                    .shadow(radius: 2)
+            if mapLoadFailed {
+                // Plan Z: Map failed to load
+                VStack(spacing: 20) {
+                    Spacer()
+                    
+                    Image(systemName: "map.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray)
+                    
+                    Text("Map Unavailable")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Text("Unable to load map. Please check your connection and try again.")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                    
+                    Button(action: {
+                        mapLoadFailed = false
+                        startMapLoadTimer()
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.clockwise")
+                            Text("Retry")
+                        }
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(Color.pink)
+                        .cornerRadius(25)
+                    }
+                    .padding(.top, 8)
+                    
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.systemBackground))
+            } else {
+                // Normal map view
+                Map(initialPosition: .region(region)) {
+                    ForEach(validEvents) { event in
+                        if let coords = event.location?.coordinates,
+                           coords.count == 2 {
+                            let coordinate = CLLocationCoordinate2D(latitude: coords[0], longitude: coords[1])
+                            
+                            Annotation(event.title, coordinate: coordinate) {
+                                Button {
+                                    selectedEvent = event
+                                    onSelect?(event)
+                                } label: {
+                                    Image(systemName: "mappin.circle.fill")
+                                        .font(.title)
+                                        .foregroundColor(.pink)
+                                        .shadow(radius: 2)
+                                }
                             }
                         }
                     }
-                }
-                
-                // User location annotation
-                if let userLocation = locationManager.lastLocation?.coordinate {
-                    Annotation("You", coordinate: userLocation) {
-                        Circle()
-                            .fill(Color.blue)
-                            .frame(width: 16, height: 16)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white, lineWidth: 3)
-                            )
+                    
+                    if let userLocation = locationManager.lastLocation?.coordinate {
+                        Annotation("You", coordinate: userLocation) {
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 16, height: 16)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white, lineWidth: 3)
+                                )
+                        }
                     }
                 }
-            }
-            
-            if !networkMonitor.isConnected {
-                HStack(spacing: 8) {
-                    Image(systemName: "wifi.exclamationmark")
-                        .foregroundColor(.orange)
-                    Text(offlineMessage)
-                        .font(.subheadline)
-                        .foregroundColor(.orange)
-                        .multilineTextAlignment(.leading)
-                    Spacer()
+                .onAppear {
+                    // Cancel timer when map appears successfully
+                    mapLoadTimer?.invalidate()
+                    mapLoadTimer = nil
                 }
-                .padding()
-                .background(Color(.systemBackground))
-                .cornerRadius(12)
-                .padding()
-            } else {
+                
                 // Floating Action Button
                 VStack {
                     Spacer()
                     
-                    if locationManager.lastLocation != nil {
+                    if networkMonitor.isConnected && locationManager.lastLocation != nil {
                         Button(action: {
                             showNearbyEvents = true
                         }) {
@@ -175,9 +179,14 @@ struct EventMapView: View {
                     region.center = userLocation
                     region.span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                 }
-            } else {
-                print(offlineMessage)
             }
+            
+            // Start a timer to detect if map fails to load
+            startMapLoadTimer()
+        }
+        .onDisappear {
+            mapLoadTimer?.invalidate()
+            mapLoadTimer = nil
         }
         .onReceive(locationManager.$lastLocation) { location in
             guard networkMonitor.isConnected, let coord = location?.coordinate else { return }
@@ -210,6 +219,16 @@ struct EventMapView: View {
         }
         .navigationBarHidden(true)
     }
+    
+    private func startMapLoadTimer() {
+        // If map doesn't render within 3 seconds and there's no network, assume failure
+        mapLoadTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+            if !networkMonitor.isConnected {
+                mapLoadFailed = true
+                print("⚠️ Map load timeout - no network connection")
+            }
+        }
+    }
 }
 
 struct NearbyEventsSheet: View {
@@ -227,7 +246,6 @@ struct NearbyEventsSheet: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Title section
             HStack {
                 Image(systemName: "location.fill")
                     .foregroundColor(Color(red: 0.89, green: 0.58, blue: 0.31))
@@ -248,7 +266,6 @@ struct NearbyEventsSheet: View {
             
             Divider()
             
-            // Events list
             ScrollView {
                 VStack(spacing: 12) {
                     ForEach(Array(nearbyEvents.enumerated()), id: \.element.event.id) { index, item in
@@ -280,7 +297,6 @@ struct NearbyEventRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // Rank badge
             ZStack {
                 Circle()
                     .fill(Color(red: 0.89, green: 0.58, blue: 0.31))
@@ -290,7 +306,6 @@ struct NearbyEventRow: View {
                     .foregroundColor(.white)
             }
             
-            // Event info (tappable)
             Button(action: onTap) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(event.name)
@@ -334,7 +349,6 @@ struct NearbyEventRow: View {
             
             Spacer()
             
-            // Direction button
             Button(action: onDirectionTap) {
                 Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
                     .font(.system(size: 28))
@@ -346,11 +360,5 @@ struct NearbyEventRow: View {
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
-    }
-}
-
-struct EventMapView_Previews: PreviewProvider {
-    static var previews: some View {
-        EventMapView(events: [], selectedEvent: .constant(nil), onSelect: nil)
     }
 }

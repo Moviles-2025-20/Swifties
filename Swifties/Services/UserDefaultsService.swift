@@ -6,7 +6,6 @@
 //
 import Foundation
 
-@MainActor
 class UserDefaultsService {
     static let shared = UserDefaultsService()
     

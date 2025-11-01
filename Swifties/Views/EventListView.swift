@@ -7,6 +7,7 @@ struct EventListView: View {
     @StateObject var viewModel: EventListViewModel
     @State private var searchText = ""
     @State private var isMapView = false
+    @State private var mapOpenedTime: Date?
 
     // Filter events by search
     var filteredEvents: [Event] {
@@ -21,7 +22,7 @@ struct EventListView: View {
         }
     }
     
-    // MARK: - Computed Properties for Data Source (MOVIDAS AQUÍ)
+    // MARK: - Computed Properties for Data Source
     private var dataSourceIcon: String {
         switch viewModel.dataSource {
         case .memoryCache: return "memorychip"
@@ -51,7 +52,7 @@ struct EventListView: View {
                     })
                     
                     // Data Source Indicator
-                    if !viewModel.isLoading && !viewModel.events.isEmpty {
+                    if !viewModel.isLoading && !viewModel.events.isEmpty  {
                         HStack {
                             Image(systemName: dataSourceIcon)
                                 .foregroundColor(.secondary)
@@ -152,6 +153,21 @@ struct EventListView: View {
                             }
                         }
                     }
+                }
+            }
+            .onChange(of: isMapView) { oldValue, newValue in
+                if newValue {
+                    // Map view opened
+                    mapOpenedTime = Date()
+                    AnalyticsService.shared.logMapViewOpened(
+                        source: .eventList,
+                        eventCount: filteredEvents.count
+                    )
+                } else if let openedTime = mapOpenedTime {
+                    // Map view closed - calculate duration
+                    let duration = Date().timeIntervalSince(openedTime)
+                    AnalyticsService.shared.logMapViewClosed(durationSeconds: duration)
+                    mapOpenedTime = nil
                 }
             }
             .onAppear {

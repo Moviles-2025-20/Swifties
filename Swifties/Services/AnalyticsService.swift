@@ -13,6 +13,12 @@ enum DiscoveryMethod: String {
     case manualBrowse = "manual_browse"
 }
 
+enum MapViewSource: String {
+    case eventList = "event_list_toggle"
+    case directAccess = "direct_access"
+    case deepLink = "deep_link"
+}
+
 class AnalyticsService {
     static let shared = AnalyticsService()
     private init() {}
@@ -68,7 +74,39 @@ class AnalyticsService {
             "event_name": eventName,
             "timestamp": Date().timeIntervalSince1970
         ])
-        // Debug print removed for production consistency
+    }
+    
+    // MARK: - Map Feature Analytics
+    
+    /// Logs when the user opens/views the campus map
+    /// Use this to track map feature usage frequency
+    func logMapViewOpened(source: MapViewSource = .eventList, eventCount: Int = 0) {
+        Analytics.logEvent("map_view_opened", parameters: [
+            "source": source.rawValue,
+            "event_count": eventCount,
+            "timestamp": Date().timeIntervalSince1970
+        ])
+    }
+    
+    /// Logs when the user closes/exits the map view
+    /// Combine with logMapViewOpened to calculate session duration
+    func logMapViewClosed(durationSeconds: TimeInterval) {
+        Analytics.logEvent("map_view_closed", parameters: [
+            "duration_seconds": durationSeconds,
+            "timestamp": Date().timeIntervalSince1970
+        ])
+    }
+    
+    /// Logs interactions within the map (optional, for deeper insights)
+    func logMapInteraction(action: String, eventId: String? = nil) {
+        var parameters: [String: Any] = [
+            "action": action,
+            "timestamp": Date().timeIntervalSince1970
+        ]
+        if let eventId = eventId {
+            parameters["event_id"] = eventId
+        }
+        Analytics.logEvent("map_interaction", parameters: parameters)
     }
 }
 

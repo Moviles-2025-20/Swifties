@@ -10,6 +10,7 @@ import Combine
 
 struct VerifyEmailView: View {
     @EnvironmentObject var viewModel: AuthViewModel
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
     
     var body: some View {
         ZStack {
@@ -17,6 +18,24 @@ struct VerifyEmailView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 20) {
+                // Floating connection status banner at the top
+                if !networkMonitor.isConnected {
+                    VStack {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.slash")
+                                .foregroundColor(.red)
+                            Text("No Internet Connection")
+                                .font(.callout)
+                                .foregroundColor(.red)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.top, 8)
+                    }
+                }
+                
                 Spacer().frame(height: 40)
 
                 Text("Verify your email")
@@ -40,6 +59,7 @@ struct VerifyEmailView: View {
                 ResendEmailButton()
                     .environmentObject(viewModel)
                     .padding(.horizontal, 20)
+                    .disabled(!networkMonitor.isConnected)
 
                 Button {
                     Task { await viewModel.logout() }
@@ -59,6 +79,7 @@ struct VerifyEmailView: View {
                     .frame(maxWidth: .infinity)
                     .background(.appRed)
                     .cornerRadius(12)
+                    .disabled(!networkMonitor.isConnected)
                 }
                 .padding(.horizontal, 20)
 

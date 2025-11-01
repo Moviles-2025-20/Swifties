@@ -2,7 +2,7 @@
 //  UserDefaultsService.swift
 //  Swifties
 //
-//  Three-layer persistence: Firebase Cache -> UserDefaults -> Firestore
+//  Created by Natalia Villegas Calderón on 31/10/25.
 //
 
 import Foundation
@@ -17,6 +17,7 @@ class UserDefaultsService {
         static let registrationData = "pending_registration_data"
         static let hasPendingRegistration = "has_pending_registration"
         static let lastSaveAttempt = "last_save_attempt"
+        static let registrationCompleted = "registration_completed_locally" // NEW KEY
     }
     
     private init() {}
@@ -28,11 +29,23 @@ class UserDefaultsService {
             defaults.set(jsonData, forKey: Keys.registrationData)
             defaults.set(true, forKey: Keys.hasPendingRegistration)
             defaults.set(Date(), forKey: Keys.lastSaveAttempt)
-            defaults.synchronize() // Force immediate save (though not strictly necessary)
+            defaults.synchronize()
             print("✅ Registration data saved to UserDefaults")
         } catch {
             print("❌ Failed to save registration data to UserDefaults: \(error)")
         }
+    }
+    
+    // MARK: - Mark Registration as Completed Locally
+    func markRegistrationCompleted() {
+        defaults.set(true, forKey: Keys.registrationCompleted)
+        defaults.synchronize()
+        print("✅ Registration marked as completed locally")
+    }
+    
+    // MARK: - Check if Registration was Completed Locally
+    func hasCompletedRegistrationLocally() -> Bool {
+        return defaults.bool(forKey: Keys.registrationCompleted)
     }
     
     // MARK: - Get Pending Registration Data
@@ -64,11 +77,34 @@ class UserDefaultsService {
         defaults.removeObject(forKey: Keys.registrationData)
         defaults.set(false, forKey: Keys.hasPendingRegistration)
         defaults.removeObject(forKey: Keys.lastSaveAttempt)
-        print("✅ Cleared registration data from UserDefaults")
+        print("✅ Cleared pending registration data from UserDefaults")
+        
+        // NOTE: We DON'T clear registrationCompleted here
+        // because we want to remember the user completed registration
+        // even after data is synced
+    }
+    
+    // MARK: - Clear All Data (on sign out)
+    func clearAllData() {
+        defaults.removeObject(forKey: Keys.registrationData)
+        defaults.removeObject(forKey: Keys.hasPendingRegistration)
+        defaults.removeObject(forKey: Keys.lastSaveAttempt)
+        defaults.removeObject(forKey: Keys.registrationCompleted)
+        defaults.synchronize()
+        print("✅ Cleared all registration data from UserDefaults")
     }
     
     // MARK: - Get Last Save Attempt
     func getLastSaveAttempt() -> Date? {
         return defaults.object(forKey: Keys.lastSaveAttempt) as? Date
+    }
+    
+    // MARK: - Debug Info
+    func printDebugInfo() {
+        print("=== UserDefaults Debug Info ===")
+        print("Has Pending Registration: \(hasPendingRegistration())")
+        print("Registration Completed Locally: \(hasCompletedRegistrationLocally())")
+        print("Last Save Attempt: \(getLastSaveAttempt()?.description ?? "None")")
+        print("===============================")
     }
 }

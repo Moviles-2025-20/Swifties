@@ -18,18 +18,44 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         FirebaseApp.configure()
         Analytics.setAnalyticsCollectionEnabled(true)
 
+        // Enable Firestore offline persistence with persistent cache
+        let settings = FirestoreSettings()
+        
+        // Use persistent cache with unlimited size (recommended for offline support)
+        settings.cacheSettings = PersistentCacheSettings(
+            sizeBytes: NSNumber(value: FirestoreCacheSizeUnlimited)
+        )
+        
+        Firestore.firestore().settings = settings
+        
+        print("✅ Firestore offline persistence enabled with unlimited cache")
 
-        // Test Firestore connection
-        let db = Firestore.firestore(database: "default")
-        db.collection("test").document("connection").setData(["test": "value"]) { error in
-            if let error = error {
-                print("❌ Firestore connection failed: \(error.localizedDescription)")
-            } else {
-                print("✅ Firestore connected successfully!")
+        // Test Firestore connection (only if online)
+        let networkMonitor = NetworkMonitorService.shared
+        if networkMonitor.isConnected {
+            let db = Firestore.firestore(database: "default")
+            db.collection("test").document("connection").setData(["test": "value"]) { error in
+                if let error = error {
+                    print("❌ Firestore connection failed: \(error.localizedDescription)")
+                } else {
+                    print("✅ Firestore connected successfully!")
+                }
             }
+        } else {
+            print("⚠️ Starting app in offline mode")
         }
 
         print("✅ Firebase Analytics initialized successfully")
+        
+        // Check for pending registration data and log status
+        if UserDefaultsService.shared.hasPendingRegistration() {
+            print("⚠️ App started with pending registration data - will sync when connection available")
+        }
+        
+        if UserDefaultsService.shared.hasCompletedRegistrationLocally() {
+            print("ℹ️ User has completed registration locally")
+        }
+        
         return true
     }
 
@@ -47,7 +73,28 @@ struct SwiftiesApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                if authViewModel.isAuthenticated, authViewModel.user != nil {
+                // Show loading while checking profile
+                if authViewModel.isCheckingProfile {
+                    VStack(spacing: 20) {
+                        ProgressView("Loading...")
+                            .tint(.appRed)
+                        
+                        // Show offline indicator if no connection
+                        if !NetworkMonitorService.shared.isConnected {
+                            HStack(spacing: 8) {
+                                Image(systemName: "wifi.slash")
+                                    .foregroundColor(.orange)
+                                Text("Offline Mode")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                    }
+                } else if authViewModel.isAuthenticated, authViewModel.user != nil {
                     let isEmailProvider = (authViewModel.user?.providerId == "password")
                     let needsEmailVerification = isEmailProvider && (authViewModel.isEmailVerified == false)
 
@@ -55,11 +102,9 @@ struct SwiftiesApp: App {
                         VerifyEmailView()
                             .environmentObject(authViewModel)
                     } else if authViewModel.isFirstTimeUser {
-                        // New or incomplete users go to onboarding/interview
                         RegisterView()
                             .environmentObject(authViewModel)
                     } else {
-                        // Returning users go to the main app
                         MainView()
                             .environmentObject(authViewModel)
                     }

@@ -1,6 +1,6 @@
 // LoginView.swift
 // Swifties
-// Created by Natalia Villegas Calderón on 1/10/25.
+// Updated with offline protection for authenticated view
 
 import SwiftUI
 import Combine
@@ -208,7 +208,6 @@ struct LoginView: View {
                     }
                     let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
                     let trimmedPassword = passwordText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    // Basic validations
                     if trimmedEmail.isEmpty || trimmedPassword.isEmpty {
                         alertMessage = "Please enter both your email and password."
                         showAlert = true
@@ -297,7 +296,6 @@ struct LoginView: View {
                 .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                 
                 Button {
-                    // Check network connectivity FIRST
                     guard networkMonitor.isConnected else {
                         alertMessage = "No network connection - Cannot send password reset"
                         showAlert = true
@@ -305,7 +303,6 @@ struct LoginView: View {
                         return
                     }
                     
-                    // Then validate email
                     let trimmedEmail = emailText.trimmingCharacters(in: .whitespacesAndNewlines)
                     
                     if trimmedEmail.isEmpty {
@@ -330,7 +327,6 @@ struct LoginView: View {
                 
                 Spacer().frame(height: 20)
                 
-                // Loading indicator
                 if viewModel.isLoading {
                     ProgressView()
                         .tint(.appRed)
@@ -347,7 +343,7 @@ struct LoginView: View {
         })
     }
     
-    // MARK: - Authenticated View
+    // MARK: - Authenticated View (WITH OFFLINE PROTECTION)
     private var authenticatedView: some View {
         VStack(spacing: 30) {
             Spacer()
@@ -389,6 +385,21 @@ struct LoginView: View {
             Text(viewModel.user?.email ?? "")
                 .font(.system(size: 16))
                 .foregroundColor(.gray)
+            
+            // Connection status message
+            if !networkMonitor.isConnected {
+                HStack(spacing: 8) {
+                    Image(systemName: "wifi.slash")
+                        .foregroundColor(.orange)
+                    Text("Offline - Using cached data")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+            }
             
             // Countdown progress
             CountdownView(onComplete: {

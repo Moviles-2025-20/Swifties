@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
+import Network
 
 struct EventDetailView: View {
     @StateObject var viewModel: EventDetailViewModel
@@ -9,7 +10,10 @@ struct EventDetailView: View {
     @State private var showAddComment: Bool = false
     @State private var hasAttended: Bool = false
     @State private var isCheckingAttendance: Bool = true
-    
+    @State private var showAuthAlert: Bool = false
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
+    private let offlineMessage = "No network connection  - Cannot fetch details"
+
     private let db = Firestore.firestore(database: "default")
     
     init(event: Event) {
@@ -35,205 +39,241 @@ struct EventDetailView: View {
                     }
                 )
                 
-                NavigationLink(isActive: $showAddComment) {
-                    AddCommentView(event: event)
-                } label: {
-                    EmptyView()
-                }
-                .hidden()
-                
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // Event Image
-                        if !event.metadata.imageUrl.isEmpty, let url = URL(string: event.metadata.imageUrl) {
-                            AsyncImage(url: url) { image in
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                Rectangle()
-                                    .fill(Color.gray.opacity(0.3))
+                if !networkMonitor.isConnected {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.exclamationmark")
+                            .foregroundColor(.orange)
+                        Text(offlineMessage)
+                            .font(.subheadline)
+                            .foregroundColor(.orange)
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .padding([.horizontal, .top])
+                } else {
+                    NavigationLink(isActive: $showAddComment) {
+                        LazyView(AddCommentView(event: event))
+                    } label: {
+                        EmptyView()
+                    }
+                    .hidden()
+                    
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            // Event Image
+                            if !event.metadata.imageUrl.isEmpty, let url = URL(string: event.metadata.imageUrl) {
+                                AsyncImage(url: url) { image in
+                                    image
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                } placeholder: {
+                                    Rectangle()
+                                        .fill(Color.gray.opacity(0.3))
+                                }
+                                .frame(height: 200)
+                                .frame(maxWidth: .infinity)
+                                .clipped()
                             }
-                            .frame(height: 200)
-                            .frame(maxWidth: .infinity)
-                            .clipped()
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 16) {
-                            // Event Title
-                            Text(event.title)
-                                .font(.title3)
-                                .fontWeight(.bold)
-                                .padding(.top, 16)
-                        
-                            // Location and Time
-                            HStack(spacing: 12) {
-                                Label(event.location?.address ?? "Address not found", systemImage: "mappin.circle.fill")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                if let firstTime = event.schedule.times.first {
-                                    Label(firstTime, systemImage: "clock.fill")
+                            
+                            VStack(alignment: .leading, spacing: 16) {
+                                // Event Title
+                                Text(event.title)
+                                    .font(.title3)
+                                    .fontWeight(.bold)
+                                    .padding(.top, 16)
+                            
+                                VStack(alignment: .leading, spacing: 8) {
+                                    // Location
+                                    Label(event.location?.address ?? "Address not found", systemImage: "mappin.circle.fill")
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
+                                    
+                                    // Day and Time
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "clock.fill")
+                                            .foregroundColor(.secondary)
+                                        
+                                        if let firstDay = event.schedule.days.first,
+                                           let firstTime = event.schedule.times.first {
+                                            Text("\(firstDay), \(firstTime)")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        } else if let firstTime = event.schedule.times.first {
+                                            Text(firstTime)
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
                                 }
-                            }
-                            
-                            // Description
-                            Text(event.description)
-                                .font(.body)
-                                .foregroundColor(.primary)
-                            
-                            // Buttons Row
-                            HStack(spacing: 12) {
-                                // Make a Comment Button
-                                Button(action: {
-                                    showAddComment = true
-                                }) {
-                                    Text("Make a Comment")
-                                        .font(.headline)
+                                
+                                // Description
+                                Text(event.description)
+                                    .font(.body)
+                                    .foregroundColor(.primary)
+                                
+                                // Buttons Row
+                                HStack(spacing: 12) {
+                                    // Make a Comment Button
+                                    Button(action: {
+                                        showAddComment = true
+                                    }) {
+                                        Text("Make a Comment")
+                                            .font(.headline)
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                            .background(Color.appOcher)
+                                            .cornerRadius(12)
+                                    }
+                                    
+                                    // Attendance Button
+                                    Button(action: {
+                                        markAsAttending()
+                                    }) {
+                                        HStack {
+                                            Image(systemName: hasAttended ? "checkmark.circle.fill" : "hand.raised.fill")
+                                            Text(hasAttended ? "Attending!" : "I'm Going")
+                                                .font(.headline)
+                                        }
                                         .foregroundColor(.white)
                                         .frame(maxWidth: .infinity)
                                         .padding()
-                                        .background(Color.appOcher)
+                                        .background(hasAttended ? Color.green : Color(.appBlue))
                                         .cornerRadius(12)
+                                    }
+                                    .disabled(hasAttended || isCheckingAttendance)
+                                    .opacity((hasAttended || isCheckingAttendance) ? 0.7 : 1.0)
                                 }
+                                .padding(.top, 8)
                                 
-                                // Attendance Button
-                                Button(action: {
-                                    markAsAttending()
-                                }) {
-                                    HStack {
-                                        Image(systemName: hasAttended ? "checkmark.circle.fill" : "hand.raised.fill")
-                                        Text(hasAttended ? "Attending!" : "I'm Going")
-                                            .font(.headline)
-                                    }
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(hasAttended ? Color.green : Color(.appBlue))
-                                    .cornerRadius(12)
-                                }
-                                .disabled(hasAttended || isCheckingAttendance)
-                                .opacity((hasAttended || isCheckingAttendance) ? 0.7 : 1.0)
-                            }
-                            .padding(.top, 8)
-                            
-                            // Rating Section
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(alignment: .top) {
-                                    VStack {
-                                        Text(String(format: "%.1f", viewModel.averageRating))
-                                            .font(.system(size: 48, weight: .bold))
-                                        
-                                        HStack(spacing: 4) {
-                                            ForEach(0..<5) { index in
-                                                Image(systemName: index < Int(round(viewModel.averageRating)) ? "star.fill" : "star")
-                                                    .foregroundColor(.appOcher)
-                                                    .font(.system(size: 16))
-                                            }
-                                        }
-                                        
-                                        Text("\(viewModel.totalRatings) reviews")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    VStack(alignment: .trailing, spacing: 6) {
-                                        ForEach((1...5).reversed(), id: \.self) { rating in
-                                            HStack(spacing: 8) {
-                                                Text("\(rating)")
-                                                    .font(.caption)
-                                                
-                                                GeometryReader { geo in
-                                                    ZStack(alignment: .leading) {
-                                                        Rectangle()
-                                                            .fill(Color.gray.opacity(0.2))
-                                                        
-                                                        Rectangle()
-                                                            .fill(Color.appOcher)
-                                                            .frame(width: geo.size.width * percentage(for: rating))
-                                                    }
-                                                }
-                                                .frame(height: 8)
-                                                .cornerRadius(4)
-                                                
-                                                Text("\(Int(percentage(for: rating) * 100))%")
-                                                    .font(.caption)
-                                                    .frame(width: 40, alignment: .trailing)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .cornerRadius(12)
-                            
-                            // Comments Section
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Comments")
-                                    .font(.headline)
-                                
-                                if viewModel.comments.isEmpty {
-                                    Text("No comments yet. Be the first!")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    ForEach(viewModel.comments.compactMap { $0 }, id: \.id) { comment in
-                                        ZStack {
-                                            Rectangle()
-                                                .fill(Color(.appSecondary))
-                                                .cornerRadius(4)
+                                // Rating Section
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack(alignment: .top) {
+                                        VStack {
+                                            Text(String(format: "%.1f", viewModel.averageRating))
+                                                .font(.system(size: 48, weight: .bold))
                                             
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text(comment.metadata.title)
-                                                    .font(.title3)
-                                                    .foregroundColor(.black)
-                                                
-                                                Text(comment.metadata.text)
-                                                    .font(.body)
-                                                    .foregroundColor(.black.opacity(0.8))
-                                                
-                                                HStack {
-                                                    if let emotion = comment.emotion {
-                                                        Text("🧠 Emotion: \(emotion)")
-                                                            .font(.footnote)
-                                                            .foregroundColor(.gray)
-                                                    }
-                                                    
-                                                    Spacer()
-                                                    
-                                                    if let rating = comment.rating {
-                                                        Text("Rating: \(rating) Stars")
-                                                            .font(.footnote)
-                                                            .foregroundColor(.gray)
-                                                    }
+                                            HStack(spacing: 4) {
+                                                ForEach(0..<5) { index in
+                                                    Image(systemName: index < Int(round(viewModel.averageRating)) ? "star.fill" : "star")
+                                                        .foregroundColor(.appOcher)
+                                                        .font(.system(size: 16))
                                                 }
                                             }
-                                            .padding(8)
+                                            
+                                            Text("\(viewModel.totalRatings) reviews")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
                                         }
-                                        .padding(10)
+                                        
+                                        Spacer()
+                                        
+                                        VStack(alignment: .trailing, spacing: 6) {
+                                            ForEach((1...5).reversed(), id: \.self) { rating in
+                                                HStack(spacing: 8) {
+                                                    Text("\(rating)")
+                                                        .font(.caption)
+                                                    
+                                                    GeometryReader { geo in
+                                                        ZStack(alignment: .leading) {
+                                                            Rectangle()
+                                                                .fill(Color.gray.opacity(0.2))
+                                                            
+                                                            Rectangle()
+                                                                .fill(Color.appOcher)
+                                                                .frame(width: geo.size.width * percentage(for: rating))
+                                                        }
+                                                    }
+                                                    .frame(height: 8)
+                                                    .cornerRadius(4)
+                                                    
+                                                    Text("\(Int(percentage(for: rating) * 100))%")
+                                                        .font(.caption)
+                                                        .frame(width: 40, alignment: .trailing)
+                                                }
+                                            }
+                                        }
                                     }
                                 }
+                                .padding()
+                                .background(Color(.systemBackground))
+                                .cornerRadius(12)
+                                
+                                // Comments Section
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Comments")
+                                        .font(.headline)
+                                    
+                                    if viewModel.comments.isEmpty {
+                                        Text("No comments yet. Be the first!")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        ForEach(viewModel.comments.compactMap { $0 }, id: \.id) { comment in
+                                            ZStack {
+                                                Rectangle()
+                                                    .fill(Color(.appSecondary))
+                                                    .cornerRadius(4)
+                                                
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text(comment.metadata.title)
+                                                        .font(.title3)
+                                                        .foregroundColor(.black)
+                                                    
+                                                    Text(comment.metadata.text)
+                                                        .font(.body)
+                                                        .foregroundColor(.black.opacity(0.8))
+                                                    
+                                                    HStack {
+                                                        if let emotion = comment.emotion {
+                                                            Text("🧠 Emotion: \(emotion)")
+                                                                .font(.footnote)
+                                                                .foregroundColor(.gray)
+                                                        }
+                                                        
+                                                        Spacer()
+                                                        
+                                                        if let rating = comment.rating {
+                                                            Text("Rating: \(rating) Stars")
+                                                                .font(.footnote)
+                                                                .foregroundColor(.gray)
+                                                        }
+                                                    }
+                                                }
+                                                .padding(8)
+                                            }
+                                            .padding(10)
+                                        }
+                                    }
+                                }
+                                .padding()
+                                .background(Color(.systemBackground))
+                                .cornerRadius(12)
+                                .padding(.bottom, 20)
                             }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .cornerRadius(12)
-                            .padding(.bottom, 20)
+                            .padding(.horizontal)
                         }
-                        .padding(.horizontal)
+                        .padding(.top, 8)
                     }
-                    .padding(.top, 8)
                 }
             }
         }
         .navigationBarHidden(true)
+        .alert("Authentication Required", isPresented: $showAuthAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("You must be logged in to mark attendance.")
+        }
         .onAppear {
-            checkIfUserAttended()
-            viewModel.startListeningForComments(forEventId: event.id)
+            if networkMonitor.isConnected {
+                checkIfUserAttended()
+                viewModel.startListeningForComments(forEventId: event.id)
+            } else {
+                // Do not start listeners when offline
+                print(offlineMessage)
+            }
         }
         .onDisappear {
             viewModel.stopListeningForComments()
@@ -277,7 +317,7 @@ struct EventDetailView: View {
     
     private func markAsAttending() {
         guard let userId = Auth.auth().currentUser?.uid else {
-            print("Error: User not authenticated")
+            showAuthAlert = true
             return
         }
         
@@ -341,5 +381,12 @@ struct EventDetailView: View {
             return "night"
         }
     }
+}
+
+/// Lightweight lazy view wrapper — avoids constructing heavy destinations immediately.
+struct LazyView<Content: View>: View {
+    let build: () -> Content
+    init(_ build: @autoclosure @escaping () -> Content) { self.build = build }
+    var body: Content { build() }
 }
 

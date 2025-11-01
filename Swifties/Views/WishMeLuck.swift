@@ -3,6 +3,7 @@ import SwiftUI
 import CoreMotion
 import FirebaseFirestore
 import FirebaseAnalytics
+import Network
 
 struct WishMeLuckView: View {
     @StateObject private var viewModel = WishMeLuckViewModel()
@@ -11,6 +12,10 @@ struct WishMeLuckView: View {
     @State private var showEventDetail = false
     @State private var fullEventForDetail: Event?
     @State private var isLoadingFullEvent = false
+    @State private var showNoConnectionAlert = false
+    
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
+    private let offlineMessage = "No network connection - Couldn't fetch events"
     
     private let db = Firestore.firestore(database: "default")
     
@@ -19,6 +24,25 @@ struct WishMeLuckView: View {
     @State private var lastShakeTime: Date?
     private let shakeThreshold: Double = 2.5
     private let shakeCooldown: TimeInterval = 3.0
+    
+    // MARK: - Computed Properties for Data Source Indicator
+    private var dataSourceIcon: String {
+        switch viewModel.dataSource {
+        case .memoryCache: return "memorychip"
+        case .realmStorage: return "internaldrive"
+        case .network: return "wifi"
+        case .none: return "questionmark"
+        }
+    }
+    
+    private var dataSourceText: String {
+        switch viewModel.dataSource {
+        case .memoryCache: return "Memory Cache"
+        case .realmStorage: return "Local Storage (Realm)"
+        case .network: return "Updated from Network"
+        case .none: return ""
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -32,6 +56,70 @@ struct WishMeLuckView: View {
                         showNotificationButton: true,
                         onBackTap: {}
                     )
+                    
+                    // Connection status banner
+                    if !networkMonitor.isConnected {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.slash")
+                                .foregroundColor(.red)
+                            Text("No Internet Connection")
+                                .font(.callout)
+                                .foregroundColor(.red)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                    }
+                    
+
+                    // Data Source Indicator
+                    if !viewModel.isLoading && viewModel.dataSource != .none {
+                        HStack {
+                            Spacer()
+                            
+                            HStack(spacing: 6) {
+                                Image(systemName: dataSourceIcon)
+                                    .foregroundColor(.secondary)
+                                Text(dataSourceText)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                if viewModel.isRefreshing {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                    Text("Updating...")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        
+                        // Pending sync indicator (separate row, also centered)
+                        if viewModel.hasPendingWishUpdate {
+                            HStack {
+                                Spacer()
+                                
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.clockwise")
+                                        .foregroundColor(.orange)
+                                    Text("Pending sync")
+                                        .font(.caption2)
+                                        .foregroundColor(.orange)
+                                }
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal)
+                            .padding(.top, 4)
+                        }
+                    }
                     
                     ScrollView {
                         VStack(spacing: 20) {
@@ -52,22 +140,97 @@ struct WishMeLuckView: View {
                                     .padding(.horizontal, 20)
                             }
                             
-                            // MARK: - Event Preview or Empty State
-                            if let event = viewModel.currentEvent {
+                            // MARK: - Event Preview or Error/Empty State
+                            if viewModel.isLoading {
+                                // Loading state
+                                VStack(spacing: 16) {
+                                    ProgressView()
+                                        .scaleEffect(1.2)
+                                    Text("Finding your perfect event…")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 60)
+                                .background(Color.white)
+                                .cornerRadius(16)
+                                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                                .padding(.horizontal, 20)
+                                
+                            } else if let error = viewModel.errorMessage {
+                                // Error state with context-aware messages
+                                VStack(spacing: 16) {
+                                    Image(systemName: getErrorIcon(for: error))
+                                        .font(.system(size: 50))
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text(error)
+                                        .font(.body)
+                                        .foregroundColor(.red)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal, 24)
+                                    
+                                    Text(getErrorHint(for: error))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal, 24)
+                                    
+                                    if viewModel.dataSource == .none && networkMonitor.isConnected {
+                                        Button {
+                                            Task {
+                                                await triggerWish()
+                                            }
+                                        } label: {
+                                            HStack {
+                                                Image(systemName: "arrow.clockwise")
+                                                Text("Try Again")
+                                            }
+                                            .padding(.horizontal, 24)
+                                            .padding(.vertical, 12)
+                                            .background(Color.blue)
+                                            .foregroundColor(.white)
+                                            .cornerRadius(10)
+                                        }
+                                        .padding(.top, 8)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 40)
+                                .background(Color.white)
+                                .cornerRadius(16)
+                                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                                .padding(.horizontal, 20)
+                                
+                            } else if let event = viewModel.currentEvent {
+                                // Success state - show event
                                 EventPreviewCard(event: event, isLoadingDetail: isLoadingFullEvent)
                                     .padding(.horizontal, 20)
                                     .onTapGesture {
-                                        loadFullEventAndShowDetail(eventId: event.id)
+                                        if networkMonitor.isConnected {
+                                            loadFullEventAndShowDetail(eventId: event.id)
+                                        } else {
+                                            showNoConnectionAlert = true
+                                        }
                                     }
-                            } else if !viewModel.isLoading {
+                                
+                            } else {
+                                // Empty state (no event yet)
                                 EmptyStateCard()
                                     .padding(.horizontal, 20)
                             }
                             
                             // MARK: - Wish Me Luck Button
-                            WishMeLuckButton(isLoading: viewModel.isLoading) {
-                                Task {
-                                    await triggerWish()
+                            WishMeLuckButton(
+                                isLoading: viewModel.isLoading,
+                                isConnected: networkMonitor.isConnected
+                            ) {
+                                if networkMonitor.isConnected {
+                                    Task {
+                                        await triggerWish()
+                                    }
+                                } else {
+                                    showNoConnectionAlert = true
                                 }
                             }
                             .padding(.horizontal, 20)
@@ -83,19 +246,73 @@ struct WishMeLuckView: View {
                     EventDetailView(event: fullEvent)
                 }
             }
-            
+            .alert("No Internet Connection", isPresented: $showNoConnectionAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Please check your internet connection and try again.")
+            }
             .task {
-                await viewModel.calculateDaysSinceLastWished()
+                if networkMonitor.isConnected {
+                    await viewModel.calculateDaysSinceLastWished()
+                    // Sync pending updates if any
+                    await viewModel.syncPendingUpdates()
+                } else {
+                    // Try to load from cache
+                    await viewModel.calculateDaysSinceLastWished()
+                }
                 startAccelerometerUpdates()
             }
             .onDisappear {
                 stopAccelerometerUpdates()
             }
+            .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
+                if newValue && !oldValue {
+                    // Network just came back online
+                    print("🌐 Network restored - syncing pending updates")
+                    Task {
+                        await viewModel.syncPendingUpdates()
+                        await viewModel.calculateDaysSinceLastWished()
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func getErrorIcon(for error: String) -> String {
+        if error.contains("No internet connection") || error.contains("network") {
+            return "wifi.slash"
+        } else if error.contains("No authenticated user") || error.contains("authentication") {
+            return "person.crop.circle.badge.exclamationmark"
+        } else if error.contains("No events available") || error.contains("empty") {
+            return "tray"
+        } else {
+            return "exclamationmark.triangle"
+        }
+    }
+    
+    private func getErrorHint(for error: String) -> String {
+        if error.contains("No internet connection") || error.contains("network") {
+            return "Please check your connection and try again"
+        } else if error.contains("No authenticated user") || error.contains("authentication") {
+            return "Please sign in to use this feature"
+        } else if error.contains("No events available") || error.contains("empty") {
+            return "Check back later or try shaking again"
+        } else if error.contains("Failed to load") {
+            return "We're having trouble reaching our servers"
+        } else {
+            return "Something went wrong. Please try again"
         }
     }
     
     // MARK: - Load Full Event and Show Detail
     private func loadFullEventAndShowDetail(eventId: String) {
+        guard networkMonitor.isConnected else {
+            showNoConnectionAlert = true
+            return
+        }
+        
         isLoadingFullEvent = true
         
         db.collection("events").document(eventId).getDocument { document, error in
@@ -112,17 +329,15 @@ struct WishMeLuckView: View {
                     return
                 }
                                 
-                // Try to parse using Codable first
-                if let event = try? document.data(as: Event.self) {
-                    print("Successfully parsed event using Codable")
+                if let event = EventFactory.createEvent(from: document) {
+                    print("✅ Successfully parsed event using EventFactory")
                     fullEventForDetail = event
-
-                 
+                    
                     AnalyticsService.shared.logActivitySelection(
                         activityId: event.id ?? "unknown_event",
                         discoveryMethod: .wishMeLuck
                     )
-
+                    
                     showEventDetail = true
                 } else {
                     print("Codable parsing failed, attempting manual parse")
@@ -130,7 +345,6 @@ struct WishMeLuckView: View {
                         print("Successfully parsed event manually")
                         fullEventForDetail = event
                         
-                 
                         AnalyticsService.shared.logActivitySelection(
                             activityId: event.id ?? "unknown_event",
                             discoveryMethod: .wishMeLuck
@@ -141,11 +355,9 @@ struct WishMeLuckView: View {
                         print("❌ Manual parsing also failed")
                     }
                 }
-
             }
         }
     }
-
     
     // MARK: - Manual Event Parsing (Fallback)
     private func parseEventManually(documentId: String, data: [String: Any]) -> Event? {
@@ -156,7 +368,6 @@ struct WishMeLuckView: View {
             return nil
         }
         
-        // Location parsing
         var location: EventLocation? = nil
         if let locationData = data["location"] as? [String: Any] {
             location = EventLocation(
@@ -167,7 +378,6 @@ struct WishMeLuckView: View {
             )
         }
         
-        // Schedule parsing
         var schedule = EventSchedule(days: [], times: [])
         if let scheduleData = data["schedule"] as? [String: Any] {
             schedule = EventSchedule(
@@ -176,7 +386,6 @@ struct WishMeLuckView: View {
             )
         }
         
-        // Metadata parsing
         var metadata = EventMetadata(
             cost: EventCost(amount: 0, currency: "COP"),
             durationMinutes: 0,
@@ -199,7 +408,6 @@ struct WishMeLuckView: View {
             )
         }
         
-        // Stats parsing
         var stats = EventStats(popularity: 0, rating: 0, totalCompletions: 0)
         if let statsData = data["stats"] as? [String: Any] {
             stats = EventStats(
@@ -225,7 +433,6 @@ struct WishMeLuckView: View {
             weatherDependent: data["weather_dependent"] as? Bool ?? false
         )
         
-        // Manually set the document ID
         event.id = documentId
         
         return event
@@ -233,12 +440,12 @@ struct WishMeLuckView: View {
     
     // MARK: - Trigger Wish
     private func triggerWish() async {
+        guard networkMonitor.isConnected else {
+            showNoConnectionAlert = true
+            return
+        }
+        
         AnalyticsService.shared.logWishMeLuckUsed()
-        
-        
-        
-        
-        
         
         withAnimation(.easeInOut(duration: 0.5)) {
             animateBall = true
@@ -253,7 +460,6 @@ struct WishMeLuckView: View {
         }
     }
 
-    
     // MARK: - Accelerometer
     private func startAccelerometerUpdates() {
         guard motionManager.isAccelerometerAvailable else { return }
@@ -287,6 +493,12 @@ struct WishMeLuckView: View {
         }
         
         guard !viewModel.isLoading else { return }
+        
+        // Check connection before allowing shake
+        guard networkMonitor.isConnected else {
+            showNoConnectionAlert = true
+            return
+        }
         
         lastShakeTime = now
         
@@ -388,7 +600,6 @@ struct EventPreviewCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Event Image
             if !event.imageUrl.isEmpty {
                 AsyncImage(url: URL(string: event.imageUrl)) { image in
                     image
@@ -411,19 +622,16 @@ struct EventPreviewCard: View {
                     )
             }
             
-            // Event Title
             Text(event.title)
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
             
-            // Event Description
             Text(event.description)
                 .font(.body)
                 .foregroundColor(.secondary)
                 .lineLimit(3)
             
-            // Tap to view hint
             HStack {
                 Spacer()
                 if isLoadingDetail {
@@ -477,6 +685,7 @@ struct EmptyStateCard: View {
 // MARK: - Wish Me Luck Button
 struct WishMeLuckButton: View {
     let isLoading: Bool
+    let isConnected: Bool
     let action: () -> Void
     
     var body: some View {
@@ -493,10 +702,10 @@ struct WishMeLuckButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(isLoading ? Color.gray : Color.appOcher)
+            .background(isLoading ? Color.gray : (isConnected ? Color.appOcher : Color.gray))
             .cornerRadius(16)
         }
-        .disabled(isLoading)
+        .disabled(isLoading || !isConnected)
     }
 }
 

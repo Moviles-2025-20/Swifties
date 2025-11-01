@@ -1,13 +1,6 @@
-//
-//  WeeklyChallengeViewModel.swift
-//  Swifties
-//
-//  Created by Imac  on 4/10/25.
-//
 
 import SwiftUI
 import FirebaseAuth
-import FirebaseFirestore
 import Combine
 
 class WeeklyChallengeViewModel: ObservableObject {
@@ -17,329 +10,223 @@ class WeeklyChallengeViewModel: ObservableObject {
     @Published var hasAttended: Bool = false
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var dataSource: DataSource = .none
+    @Published var isRefreshing = false
     
-    private let db = Firestore.firestore(database: "default")
+    enum DataSource {
+        case none
+        case memoryCache
+        case realmStorage
+        case network
+    }
+    
+    private let cacheService = WeeklyChallengeCacheService.shared
+    private let storageService = WeeklyChallengeStorageService.shared
+    private let networkService = WeeklyChallengeNetworkService.shared
+    private let networkMonitor = NetworkMonitorService.shared
+    
     private var currentUserId: String? {
         Auth.auth().currentUser?.uid
     }
     
+    // MARK: - Load Data (Three-Layer Cache)
+    
     func loadChallenge() {
         isLoading = true
         errorMessage = nil
-        hasAttended = false
         
         guard let userId = currentUserId else {
-            errorMessage = "User not authenticated"
             isLoading = false
+            errorMessage = "User not authenticated"
             return
         }
         
         print("🚀 Loading challenge for user: \(userId)")
         
-        let group = DispatchGroup()
-        
-        group.enter()
-        loadRandomEvent { result in
-            switch result {
-            case .success(let event):
-                DispatchQueue.main.async {
-                    self.challengeEvent = event
-                    print("✅ Event loaded: \(event.name)")
-                }
-                group.enter()
-                self.checkIfUserAttended(userId: userId, eventId: event.name) {
-                    group.leave()
-                }
-            case .failure(let error):
-                DispatchQueue.main.async {
-                    self.errorMessage = error.localizedDescription
-                }
-            }
-            group.leave()
+        // Layer 1: Try memory cache
+        if let cached = cacheService.getCachedChallenge(userId: userId) {
+            self.challengeEvent = cached.event
+            self.hasAttended = cached.hasAttended
+            self.totalChallenges = cached.totalChallenges
+            self.last30DaysData = cached.chartData
+            self.dataSource = .memoryCache
+            self.isLoading = false
+            print("✅ Loaded from memory cache")
+            
+            // Try to refresh in background if connected
+            refreshInBackground(userId: userId)
+            return
         }
         
-        group.enter()
-        loadUserChallengeStats(userId: userId) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let stats):
-                    self.totalChallenges = stats
-                case .failure(let error):
-                    print("Error loading stats: \(error)")
-                    self.totalChallenges = 0
-                }
-            }
-            group.leave()
+        // Layer 2: Try Realm storage
+        if let stored = storageService.loadChallenge(userId: userId) {
+            self.challengeEvent = stored.event
+            self.hasAttended = stored.hasAttended
+            self.totalChallenges = stored.totalChallenges
+            self.last30DaysData = stored.chartData
+            self.dataSource = .realmStorage
+            self.isLoading = false
+            
+            // Cache in memory for next time
+            cacheService.cacheChallenge(
+                userId: userId,
+                event: stored.event,
+                hasAttended: stored.hasAttended,
+                totalChallenges: stored.totalChallenges,
+                chartData: stored.chartData
+            )
+            
+            print("✅ Loaded from Realm storage")
+            
+            // Try to refresh in background if connected
+            refreshInBackground(userId: userId)
+            return
         }
         
-        group.enter()
-        loadLast30DaysData(userId: userId) { result in
+        // Layer 3: Fetch from network
+        if networkMonitor.isConnected {
+            fetchFromNetwork(userId: userId)
+        } else {
+            isLoading = false
+            errorMessage = "No internet connection and no cached data available"
+            print("❌ No connection and no local data")
+        }
+    }
+    
+    private func fetchFromNetwork(userId: String) {
+        networkService.fetchChallengeData(userId: userId) { [weak self] result in
             DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isLoading = false
+                
                 switch result {
                 case .success(let data):
-                    self.last30DaysData = data
+                    self.challengeEvent = data.event
+                    self.hasAttended = data.hasAttended
+                    self.totalChallenges = data.totalChallenges
+                    self.last30DaysData = data.chartData
+                    self.dataSource = .network
+                    
+                    // Save to both cache layers
+                    self.cacheService.cacheChallenge(
+                        userId: userId,
+                        event: data.event,
+                        hasAttended: data.hasAttended,
+                        totalChallenges: data.totalChallenges,
+                        chartData: data.chartData
+                    )
+                    
+                    self.storageService.saveChallenge(
+                        userId: userId,
+                        event: data.event,
+                        hasAttended: data.hasAttended,
+                        totalChallenges: data.totalChallenges,
+                        chartData: data.chartData
+                    )
+                    
+                    print("✅ Loaded from network and cached")
+                    
                 case .failure(let error):
-                    print("Error loading chart data: \(error)")
-                    self.last30DaysData = []
+                    self.errorMessage = "Error loading challenge: \(error.localizedDescription)"
+                    print("❌ Network error: \(error.localizedDescription)")
                 }
             }
-            group.leave()
-        }
-        
-        group.notify(queue: .main) {
-            self.isLoading = false
-            print("✅ Challenge loading completed. hasAttended: \(self.hasAttended)")
         }
     }
+    
+    private func refreshInBackground(userId: String) {
+        guard networkMonitor.isConnected else { return }
+        
+        self.isRefreshing = true
+        networkService.fetchChallengeData(userId: userId) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isRefreshing = false
+                
+                if case .success(let data) = result {
+                    // Update data silently (without visibly changing the UI)
+                    self.challengeEvent = data.event
+                    self.hasAttended = data.hasAttended
+                    self.totalChallenges = data.totalChallenges
+                    self.last30DaysData = data.chartData
+                    // Do NOT change dataSource - keep the cache indicator
+                    
+                    // Update caches for next time
+                    self.cacheService.cacheChallenge(
+                        userId: userId,
+                        event: data.event,
+                        hasAttended: data.hasAttended,
+                        totalChallenges: data.totalChallenges,
+                        chartData: data.chartData
+                    )
+                    
+                    self.storageService.saveChallenge(
+                        userId: userId,
+                        event: data.event,
+                        hasAttended: data.hasAttended,
+                        totalChallenges: data.totalChallenges,
+                        chartData: data.chartData
+                    )
+                    
+                    print("✅ Updated in background (dataSource unchanged)")
+                }
+            }
+        }
+    }
+    
+    // MARK: - Mark as Attending
     
     func markAsAttending() {
-        guard let userId = currentUserId,
-              let event = challengeEvent else {
-            print("Error: No user or event available")
+        guard let userId = currentUserId, let event = challengeEvent else {
+            print("❌ No user or event available")
             return
         }
         
-        print("🔵 Saving activity for user: \(userId), event: \(event.name)")
+        print("🔵 Marking as attending...")
         
-        let activityData: [String: Any] = [
-            "event_id": event.name,
-            "source": "weekly_challenge",
-            "time": Timestamp(date: Date()),
-            "time_of_day": getCurrentTimeOfDay(),
-            "type": "weekly_challenge",
-            "user_id": userId,
-            "with_friends": false
-        ]
-        
-        print("🔵 Activity data: \(activityData)")
-        
-        db.collection("user_activities").addDocument(data: activityData) { [weak self] error in
-            guard let self = self else { return }
-            
-            if let error = error {
-                print("❌ Error saving activity: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self.errorMessage = "Error saving activity: \(error.localizedDescription)"
-                }
-            } else {
-                print("✅ Activity saved successfully!")
-                AnalyticsService.shared.logCheckIn(activityId: event.name, category: event.category)
-                self.updateUserLastEvent(userId: userId, eventName: event.name)
-            }
-        }
-    }
-
-    private func updateUserLastEvent(userId: String, eventName: String) {
-        let userRef = db.collection("users").document(userId)
-        
-        guard let event = challengeEvent else {
-            print("❌ Error: No event available")
-            return
-        }
-        
-        userRef.updateData([
-            "last_event": eventName,
-            "last_event_time": Timestamp(date: Date()),
-            "event_last_category": event.category
-        ]) { [weak self] error in
-            guard let self = self else { return }
-            
+        networkService.markAsAttending(userId: userId, event: event) { [weak self] result in
             DispatchQueue.main.async {
-                if let error = error {
-                    print("❌ Error updating last_event: \(error.localizedDescription)")
-                    self.errorMessage = "Error updating user profile: \(error.localizedDescription)"
-                } else {
-                    print("✅ User's last_event updated to: \(eventName), category: \(event.category)")
-                    self.hasAttended = true
-                    self.totalChallenges += 1
-                    self.loadChallenge()
-                }
-            }
-        }
-    }
-    
-    private func checkIfUserAttended(userId: String, eventId: String, completion: @escaping () -> Void) {
-        print("🔍 Checking attendance for user: \(userId), event: \(eventId)")
-        
-        db.collection("user_activities")
-            .whereField("user_id", isEqualTo: userId)
-            .whereField("event_id", isEqualTo: eventId)
-            .whereField("type", isEqualTo: "weekly_challenge")
-            .getDocuments { [weak self] snapshot, error in
-                guard let self = self else {
-                    completion()
-                    return
-                }
-                
-                if let error = error {
-                    print("❌ Error checking attendance: \(error.localizedDescription)")
-                    DispatchQueue.main.async {
-                        self.hasAttended = false
-                    }
-                    completion()
-                    return
-                }
-                
-                let documentsCount = snapshot?.documents.count ?? 0
-                let attended = documentsCount > 0
-                
-                print("📊 Documents found for this event: \(documentsCount)")
-                print(attended ? "✅ User HAS attended this event" : "❌ User has NOT attended this event")
-                
-                DispatchQueue.main.async {
-                    self.hasAttended = attended
-                    print("🔄 Updated hasAttended to: \(self.hasAttended)")
-                }
-                completion()
-            }
-    }
-    
-    private func loadUserChallengeStats(userId: String, completion: @escaping (Result<Int, Error>) -> Void) {
-        print("📊 Loading user challenge stats for: \(userId)")
-        
-        db.collection("user_activities")
-            .whereField("user_id", isEqualTo: userId)
-            .whereField("type", isEqualTo: "weekly_challenge")
-            .getDocuments { snapshot, error in
-                if let error = error {
-                    print("❌ Error loading stats: \(error.localizedDescription)")
-                    completion(.failure(error))
-                    return
-                }
-                
-                let count = snapshot?.documents.count ?? 0
-                print("✅ Total challenges found: \(count)")
-                completion(.success(count))
-            }
-    }
-    
-    private func loadLast30DaysData(userId: String, completion: @escaping (Result<[WeeklyChallengeChartData], Error>) -> Void) {
-        var calendar = Calendar.current
-        calendar.firstWeekday = 2
-        
-        let currentDate = Date()
-        
-        guard calendar.date(byAdding: .day, value: -30, to: currentDate) != nil else {
-            let error = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Error calculating date"])
-            completion(.failure(error))
-            return
-        }
-        
-        print("📊 Loading activities from last 30 days")
-        
-        db.collection("user_activities")
-            .whereField("user_id", isEqualTo: userId)
-            .whereField("type", isEqualTo: "weekly_challenge")
-            .getDocuments { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
-                if let error = error {
-                    print("❌ Error loading activities: \(error.localizedDescription)")
-                    completion(.failure(error))
-                    return
+                switch result {
+                case .success():
+                    print("✅ Successfully marked as attending")
+                    AnalyticsService.shared.logCheckIn(activityId: event.name, category: event.category)
+                    
+                    // Clear cache and reload to get fresh data
+                    self.forceRefresh()
+                    
+                case .failure(let error):
+                    self.errorMessage = "Error saving activity: \(error.localizedDescription)"
+                    print("❌ Error: \(error.localizedDescription)")
                 }
-                
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "MMM dd, yyyy HH:mm"
-                dateFormatter.timeZone = calendar.timeZone
-                
-                var activityDates: [Date] = []
-                if let documents = snapshot?.documents {
-                    print("📄 Found \(documents.count) total activities in last 30 days:")
-                    for doc in documents {
-                        let data = doc.data()
-                        if let timestamp = data["time"] as? Timestamp {
-                            let activityDate = timestamp.dateValue()
-                            activityDates.append(activityDate)
-                            print("   - \(dateFormatter.string(from: activityDate)) - Event: \(data["event_id"] ?? "Unknown")")
-                        }
-                    }
-                }
-                
-                var chartData: [WeeklyChallengeChartData] = []
-                var hasAttendedThisWeek = false
-                
-                for i in 0..<4 {
-                    let weeksAgo = 3 - i
-                    let targetDate = calendar.date(byAdding: .weekOfYear, value: -weeksAgo, to: currentDate) ?? currentDate
-                    
-                    guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: targetDate) else {
-                        continue
-                    }
-                    
-                    let startOfWeek = weekInterval.start
-                    let endOfWeek = weekInterval.end
-                    let label = weeksAgo == 0 ? "This Week" : "\(weeksAgo)w ago"
-                    
-                    let activitiesInWeek = activityDates.filter { activityDate in
-                        activityDate >= startOfWeek && activityDate < endOfWeek
-                    }
-                    
-                    let hasCompleted = !activitiesInWeek.isEmpty
-                    chartData.append(WeeklyChallengeChartData(label: label, count: hasCompleted ? 1 : 0))
-                    
-                    if weeksAgo == 0 {
-                        hasAttendedThisWeek = hasCompleted
-                    }
-                }
-                
-                DispatchQueue.main.async {
-                    self.hasAttended = hasAttendedThisWeek
-                    print("🔄 Final hasAttended: \(self.hasAttended)")
-                }
-                
-                completion(.success(chartData))
-            }
-    }
-    
-    // ✅ CAMBIO PRINCIPAL: Esta función ahora usa EventFactory
-    private func loadRandomEvent(completion: @escaping (Result<Event, Error>) -> Void) {
-        var calendar = Calendar.current
-        calendar.firstWeekday = 2
-        
-        let weekOfYear = calendar.component(.weekOfYear, from: Date())
-        let year = calendar.component(.year, from: Date())
-        
-        db.collection("events").getDocuments { snapshot, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
-            
-            guard let documents = snapshot?.documents, !documents.isEmpty else {
-                let error = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No events available"])
-                completion(.failure(error))
-                return
-            }
-            
-            let seed = weekOfYear + (year * 100)
-            let index = seed % documents.count
-            let selectedDoc = documents[index]
-            
-            // 🎯 HERE WE USE THE FACTORY - Replaces the 80+ lines of parseEvent
-            if let event = EventFactory.createEvent(from: selectedDoc) {
-                completion(.success(event))
-            } else {
-                let error = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse event"])
-                completion(.failure(error))
             }
         }
     }
     
-    private func getCurrentTimeOfDay() -> String {
-        let hour = Calendar.current.component(.hour, from: Date())
-        
-        switch hour {
-        case 6..<12:
-            return "morning"
-        case 12..<17:
-            return "afternoon"
-        case 17..<21:
-            return "evening"
-        default:
-            return "night"
-        }
+    // MARK: - Cache Management
+    
+    func forceRefresh() {
+        guard let userId = currentUserId else { return }
+        cacheService.clearCache(userId: userId)
+        storageService.deleteChallenge(userId: userId)
+        loadChallenge()
     }
     
-
+    func clearAllCache() {
+        guard let userId = currentUserId else { return }
+        cacheService.clearCache(userId: userId)
+        storageService.deleteChallenge(userId: userId)
+        challengeEvent = nil
+        hasAttended = false
+        totalChallenges = 0
+        last30DaysData = []
+        dataSource = .none
+    }
+    
+    func debugCache() {
+        guard let userId = currentUserId else { return }
+        cacheService.debugCache(userId: userId)
+        storageService.debugStorage(userId: userId)
+    }
 }

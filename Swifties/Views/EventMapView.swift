@@ -6,6 +6,7 @@
 
 import SwiftUI
 import MapKit
+import Network
 
 /// The geographic coordinates for Bogotá, Colombia.
 private let bogotaCoordinates = CLLocationCoordinate2D(latitude: 4.6533, longitude: -74.0836)
@@ -20,6 +21,13 @@ struct EventMapView: View {
                                                    span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
     @State private var showNearbyEvents = false
     @Environment(\.dismiss) var dismiss
+
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
+    private var offlineMessage: String {
+        validEvents.isEmpty
+            ? "No network connection - Cannot load map view"
+            : "No network connection - Showing cached version"
+    }
     
     // Filter events with valid coordinates
     private var validEvents: [Event] {
@@ -48,6 +56,42 @@ struct EventMapView: View {
         .sorted { $0.1 < $1.1 }
         
         return Array(withDistance.prefix(count).map { ($0, $1) })
+    }
+    
+    // Function to open directions in Apple Maps
+    private func openDirections(to event: Event) {
+        print("🔵 [DEBUG] openDirections called for event: \(event.name)")
+        
+        guard let coords = event.location?.coordinates, coords.count == 2 else {
+            print("❌ Cannot open directions: Invalid coordinates")
+            return
+        }
+        
+        print("🗺️ Valid coordinates found: \(coords)")
+        
+        let coordinate = CLLocationCoordinate2D(latitude: coords[0], longitude: coords[1])
+        let placemark = MKPlacemark(coordinate: coordinate)
+        let mapItem = MKMapItem(placemark: placemark)
+        mapItem.name = event.name
+        
+        // Log analytics when directions are requested
+        print("📊 About to call AnalyticsService.logDirectionRequest")
+        let eventIdToLog = event.id ?? "unknown"
+        print("   - Event ID: \(eventIdToLog)")
+        print("   - Event Name: \(event.name)")
+        
+        AnalyticsService.shared.logDirectionRequest(
+            eventId: eventIdToLog,
+            eventName: event.name
+        )
+        
+        print("✅ AnalyticsService.logDirectionRequest called successfully")
+        
+        mapItem.openInMaps(launchOptions: [
+            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+        ])
+        
+        print("🚗 Apple Maps opened")
     }
     
     var body: some View {
@@ -86,52 +130,61 @@ struct EventMapView: View {
                     }
                 }
             }
-            .ignoresSafeArea()
-                        
-            // Floating Action Button
-            VStack {
-                Spacer()
-                
-                if locationManager.lastLocation != nil {
-                    Button(action: {
-                        showNearbyEvents = true
-                    }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 16))
-                            Text("Close Events")
-                                .font(.system(size: 16, weight: .semibold))
+            
+            if !networkMonitor.isConnected {
+                HStack(spacing: 8) {
+                    Image(systemName: "wifi.slash")
+                        .foregroundColor(.red)
+                    Text(offlineMessage)
+                        .font(.subheadline)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.leading)
+                    Spacer()
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .padding()
+            } else {
+                // Floating Action Button
+                VStack {
+                    Spacer()
+                    
+                    if locationManager.lastLocation != nil {
+                        Button(action: {
+                            showNearbyEvents = true
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 16))
+                                Text("Close Events")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 14)
+                            .background(Color.pink)
+                            .cornerRadius(25)
+                            .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
                         }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 14)
-                        .background(Color.pink)
-                        .cornerRadius(25)
-                        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                        .padding(.bottom, 100)
                     }
-                    .padding(.bottom, 100)
                 }
             }
         }
         .onAppear {
-            locationManager.requestWhenInUseAuthorization()
-            if let userLocation = locationManager.lastLocation?.coordinate {
-                region.center = userLocation
-                region.span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-            }
-            
-            // Debug output
-            /*
-            print("Total events passed to map: \(events.count)")
-            print("Valid events with coordinates: \(validEvents.count)")
-            validEvents.forEach { event in
-                if let coords = event.location?.coordinates, coords.count == 2 {
-                    print("Event: \(event.name) at [\(coords[0]), \(coords[1])]")
+            if networkMonitor.isConnected {
+                locationManager.requestWhenInUseAuthorization()
+                if let userLocation = locationManager.lastLocation?.coordinate {
+                    region.center = userLocation
+                    region.span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                 }
-            }*/
+            } else {
+                print(offlineMessage)
+            }
         }
         .onReceive(locationManager.$lastLocation) { location in
-            guard let coord = location?.coordinate else { return }
+            guard networkMonitor.isConnected, let coord = location?.coordinate else { return }
             withAnimation {
                 region.center = coord
             }
@@ -141,18 +194,19 @@ struct EventMapView: View {
                 nearbyEvents: nearestEvents(from: locationManager.lastLocation, count: 5),
                 onEventTap: { event in
                     showNearbyEvents = false
-                    // Animate to event location
                     if let coords = event.location?.coordinates, coords.count == 2 {
                         withAnimation {
                             region.center = CLLocationCoordinate2D(latitude: coords[0], longitude: coords[1])
                             region.span = MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
                         }
                     }
-                    // Trigger selection after animation
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         selectedEvent = event
                         onSelect?(event)
                     }
+                },
+                onDirectionRequest: { event in
+                    openDirections(to: event)
                 }
             )
             .presentationDetents([.medium, .large])
@@ -165,6 +219,7 @@ struct EventMapView: View {
 struct NearbyEventsSheet: View {
     let nearbyEvents: [(event: Event, distance: CLLocationDistance)]
     let onEventTap: (Event) -> Void
+    let onDirectionRequest: (Event) -> Void
     
     private func distanceText(meters: CLLocationDistance) -> String {
         if meters < 1000 {
@@ -207,6 +262,9 @@ struct NearbyEventsSheet: View {
                             distance: distanceText(meters: item.distance),
                             onTap: {
                                 onEventTap(item.event)
+                            },
+                            onDirectionTap: {
+                                onDirectionRequest(item.event)
                             }
                         )
                     }
@@ -222,21 +280,22 @@ struct NearbyEventRow: View {
     let event: Event
     let distance: String
     let onTap: () -> Void
+    let onDirectionTap: () -> Void
     
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                // Rank badge
-                ZStack {
-                    Circle()
-                        .fill(Color(red: 0.89, green: 0.58, blue: 0.31))
-                        .frame(width: 32, height: 32)
-                    Text("\(rank)")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
-                }
-                
-                // Event info
+        HStack(spacing: 12) {
+            // Rank badge
+            ZStack {
+                Circle()
+                    .fill(Color(red: 0.89, green: 0.58, blue: 0.31))
+                    .frame(width: 32, height: 32)
+                Text("\(rank)")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            
+            // Event info (tappable)
+            Button(action: onTap) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(event.name)
                         .font(.system(size: 16, weight: .bold))
@@ -274,18 +333,23 @@ struct NearbyEventRow: View {
                         }
                     }
                 }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.gray)
             }
-            .padding()
-            .background(Color(.systemBackground))
-            .cornerRadius(12)
-            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            .buttonStyle(PlainButtonStyle())
+            
+            Spacer()
+            
+            // Direction button
+            Button(action: onDirectionTap) {
+                Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(.pink)
+            }
+            .buttonStyle(PlainButtonStyle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }
 

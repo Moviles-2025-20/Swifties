@@ -2,10 +2,41 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 import Combine
+import Network
 
 struct WeeklyChallengeView: View {
     @StateObject private var viewModel = WeeklyChallengeViewModel()
     @Environment(\.dismiss) var dismiss
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
+    private let offlineMessage = "No network connection - Cannot load progress"
+    
+    // MARK: - Computed Properties for Data Source Indicator
+    private var dataSourceIcon: String {
+        switch viewModel.dataSource {
+        case .memoryCache: return "memorychip"
+        case .realmStorage: return "internaldrive"
+        case .network: return "wifi"
+        case .none: return "questionmark"
+        }
+    }
+    
+    private var dataSourceText: String {
+        switch viewModel.dataSource {
+        case .memoryCache: return "Memory Cache"
+        case .realmStorage: return "Realm Storage"
+        case .network: return "Updated from Network"
+        case .none: return ""
+        }
+    }
+    
+    private var dataSourceColor: Color {
+        switch viewModel.dataSource {
+        case .memoryCache: return .purple
+        case .realmStorage: return .blue
+        case .network: return .green
+        case .none: return .secondary
+        }
+    }
     
     var body: some View {
         ZStack {
@@ -24,7 +55,64 @@ struct WeeklyChallengeView: View {
                     dismiss()
                 })
                 
-                if viewModel.isLoading {
+                // Data Source Indicator (NEW)
+                if !viewModel.isLoading && viewModel.challengeEvent != nil {
+                    HStack {
+                        Image(systemName: dataSourceIcon)
+                            .foregroundColor(dataSourceColor)
+                        Text(dataSourceText)
+                            .font(.caption)
+                            .foregroundColor(dataSourceColor)
+                        
+                        if viewModel.isRefreshing {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Updating...")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        // Debug button (optional, remove in production)
+                        Button(action: {
+                            viewModel.debugCache()
+                        }) {
+                            Image(systemName: "ladybug")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color(.systemBackground).opacity(0.8))
+                }
+                
+                if !networkMonitor.isConnected && viewModel.challengeEvent == nil && !viewModel.isLoading {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.exclamationmark")
+                                .foregroundColor(.orange)
+                            Text("No internet connection")
+                                .font(.subheadline)
+                                .foregroundColor(.orange)
+                                .multilineTextAlignment(.leading)
+                            Spacer()
+                        }
+                        HStack {
+                            Button("Retry") {
+                                viewModel.loadChallenge()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                            Spacer()
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .padding([.horizontal, .top])
+                } else if viewModel.isLoading {
                     Spacer()
                     ProgressView("Loading challenge...")
                         .foregroundColor(.primary)
@@ -38,6 +126,15 @@ struct WeeklyChallengeView: View {
                             .foregroundColor(.red)
                             .multilineTextAlignment(.center)
                             .padding()
+                        
+                        // Retry button
+                        Button("Retry") {
+                            viewModel.loadChallenge()
+                        }
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
                     }
                     Spacer()
                 } else {
@@ -316,6 +413,8 @@ struct WeeklyChallengeView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+                viewModel.debugCache()
+                // Always try to load (uses cache if available)
                 viewModel.loadChallenge()
             }
         }

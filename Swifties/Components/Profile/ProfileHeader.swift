@@ -4,6 +4,10 @@
 //
 
 import SwiftUI
+import PhotosUI
+import FirebaseAuth
+import FirebaseFirestore
+import FirebaseStorage
 
 // Profile Header Component
 struct ProfileHeader: View {
@@ -12,6 +16,13 @@ struct ProfileHeader: View {
     let major: String
     let age: Int
     let indoor_outdoor_score: Int
+    
+    @State private var showSourceMenu = false
+    @State private var showCamera = false
+    @State private var showPhotoPicker = false
+    @State private var selectedImage: UIImage?
+    @State private var photosPickerItem: PhotosPickerItem?
+    @State private var isUploading = false
     
     private var personalityLabel: String {
         if indoor_outdoor_score < 50 { return "Insider" }
@@ -23,7 +34,13 @@ struct ProfileHeader: View {
         HStack(spacing: 20) {
             // Profile Image
             Group {
-                if let avatar_url, let url = URL(string: avatar_url) {
+                if let image = selectedImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 90, height: 90)
+                        .clipShape(Circle())
+                } else if let avatar_url, let url = URL(string: avatar_url) {
                     AsyncImage(url: url) { phase in
                         switch phase {
                         case .empty:
@@ -57,11 +74,18 @@ struct ProfileHeader: View {
                         .foregroundColor(.gray)
                 }
             }
-            .background(
-                Circle()
-                    .fill(Color.pink.opacity(0.3))
-                    .frame(width: 90, height: 90)
-            )
+            .contextMenu {
+                Button {
+                    showPhotoPicker = true
+                } label: {
+                    Label("Choose from Photo Library", systemImage: "photo.on.rectangle")
+                }
+                Button {
+                    showCamera = true
+                } label: {
+                    Label("Take Photo", systemImage: "camera")
+                }
+            }
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)
@@ -87,6 +111,41 @@ struct ProfileHeader: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 20)
+        .photosPicker(isPresented: $showPhotoPicker, selection: $photosPickerItem, matching: .images)
+        .onChange(of: photosPickerItem) { _, newItem in
+            guard let newItem else { return }
+            Task {
+                if let data = try? await newItem.loadTransferable(type: Data.self), let uiImage = UIImage(data: data) {
+                    await uploadAndSave(image: uiImage)
+                }
+            }
+        }
+        .sheet(isPresented: $showCamera) {
+            ImagePicker(sourceType: .camera, image: $selectedImage)
+                .ignoresSafeArea()
+        }
+    }
+    
+    @MainActor
+    private func uploadAndSave(image: UIImage) async {
+        self.selectedImage = image
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let data = image.jpegData(compressionQuality: 0.85) else { return }
+        isUploading = true
+        defer { isUploading = false }
+
+        let filename = "users/\(uid)/avatar_\(uid).jpg"
+        let storageRef = Storage.storage().reference(withPath: filename)
+        do {
+            _ = try await storageRef.putDataAsync(data, metadata: nil)
+            let url = try await storageRef.downloadURL()
+            // Save reference path to Firestore under profile.photo as a String containing the storage path
+            let db = Firestore.firestore(database: "default")
+            let userRef = db.collection("users").document(uid)
+            try await userRef.setData(["profile": ["photo": url.absoluteString]], merge: true)
+        } catch {
+            print("Failed to upload or save photo: \(error)")
+        }
     }
 }
 

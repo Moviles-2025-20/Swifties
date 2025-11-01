@@ -9,110 +9,235 @@ import FirebaseAuth
 import FirebaseFirestore
 import Combine
 
-struct RecommendationResponse: Codable {
-    let user_id: String
-    let recommendations: [RecommendationItem]
-    let count: Int
-}
-
-struct RecommendationItem: Codable {
-    let id: String
-    let title: String
-    let category: String
-    let score: Double
-}
-
 @MainActor
 final class HomeViewModel: ObservableObject {
-    let db = Firestore.firestore(database: "default")
-    // ❌ Ya no necesitas esta línea - EventListViewModel ya no tiene parseEvent
-    // let eventListViewModel = EventListViewModel()
     @Published var recommendations: [Event] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    @Published var dataSource: DataSource = .none
+    @Published var isRefreshing = false
     
-    init() {
-        let settings = FirestoreSettings()
-        self.db.settings = settings
+    enum DataSource {
+        case none
+        case memoryCache
+        case localStorage
+        case network
     }
     
-    // MARK: - Get Recommendations
+    private let cacheService = RecommendationCacheService.shared
+    private let storageService = RecommendationStorageService.shared
+    private let networkService = RecommendationNetworkService.shared
+    private let networkMonitor = NetworkMonitorService.shared
+    
+    init() {}
+    
+    // MARK: - Load Recommendations (Three-Layer Cache)
+    
     func getRecommendations() async {
-        let defaultResults: [String] = [
-            "19ph2WwBuiuI0Rgw7t5F",
-            "1XrXxsVrJWnFCsmDJ3YH",
-            "6avFMINUtpniHV2EIl6m",
-            "LX7WvPRQrAgPQ40GEhOy",
-            "SdmE00SDRbcclnQ0lvlf"
-        ]
+        isLoading = true
+        errorMessage = nil
         
-        guard let userID = Auth.auth().currentUser?.uid else {
-            print("⚠️ User not logged in — using default recommendations.")
-            await loadRecommendations(from: defaultResults)
+        guard let userId = Auth.auth().currentUser?.uid else {
+            isLoading = false
+            errorMessage = "No authenticated user"
             return
         }
         
-        // Construct URL safely
-        guard let url = URL(string: "https://us-central1-parchandes-7e096.cloudfunctions.net/get_recommendations?user_id=\(userID)") else {
-            print("⚠️ Invalid URL — using default recommendations.")
-            await loadRecommendations(from: defaultResults)
+        // Layer 1: Try memory cache
+        if let cached = cacheService.getCachedRecommendations(), !cached.isEmpty {
+            recommendations = cached
+            dataSource = .memoryCache
+            isLoading = false
+            print("✅ Recommendations loaded from memory cache (\(cached.count) items)")
+            
+            // Refresh in background if connected
+            Task {
+                await refreshInBackground(userId: userId)
+            }
             return
         }
+        
+        // Layer 2: Try local storage (SQLite)
+        if let stored = storageService.loadRecommendationsFromStorage(userId: userId), !stored.isEmpty {
+            recommendations = stored
+            dataSource = .localStorage
+            isLoading = false
+            
+            // Cache in memory for next time
+            cacheService.cacheRecommendations(stored)
+            print("✅ Recommendations loaded from local storage (\(stored.count) items)")
+            
+            // Refresh in background if connected
+            Task {
+                await refreshInBackground(userId: userId)
+            }
+            return
+        }
+        
+        // Layer 3: Fetch from network
+        if networkMonitor.isConnected {
+            await fetchFromNetwork(userId: userId)
+        } else {
+            isLoading = false
+            errorMessage = "No internet connection and no saved recommendations available"
+            dataSource = .none
+            print("❌ No connection and no local recommendations")
+        }
+    }
+    
+    private func fetchFromNetwork(userId: String) async {
+        do {
+            let events = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[Event], Error>) in
+                networkService.fetchRecommendations(userId: userId) { result in
+                    switch result {
+                    case .success(let events):
+                        continuation.resume(returning: events)
+                    case .failure(let error):
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+            
+            // Handle successful response
+            isLoading = false
+            
+            if events.isEmpty {
+                // Network returned empty array
+                errorMessage = "No recommendations available at this time"
+                dataSource = .network
+                print("⚠️ Network returned 0 recommendations")
+            } else {
+                // Success with data
+                recommendations = events
+                dataSource = .network
+                
+                // Save to both cache layers
+                cacheService.cacheRecommendations(events)
+                storageService.saveRecommendationsToStorage(events, userId: userId)
+                
+                print("✅ \(events.count) recommendations loaded from network and cached")
+            }
+            
+        } catch {
+            // Handle error
+            isLoading = false
+            errorMessage = "Failed to load recommendations: \(error.localizedDescription)"
+            dataSource = .none
+            print("❌ Network error: \(error.localizedDescription)")
+        }
+    }
+    
+    private func refreshInBackground(userId: String) async {
+        guard networkMonitor.isConnected else { return }
+        
+        isRefreshing = true
         
         do {
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.timeoutInterval = 20 // optional safety
-            
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("❌ Invalid response — using defaults")
-                await loadRecommendations(from: defaultResults)
-                return
-            }
-            
-            guard httpResponse.statusCode == 200 else {
-                print("⚠️ Server responded with non-200 — using defaults")
-                await loadRecommendations(from: defaultResults)
-                return
-            }
-            
-            // Try decoding response as array of dicts with 'id'
-            let decoded = try JSONDecoder().decode(RecommendationResponse.self, from: data)
-            let eventIDs = decoded.recommendations.map { $0.id }
-            await loadRecommendations(from: eventIDs)
-        } catch {
-            print("❌ Error fetching recommendations: \(error.localizedDescription)")
-            await loadRecommendations(from: defaultResults)
-        }
-    }
-    
-    // MARK: - Load Events from Firestore
-    private func loadRecommendations(from eventIDs: [String]) async {
-        var tempEvents: [Event] = []
-        
-        for eventID in eventIDs {
-            do {
-                let document = try await db.collection("events").document(eventID).getDocument()
-                
-                if let event = EventFactory.createEvent(from: document) {
-                    tempEvents.append(event)
-                } else {
-                    print("No valid data for document \(eventID)")
+            let events = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[Event], Error>) in
+                networkService.fetchRecommendations(userId: userId) { result in
+                    switch result {
+                    case .success(let events):
+                        continuation.resume(returning: events)
+                    case .failure(let error):
+                        continuation.resume(throwing: error)
+                    }
                 }
-            } catch {
-                print("Failed to fetch document \(eventID): \(error.localizedDescription)")
             }
+            
+            isRefreshing = false
+            
+            if !events.isEmpty {
+                // Update UI only if we got valid data
+                recommendations = events
+                dataSource = .network
+                
+                // Update caches
+                cacheService.cacheRecommendations(events)
+                storageService.saveRecommendationsToStorage(events, userId: userId)
+                
+                print("✅ Recommendations updated in background (\(events.count) items)")
+            } else {
+                print("⚠️ Background refresh returned 0 recommendations - keeping existing data")
+            }
+            
+        } catch {
+            isRefreshing = false
+            print("⚠️ Background refresh failed: \(error.localizedDescription) - keeping existing data")
         }
-        
-        // Update published property
-        recommendations = tempEvents
     }
     
-    // Fetch all events for map and other listings
+    func forceRefresh() async {
+        guard Auth.auth().currentUser?.uid != nil else { return }
+        
+        // Clear caches to force network fetch
+        cacheService.clearCache()
+        
+        // Show loading state
+        isLoading = true
+        errorMessage = nil
+        dataSource = .none
+        
+        await getRecommendations()
+    }
+    
+    func clearAllCache() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        cacheService.clearCache()
+        storageService.clearStorage(userId: userId)
+        recommendations = []
+        dataSource = .none
+        errorMessage = nil
+        print("🗑️ All caches cleared")
+    }
+    
+    func debugCache() {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("❌ No authenticated user for cache debug")
+            return
+        }
+        
+        print("\n" + String(repeating: "=", count: 50))
+        print("RECOMMENDATION CACHE DEBUG")
+        print(String(repeating: "=", count: 50))
+        
+        // Memory cache info
+        if let age = cacheService.getCacheAge() {
+            let minutes = Int(age / 60)
+            print("📱 Memory Cache: Active (\(minutes) minutes old)")
+        } else {
+            print("📱 Memory Cache: Empty")
+        }
+        
+        // Storage info
+        let storageInfo = storageService.getStorageInfo(userId: userId)
+        print("💾 Local Storage: \(storageInfo.recommendationCount) recommendations")
+        if let age = storageInfo.ageInHours {
+            print("   Age: \(String(format: "%.1f", age)) hours")
+            print("   Status: \(storageInfo.isExpired ? "Expired" : "Valid")")
+        } else {
+            print("   Status: Empty")
+        }
+        
+        // Current state
+        print("📊 Current State:")
+        print("   Recommendations loaded: \(recommendations.count)")
+        print("   Data source: \(dataSource)")
+        print("   Network: \(networkMonitor.isConnected ? "Connected" : "Offline")")
+        if let error = errorMessage {
+            print("   Error: \(error)")
+        }
+        
+        print(String(repeating: "=", count: 50) + "\n")
+        
+        // Detailed database debug
+        storageService.debugStorage(userId: userId)
+    }
+    
+    // MARK: - Fetch all events (for other features)
     func getAllEvents() async throws -> [Event] {
+        let db = Firestore.firestore(database: "default")
         let snapshot = try await db.collection("events").getDocuments()
         
-        // ✅ Use EventFactory directly
         let events: [Event] = snapshot.documents.compactMap { doc in
             EventFactory.createEvent(from: doc)
         }

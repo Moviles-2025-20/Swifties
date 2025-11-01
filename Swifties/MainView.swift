@@ -11,6 +11,7 @@ struct MainView: View {
     
     // MARK: - Properties
     @State private var selectedTab: Int = 0
+    @EnvironmentObject var authViewModel: AuthViewModel
     
     // MARK: - Body
     var body: some View {
@@ -26,7 +27,6 @@ struct MainView: View {
     @ViewBuilder
     private func contentView(for tab: Int) -> some View {
         switch tab {
-            
         case 0:
             HomeView()
         case 1:

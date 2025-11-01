@@ -18,10 +18,17 @@ class AuthViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var error: String?
     @Published var isFirstTimeUser: Bool = false
+    @Published var isEmailVerified: Bool = false
+    @Published var isCheckingProfile: Bool = true
     
     // AuthService singleton
     private let authService = AuthService.shared
     let db = Firestore.firestore(database: "default")
+    
+    // Offline support services
+    private let userDefaultsService = UserDefaultsService.shared
+    private let networkMonitor = NetworkMonitorService.shared
+    private var cancellables = Set<AnyCancellable>()
 
     // Task for auth listener
     private var authListenerTask: Task<Void, Never>?
@@ -34,6 +41,33 @@ class AuthViewModel: ObservableObject {
     // Initialize and listen to auth state changes
     init() {
         startAuthListener()
+        observeNetworkChanges()
+    }
+    
+    // MARK: - Observe Network Changes
+    private func observeNetworkChanges() {
+        // Listen for successful sync completion
+        NotificationCenter.default.publisher(for: .registrationSyncCompleted)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                Task { @MainActor in
+                    print("🔄 Registration sync completed - rechecking user status...")
+                    await self.recheckUserStatus()
+                }
+            }
+            .store(in: &cancellables)
+        
+        // Listen for network connection restoration
+        networkMonitor.$isConnected
+            .removeDuplicates()
+            .sink { [weak self] isConnected in
+                guard let self = self, isConnected else { return }
+                Task { @MainActor in
+                    print("🌐 Network restored - attempting to sync pending data...")
+                    await RegistrationSyncService.shared.syncPendingRegistration()
+                }
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Auth State Listener
@@ -43,43 +77,102 @@ class AuthViewModel: ObservableObject {
                 if let firebaseUser = firebaseUser {
                     let providerId = firebaseUser.providerData.first?.providerID ?? "unknown"
                     self.user = UserAuthModel.fromFirebase(firebaseUser, providerId: providerId)
+                    self.isEmailVerified = firebaseUser.isEmailVerified
                     await checkFirstTimeUser()
                 } else {
                     self.user = nil
                     self.isFirstTimeUser = false
+                    self.isCheckingProfile = false
                 }
             }
         }
     }
     
-    // MARK: - Check First Time User (FIXED)
+    // MARK: - Check First Time User (WITH IMPROVED OFFLINE SUPPORT)
     private func checkFirstTimeUser() async {
-        guard let user = user else { return }
+        guard let user = user else {
+            isCheckingProfile = false
+            return
+        }
         
-        do {
-            // Check if user document exists in Firestore
-            let document = try await db.collection("users").document(user.uid).getDocument()
+        isCheckingProfile = true
+        defer { isCheckingProfile = false }
+        
+        // CRITICAL: First check if registration was completed offline
+        if userDefaultsService.hasCompletedRegistrationLocally() {
+            print("✅ Found completed registration in UserDefaults - treating as returning user")
+            self.isFirstTimeUser = false
             
-            // User is first-time if document doesn't exist OR doesn't have profile data
-            if !document.exists {
-                print("First time user - no Firestore document found")
-                isFirstTimeUser = true
-            } else if let data = document.data(),
-                      let profile = data["profile"] as? [String: Any],
-                      profile["name"] != nil {
-                // Document exists and has profile data - returning user
-                print("Returning user - profile found in Firestore")
+            // If we have pending data to sync, try syncing it now
+            if userDefaultsService.hasPendingRegistration() && networkMonitor.isConnected {
+                print("🔄 Found pending registration data - attempting to sync...")
+                await RegistrationSyncService.shared.syncPendingRegistration()
+            }
+            return
+        }
+        
+        // Check if we have cached registration status for this user
+        if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
+            print("✅ Found cached registration status for user \(user.uid) - treating as returning user")
+            self.isFirstTimeUser = false
+            return
+        }
+        
+        // Check Firestore if online
+        if networkMonitor.isConnected {
+            do {
+                let document = try await db.collection("users").document(user.uid).getDocument()
+                
+                // User is first-time if document doesn't exist OR doesn't have profile data
+                if !document.exists {
+                    print("📡 First time user - no Firestore document found")
+                    isFirstTimeUser = true
+                    // Cache this status
+                    userDefaultsService.cacheRegistrationStatus(uid: user.uid, completed: false)
+                } else if let data = document.data(),
+                          let profile = data["profile"] as? [String: Any],
+                          profile["name"] != nil {
+                    // Document exists and has profile data - returning user
+                    print("📡 Returning user - profile found in Firestore")
+                    isFirstTimeUser = false
+                    // IMPORTANT: Cache this status for offline use
+                    userDefaultsService.cacheRegistrationStatus(uid: user.uid, completed: true)
+                } else {
+                    // Document exists but incomplete - treat as first time
+                    print("⚠️ Incomplete profile - treating as first time user")
+                    isFirstTimeUser = true
+                    userDefaultsService.cacheRegistrationStatus(uid: user.uid, completed: false)
+                }
+            } catch {
+                print("❌ Error checking user document: \(error.localizedDescription)")
+                
+                // On error while online, check if we have cached status to fall back on
+                if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
+                    print("⚠️ Using cached registration status due to Firestore error")
+                    isFirstTimeUser = false
+                } else {
+                    // No cached data and error - assume first time to be safe
+                    isFirstTimeUser = true
+                }
+            }
+        } else {
+            // Offline - check if we have cached status for this specific user
+            if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
+                print("📱 Offline - using cached registration status: User has completed registration")
                 isFirstTimeUser = false
             } else {
-                // Document exists but incomplete - treat as first time
-                print("⚠️ Incomplete profile - treating as first time user")
+                print("⚠️ Offline with no cached registration status - treating as first time user")
+                print("⚠️ This can happen after reinstall. User should connect to internet once to verify.")
                 isFirstTimeUser = true
             }
-        } catch {
-            print("❌ Error checking user document: \(error.localizedDescription)")
-            // On error, assume first time user to be safe
-            isFirstTimeUser = true
         }
+    }
+    
+    // MARK: - Recheck User Status (after sync)
+    private func recheckUserStatus() async {
+        guard let uid = user?.uid else { return }
+        print("🔄 Rechecking user status after sync...")
+        await checkFirstTimeUser()
     }
     
     // MARK: - Auth Providers
@@ -115,6 +208,7 @@ class AuthViewModel: ObservableObject {
                 result = try await authService.loginWithTwitter()
             }
             self.user = UserAuthModel.fromFirebase(result.user, providerId: result.providerId)
+            self.isEmailVerified = result.user.isEmailVerified
         } catch let authError as AuthenticationError {
             self.error = authError.localizedDescription
             self.user = nil
@@ -178,6 +272,7 @@ class AuthViewModel: ObservableObject {
         do {
             let result = try await authService.registerWithEmail(email: email, password: password)
             self.user = UserAuthModel.fromFirebase(result.user, providerId: result.providerId)
+            self.isEmailVerified = result.user.isEmailVerified
         } catch let authError as AuthenticationError {
             self.error = authError.localizedDescription
             self.user = nil
@@ -224,13 +319,10 @@ class AuthViewModel: ObservableObject {
         do {
             try await currentUser.reload()
             self.user = UserAuthModel.fromFirebase(currentUser, providerId: currentUser.providerData.first?.providerID ?? "password")
+            self.isEmailVerified = currentUser.isEmailVerified
         } catch {
             print("Error reloading user: \(error.localizedDescription)")
         }
-    }
-
-    var isEmailVerified: Bool {
-        return Auth.auth().currentUser?.isEmailVerified ?? false
     }
 
     // MARK: - Logout
@@ -239,8 +331,20 @@ class AuthViewModel: ObservableObject {
         error = nil
         
         do {
+            // Get UID before logout
+            let uid = user?.uid
+            
             try await authService.logout()
             self.user = nil
+            
+            // Clear pending registration data
+            userDefaultsService.clearAllData()
+            
+            // Clear cached registration status for this user
+            if let uid = uid {
+                userDefaultsService.cacheRegistrationStatus(uid: uid, completed: false)
+            }
+            
         } catch {
             self.error = error.localizedDescription
             print("Logout error: \(error.localizedDescription)")
@@ -249,15 +353,15 @@ class AuthViewModel: ObservableObject {
         isLoading = false
     }
     
-    // MARK: - Mark as Returning User
-    // Call this after successful registration
-    func markAsReturningUser() {
+    // MARK: - Mark as Returning User (UPDATED)
+    func markAsReturningUser() async {
+        // Mark registration as completed locally
+        userDefaultsService.markRegistrationCompleted()
         isFirstTimeUser = false
-        print("User marked as returning user")
+        print("✅ User marked as returning user")
     }
     
     // MARK: - Refresh User Status
-    // Call this to manually check if user has completed registration
     func refreshUserStatus() async {
         await checkFirstTimeUser()
     }
@@ -276,6 +380,10 @@ class AuthViewModel: ObservableObject {
             // Then delete auth account
             try await authService.deleteAccount()
             self.user = nil
+            
+            // Clear local data
+            userDefaultsService.clearAllData()
+            
         } catch {
             self.error = error.localizedDescription
             print("Delete account error: \(error.localizedDescription)")
@@ -284,10 +392,8 @@ class AuthViewModel: ObservableObject {
         isLoading = false
     }
     
-    
     // MARK: - Cleanup
     deinit {
         authListenerTask?.cancel()
     }
 }
-

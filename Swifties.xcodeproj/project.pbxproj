@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		884694CB2EB3D84A0068BD86 /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 884694CA2EB3D84A0068BD86 /* RealmSwift */; };
+		E1465E5F2EB55E5200334799 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 882B00682EB10437003042A5 /* SQLite */; };
+		E162020F2EB42F9000EDBA93 /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = 884694CA2EB3D84A0068BD86 /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		E165F9152E921FD4001D8B00 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = E165F9142E921FD4001D8B00 /* FirebaseCrashlytics */; };
 		E168A9662E8DC88A00BAF013 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E168A9652E8DC88A00BAF013 /* GoogleSignIn */; };
 		E168A9682E8DC88A00BAF013 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E168A9672E8DC88A00BAF013 /* GoogleSignInSwift */; };
@@ -34,6 +37,20 @@
 			remoteInfo = Swifties;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E16202102EB42F9000EDBA93 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				E162020F2EB42F9000EDBA93 /* RealmSwift in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		E1544D252E885ABB00B3320D /* Swifties.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Swifties.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -78,6 +95,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E1465E5F2EB55E5200334799 /* SQLite in Frameworks */,
 				E1822BF42E8C4CF6008FC420 /* FirebaseAnalytics in Frameworks */,
 				E1822BF82E8C4CF6008FC420 /* FirebaseFirestore in Frameworks */,
 				E168A9682E8DC88A00BAF013 /* GoogleSignInSwift in Frameworks */,
@@ -85,6 +103,7 @@
 				E1822BFA2E8C4CF6008FC420 /* FirebaseStorage in Frameworks */,
 				E165F9152E921FD4001D8B00 /* FirebaseCrashlytics in Frameworks */,
 				E1822BF22E8C4CF6008FC420 /* FirebaseAI in Frameworks */,
+				884694CB2EB3D84A0068BD86 /* RealmSwift in Frameworks */,
 				E168A9662E8DC88A00BAF013 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -116,7 +135,15 @@
 				E1E5F5062E885E9F0095FBC4 /* SwiftiesUITests.xctest */,
 				E1E5F5072E885E9F0095FBC4 /* SwiftiesUITests */,
 				E168A9692E8DC94D00BAF013 /* GoogleService-Info.plist */,
+				FE81A5FA2EB50EFA00099CDF /* Frameworks */,
 			);
+			sourceTree = "<group>";
+		};
+		FE81A5FA2EB50EFA00099CDF /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -129,6 +156,7 @@
 				E1A16D492E84BD9A003D5B39 /* Sources */,
 				E1A16D4A2E84BD9A003D5B39 /* Frameworks */,
 				E1A16D4B2E84BD9A003D5B39 /* Resources */,
+				E16202102EB42F9000EDBA93 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -147,6 +175,8 @@
 				E168A9652E8DC88A00BAF013 /* GoogleSignIn */,
 				E168A9672E8DC88A00BAF013 /* GoogleSignInSwift */,
 				E165F9142E921FD4001D8B00 /* FirebaseCrashlytics */,
+				882B00682EB10437003042A5 /* SQLite */,
+				884694CA2EB3D84A0068BD86 /* RealmSwift */,
 			);
 			productName = Swifties;
 			productReference = E1544D252E885ABB00B3320D /* Swifties.app */;
@@ -234,6 +264,8 @@
 			packageReferences = (
 				E1822BF02E8C4CF6008FC420 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				E168A9642E8DC88A00BAF013 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				882B00672EB10437003042A5 /* XCRemoteSwiftPackageReference "SQLite" */,
+				884694C92EB3D84A0068BD86 /* XCRemoteSwiftPackageReference "realm-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E1A16D442E84BD9A003D5B39;
@@ -675,6 +707,22 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		882B00672EB10437003042A5 /* XCRemoteSwiftPackageReference "SQLite" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stephencelis/SQLite.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.15.4;
+			};
+		};
+		884694C92EB3D84A0068BD86 /* XCRemoteSwiftPackageReference "realm-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/realm/realm-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.45.0;
+			};
+		};
 		E168A9642E8DC88A00BAF013 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
@@ -694,6 +742,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		882B00682EB10437003042A5 /* SQLite */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 882B00672EB10437003042A5 /* XCRemoteSwiftPackageReference "SQLite" */;
+			productName = SQLite;
+		};
+		884694CA2EB3D84A0068BD86 /* RealmSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 884694C92EB3D84A0068BD86 /* XCRemoteSwiftPackageReference "realm-swift" */;
+			productName = RealmSwift;
+		};
 		E165F9142E921FD4001D8B00 /* FirebaseCrashlytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E1822BF02E8C4CF6008FC420 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

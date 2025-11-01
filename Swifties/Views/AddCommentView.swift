@@ -29,8 +29,9 @@ struct AddCommentView: View {
     @State private var isSubmitting: Bool = false
     @State private var submitError: String? = nil
 
-    // Word limit
-    private let wordLimit: Int = 500
+    // Character limits
+    private let titleCharLimit: Int = 50
+    private let descriptionCharLimit: Int = 500
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -55,9 +56,20 @@ struct AddCommentView: View {
                             TextField("Add a title to your review", text: $reviewTitle)
                                 .textFieldStyle(.roundedBorder)
                                 .textInputAutocapitalization(.sentences)
+                                .onChange(of: reviewTitle) { _ in
+                                    if reviewTitle.count > titleCharLimit {
+                                        reviewTitle = String(reviewTitle.prefix(titleCharLimit))
+                                    }
+                                }
+                            HStack {
+                                Spacer()
+                                Text("\(reviewTitle.count)/\(titleCharLimit) characters")
+                                    .font(.caption)
+                                    .foregroundColor(reviewTitle.count > titleCharLimit ? .red : .secondary)
+                            }
                         }
 
-                        // Description with word limit
+                        // Description with character limit
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Description")
                                 .font(.headline)
@@ -68,14 +80,14 @@ struct AddCommentView: View {
                                     .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(10)
                                     .onChange(of: reviewDescription) { _ in
-                                        if commentViewModel.currentWordCount(reviewDescription: reviewDescription) > wordLimit {
-                                            reviewDescription = commentViewModel.enforceWordLimit(reviewDescription: reviewDescription, wordLimit: wordLimit)
+                                        if reviewDescription.count > descriptionCharLimit {
+                                            reviewDescription = String(reviewDescription.prefix(descriptionCharLimit))
                                         }
                                     }
 
                                 // Placeholder
                                 if reviewDescription.isEmpty {
-                                    Text("Share your experience (max \(wordLimit) words)...")
+                                    Text("Share your experience (max \(descriptionCharLimit) characters)...")
                                         .foregroundColor(.secondary)
                                         .padding(.horizontal, 14)
                                         .padding(.vertical, 14)
@@ -83,9 +95,9 @@ struct AddCommentView: View {
                             }
                             HStack {
                                 Spacer()
-                                Text("\(commentViewModel.currentWordCount(reviewDescription: reviewDescription))/\(wordLimit) words")
+                                Text("\(reviewDescription.count)/\(descriptionCharLimit) characters")
                                     .font(.caption)
-                                    .foregroundColor(commentViewModel.currentWordCount(reviewDescription: reviewDescription) > wordLimit ? .red : .secondary)
+                                    .foregroundColor(reviewDescription.count > descriptionCharLimit ? .red : .secondary)
                             }
                         }
 
@@ -212,12 +224,12 @@ struct AddCommentView: View {
         reviewTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         reviewDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         rating == 0 ||
-        commentViewModel.currentWordCount(reviewDescription: reviewDescription) > wordLimit
+        reviewTitle.count > titleCharLimit ||
+        reviewDescription.count > descriptionCharLimit
     }
 
     @MainActor
     private func submit() async {
-        // Validate prerequisites
         guard let eventId = event.id, !eventId.isEmpty else {
             submitError = "Missing event identifier."
             return
@@ -230,6 +242,7 @@ struct AddCommentView: View {
         isSubmitting = true
         defer { isSubmitting = false }
 
+        // Route through view model which handles caching > local storage > network upload
         let payload = CommentViewModel.SubmissionPayload(
             eventId: eventId,
             userId: uid,
@@ -268,7 +281,6 @@ struct AddCommentView: View {
 }
 
 // MARK: - Emotion
-
 enum Emotion: String, CaseIterable, Identifiable {
     case sad, happy, angry, emotional
     var id: String { rawValue }
@@ -282,4 +294,3 @@ enum Emotion: String, CaseIterable, Identifiable {
         }
     }
 }
-

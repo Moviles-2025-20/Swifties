@@ -10,6 +10,8 @@ import UIKit
 final class CommentViewModel: ObservableObject {
     private let db = Firestore.firestore(database: "default")
     private let storage = Storage.storage()
+    private let networkMonitor = NetworkMonitorService.shared
+    private let submitCoordinator = CommentSubmitCoordinator.shared
 
     struct SubmissionPayload {
         let eventId: String
@@ -19,6 +21,25 @@ final class CommentViewModel: ObservableObject {
         let image: UIImage?
         let rating: Int
         let emotion: String
+    }
+    
+    // Public method forwarding to internal submit
+    public func submit(_ payload: SubmissionPayload) async throws {
+        if networkMonitor.isConnected {
+            // Online: perform online submit directly (throws upward on error)
+            try await onlineSubmit(payload)
+        } else {
+            // Offline-first: submit to coordinator and respect the returned Result
+            let result = try await submitCoordinator.submitOfflineFirst(payload: payload)
+            switch result {
+            case .success:
+                // nothing to do — saved for later
+                return
+            case .failure(let error):
+                // Surface the error so the caller (UI) can display it
+                throw error
+            }
+        }
     }
     
     // Precompiled regex for faster loading times
@@ -41,7 +62,7 @@ final class CommentViewModel: ObservableObject {
         }
     }
 
-    func submit(_ payload: SubmissionPayload) async throws {
+    func onlineSubmit(_ payload: SubmissionPayload) async throws {
         // Create a new document reference first so we can use its ID for the storage path
         let docRef = db.collection("comments").document()
 
@@ -61,11 +82,11 @@ final class CommentViewModel: ObservableObject {
             emotion: payload.emotion
         )
 
-        try await docRef.setData(toFirestore(comment: comment))
+        try await docRef.setData(toFirestore: comment)
     }
     
     // Firestore payload
-    private func toFirestore(comment: Comment) -> [String: Any] {
+    func toFirestore(comment: Comment) -> [String: Any] {
         var metadataDict: [String: Any] = [
             "title": comment.metadata.title,
             "text": comment.metadata.text,
@@ -99,24 +120,31 @@ final class CommentViewModel: ObservableObject {
     
     // MARK: Functions used to solve word counts and limits
     /// Returns the number of words in the given string, using the same logic as enforceWordLimit.
-    func currentWordCount(reviewDescription: String) -> Int {
+    func currentWordCount(in text: String) -> Int {
         let regex = CommentViewModel.wordRegex
-        let nsText = reviewDescription as NSString
-        let matches = regex.matches(in: reviewDescription, options: [], range: NSRange(location: 0, length: nsText.length))
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
         return matches.count
     }
 
-    func enforceWordLimit(reviewDescription: String, wordLimit: Int) -> String {
+    func enforceWordLimit(in text: String, to wordLimit: Int) -> String {
         // Use regex to find word ranges, then cut the string at the end of the Nth word
         let regex = CommentViewModel.wordRegex
-        let nsText = reviewDescription as NSString
-        let matches = regex.matches(in: reviewDescription, options: [], range: NSRange(location: 0, length: nsText.length))
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
         if matches.count > wordLimit, let lastWordRange = matches.prefix(wordLimit).last?.range {
             // The end of the Nth word
             let endIndex = lastWordRange.location + lastWordRange.length
             let limitedText = nsText.substring(to: endIndex)
             return limitedText
         }
-        return reviewDescription
+        return text
+    }
+}
+
+extension DocumentReference {
+    func setData(toFirestore comment: Comment) async throws {
+        let data = CommentViewModel().toFirestore(comment: comment)
+        try await setData(data)
     }
 }

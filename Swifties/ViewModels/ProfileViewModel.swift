@@ -168,43 +168,87 @@ final class UserProfileRepository {
     }
 }
 
-
 @MainActor
 final class ProfileViewModel: ObservableObject {
     @Published var profile: UserModel?
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var dataSource: DataSource = .none
 
-    private let repository: UserProfileRepository
-
-    init(repository: UserProfileRepository? = nil) {
-        if let repository {
-            self.repository = repository
-        } else {
-            self.repository = UserProfileRepository()
-        }
+    enum DataSource {
+        case none, memoryCache, localStorage, network
     }
 
-    func loadProfile(userID: String? = Auth.auth().currentUser?.uid) {
-        guard let uid = userID else {
-            self.errorMessage = "You are not logged in."
+    private let cacheService = ProfileCacheService.shared
+    private let storageService = ProfileStorageService.shared
+    private let networkService = ProfileNetworkService.shared
+    private let networkMonitor = NetworkMonitorService.shared
+
+    func loadProfile() {
+        isLoading = true
+        errorMessage = nil
+
+        // 1) Memory cache
+        if let cached = cacheService.getCachedProfile() {
+            self.profile = cached
+            self.dataSource = .memoryCache
             self.isLoading = false
             return
         }
 
-        isLoading = true
-        errorMessage = nil
+        // 2) Local storage
+        if let stored = storageService.loadProfile() {
+            self.profile = stored
+            self.dataSource = .localStorage
+            self.isLoading = false
+            // refresh in background if online
+            refreshInBackground()
+            return
+        }
 
-        Task {
-            do {
-                let loaded = try await repository.loadProfile(userID: uid)
-                self.profile = loaded
+        // 3) Network
+        guard networkMonitor.isConnected else {
+            self.isLoading = false
+            self.errorMessage = "No internet connection and no saved profile found"
+            return
+        }
+
+        fetchFromNetwork()
+    }
+
+    private func fetchFromNetwork() {
+        networkService.fetchProfile { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
                 self.isLoading = false
-            } catch {
-                self.errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                self.isLoading = false
+                switch result {
+                case .success(let profile):
+                    self.profile = profile
+                    self.dataSource = .network
+                    self.cacheService.cacheProfile(profile)
+                    self.storageService.saveProfile(profile)
+                case .failure(let error):
+                    self.errorMessage = "Error loading profile: \(error.localizedDescription)"
+                }
             }
         }
     }
-}
 
+    private func refreshInBackground() {
+        guard networkMonitor.isConnected else { return }
+        networkService.fetchProfile { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                if case .success(let profile) = result {
+                    self.cacheService.cacheProfile(profile)
+                    self.storageService.saveProfile(profile)
+                }
+            }
+        }
+    }
+
+    func forceRefresh() {
+        cacheService.clearCache()
+        loadProfile()
+    }
+}

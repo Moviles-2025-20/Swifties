@@ -9,7 +9,8 @@ import SwiftUI
 
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var networkMonitor = NetworkMonitorService.shared
         
     var body: some View {
         
@@ -25,6 +26,14 @@ struct ProfileView: View {
                 
                 ScrollView {
                     VStack(spacing: 25) {
+                        
+                        if !networkMonitor.isConnected {
+                            Text("Offline mode: Showing cached data if available")
+                                .font(.footnote)
+                                .foregroundColor(.yellow)
+                                .padding(.top, 8)
+                        }
+                        
                         // Loading / Error / Content States
                         if viewModel.isLoading {
                             ProgressView("Loading profile…")
@@ -36,10 +45,27 @@ struct ProfileView: View {
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, 20)
                                 
+                                if !networkMonitor.isConnected {
+                                    Text("You're offline. Some actions are disabled.")
+                                        .foregroundColor(.secondary)
+                                }
+                                
                                 Button("Retry") {
                                     viewModel.loadProfile()
                                 }
                                 .buttonStyle(.borderedProminent)
+                                
+                                Spacer()
+                                
+                                ActionButton(
+                                    title: "Delete your account",
+                                    backgroundColor: Color("appRed")
+                                ) {
+                                    // Handle account deletion
+                                    Task {
+                                        await authViewModel.deleteAccount()
+                                    }
+                                }
                             }
                             .padding(.top, 40)
                         } else if let profile = viewModel.profile {
@@ -68,6 +94,7 @@ struct ProfileView: View {
                                     // Handle password change
                                     print("Change password tapped")
                                 }
+                                .disabled(!networkMonitor.isConnected)
 
                                 ActionButton(
                                     title: "Change your profile information",
@@ -76,6 +103,7 @@ struct ProfileView: View {
                                     // Handle profile info change
                                     print("Change profile info tapped")
                                 }
+                                .disabled(!networkMonitor.isConnected)
 
                                 ActionButton(
                                     title: "Log Out",
@@ -86,14 +114,18 @@ struct ProfileView: View {
                                         await authViewModel.logout()
                                     }
                                 }
+                                .disabled(!networkMonitor.isConnected)
 
                                 ActionButton(
                                     title: "Delete your account",
                                     backgroundColor: Color("appRed")
                                 ) {
                                     // Handle account deletion
-                                    print("Delete account tapped")
+                                    Task {
+                                        await authViewModel.deleteAccount()
+                                    }
                                 }
+                                .disabled(!networkMonitor.isConnected)
                             }
                             .padding(.horizontal, 20)
 
@@ -113,7 +145,9 @@ struct ProfileView: View {
                     }
                 }
                 .background(Color("appPrimary"))
-                .task { viewModel.loadProfile() }
+                .task {
+                    viewModel.loadProfile()
+                }
             }
             .ignoresSafeArea(.all, edges: .bottom)
         }

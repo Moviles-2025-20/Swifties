@@ -43,6 +43,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct SwiftiesApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var authViewModel = AuthViewModel()
+    
+    init() {
+        NetworkMonitorService.shared.startMonitoring()
+    }
 
     var body: some Scene {
         WindowGroup {

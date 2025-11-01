@@ -54,7 +54,7 @@ struct EventDetailView: View {
                     .padding([.horizontal, .top])
                 } else {
                     NavigationLink(isActive: $showAddComment) {
-                        AddCommentView(event: event)
+                        LazyView(AddCommentView(event: event))
                     } label: {
                         EmptyView()
                     }
@@ -382,3 +382,11 @@ struct EventDetailView: View {
         }
     }
 }
+
+/// Lightweight lazy view wrapper — avoids constructing heavy destinations immediately.
+struct LazyView<Content: View>: View {
+    let build: () -> Content
+    init(_ build: @autoclosure @escaping () -> Content) { self.build = build }
+    var body: Content { build() }
+}
+

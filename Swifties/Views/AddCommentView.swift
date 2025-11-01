@@ -230,7 +230,6 @@ struct AddCommentView: View {
 
     @MainActor
     private func submit() async {
-        // Validate prerequisites
         guard let eventId = event.id, !eventId.isEmpty else {
             submitError = "Missing event identifier."
             return
@@ -243,6 +242,7 @@ struct AddCommentView: View {
         isSubmitting = true
         defer { isSubmitting = false }
 
+        // Route through view model which handles caching > local storage > network upload
         let payload = CommentViewModel.SubmissionPayload(
             eventId: eventId,
             userId: uid,
@@ -281,7 +281,6 @@ struct AddCommentView: View {
 }
 
 // MARK: - Emotion
-
 enum Emotion: String, CaseIterable, Identifiable {
     case sad, happy, angry, emotional
     var id: String { rawValue }

@@ -9,6 +9,7 @@ struct RegisterView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject var viewModel = RegisterViewModel()
     @Environment(\.dismiss) var dismiss
+    @ObservedObject private var networkMonitor = NetworkMonitorService.shared
     
     @State private var currentStep = 0
     @State private var showAlert = false
@@ -23,25 +24,11 @@ struct RegisterView: View {
         case email
     }
     
-    let categories = ["Music",
-                      "Sports",
-                      "Academic",
-                      "Technology",
-                      "Movies",
-                      "Literature",
-                      "Know the world",
-                      "Food",
-                      "Art",
-                      "Gaming",
-                      "Science",
-                      "Outdoor"]
+    let categories = ["Music", "Sports", "Academic", "Technology", "Movies",
+                      "Literature", "Know the world", "Food", "Art", "Gaming",
+                      "Science", "Outdoor"]
     let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    let majors = [
-        "Ingenieria Industrial",
-        "Ingenieria de Sistemas",
-        "Economia",
-        "Administracion"
-    ]
+    let majors = ["Ingenieria Industrial", "Ingenieria de Sistemas", "Economia", "Administracion"]
     
     var body: some View {
         ZStack {
@@ -53,6 +40,21 @@ struct RegisterView: View {
                 ProgressView(value: Double(currentStep + 1), total: 5)
                     .tint(.appRed)
                     .padding()
+                
+                // Connection status banner
+                if !networkMonitor.isConnected {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.slash")
+                            .foregroundColor(.orange)
+                        Text("Offline Mode - Your data will be saved locally")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.orange.opacity(0.1))
+                }
                 
                 ScrollView {
                     VStack(spacing: 24) {
@@ -132,12 +134,16 @@ struct RegisterView: View {
         } message: {
             Text(alertMessage)
         }
-        .alert("Success!", isPresented: $showSuccessAlert) {
+        .alert(networkMonitor.isConnected ? "Success!" : "Saved Locally", isPresented: $showSuccessAlert) {
             Button("Continue") {
                 navigateToHome = true
             }
         } message: {
-            Text("Your profile has been saved successfully!")
+            if networkMonitor.isConnected {
+                Text("Your profile has been saved successfully!")
+            } else {
+                Text("Your profile has been saved locally and will sync when you're back online!")
+            }
         }
         .fullScreenCover(isPresented: $navigateToHome) {
             MainView()
@@ -304,14 +310,13 @@ struct RegisterView: View {
         }
     }
     
-    // MARK: - Step 3: Preferences (WITH INDOOR/OUTDOOR SLIDER)
+    // MARK: - Step 3: Preferences
     private var preferencesStep: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Your Preferences")
                 .font(.system(size: 24, weight: .bold))
                 .foregroundColor(.black.opacity(0.87))
             
-            // Indoor/Outdoor Slider Section
             VStack(alignment: .leading, spacing: 12) {
                 Text("Do you usually prefer indoor or outdoor activities?")
                     .font(.system(size: 14, weight: .semibold))
@@ -351,7 +356,6 @@ struct RegisterView: View {
             Divider()
                 .padding(.vertical, 8)
             
-            // Categories Section
             Text("Select your favorite categories (at least one)")
                 .font(.system(size: 14))
                 .foregroundColor(.gray)
@@ -421,7 +425,6 @@ struct RegisterView: View {
                                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                         )
                         .onChange(of: viewModel.startTime) { oldStart, newStart in
-                            // Automatically set end time to 30 minutes after start time
                             if let newEnd = Calendar.current.date(byAdding: .minute, value: 30, to: newStart) {
                                 viewModel.endTime = newEnd
                             }
@@ -443,14 +446,12 @@ struct RegisterView: View {
                 }
                 
                 Button(action: {
-                    // Validate end > start before adding
                     if viewModel.endTime <= viewModel.startTime {
                         alertMessage = "End time must be after the start time."
                         showAlert = true
                         return
                     }
                     
-                    // Validate minimum 30 minutes duration
                     let timeDifference = Calendar.current.dateComponents([.minute], from: viewModel.startTime, to: viewModel.endTime).minute ?? 0
                     if timeDifference < 30 {
                         alertMessage = "Time slot must be at least 30 minutes long."
@@ -576,7 +577,6 @@ struct RegisterView: View {
     }
     
     private func handleNext() {
-        // Validate current step before proceeding
         let validation = viewModel.validateCurrentStep(currentStep)
         
         if !validation.isValid {
@@ -585,12 +585,14 @@ struct RegisterView: View {
             return
         }
         
-        // If we're on the last step, save the data
         if currentStep == 4 {
             Task {
                 do {
                     try await viewModel.saveUserData()
-                    authViewModel.markAsReturningUser()
+                    
+                    // CRITICAL FIX: Mark as returning user BEFORE showing success
+                    await authViewModel.markAsReturningUser()
+                    
                     await MainActor.run {
                         showSuccessAlert = true
                     }
@@ -604,25 +606,21 @@ struct RegisterView: View {
             return
         }
         
-        // Move to next step
         withAnimation {
             currentStep += 1
         }
     }
     
-    // Helper: minimum end time (start time + 30 minutes)
     private func minimumEndTime() -> Date {
         Calendar.current.date(byAdding: .minute, value: 30, to: viewModel.startTime) ?? viewModel.startTime
     }
     
-    // Helper: end of day for given date
     private func endOfDay(for date: Date) -> Date {
         let cal = Calendar.current
         return cal.date(bySettingHour: 23, minute: 59, second: 0, of: date) ?? date
     }
 }
 
-// MARK: - Helper functions
 private func minimumBirthDate() -> Date {
     let cal = Calendar.current
     return cal.date(byAdding: .year, value: -120, to: Date()) ?? Date()

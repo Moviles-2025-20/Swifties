@@ -6,7 +6,6 @@ import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 import Combine
-import FirebaseCore
 
 @MainActor
 class RegisterViewModel: ObservableObject {
@@ -31,10 +30,19 @@ class RegisterViewModel: ObservableObject {
     private var isProviderEmail: Bool = false
     
     let db = Firestore.firestore(database: "default")
+    private let syncService = RegistrationSyncService.shared
+    private let networkMonitor = NetworkMonitorService.shared
 
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm a"
+        return formatter
+    }()
+    
+    // ISO8601 formatter for consistent date serialization
+    private let iso8601Formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
     
@@ -46,10 +54,8 @@ class RegisterViewModel: ObservableObject {
     // MARK: - Initialization
     func initializeWithAuthUser(_ user: FirebaseAuth.User?) {
         if let user = user {
-            // Get display name
             name = user.displayName ?? ""
             
-            // Get email from provider
             if let userEmail = user.email, !userEmail.isEmpty {
                 email = userEmail
                 emailFromProvider = userEmail
@@ -127,29 +133,24 @@ class RegisterViewModel: ObservableObject {
     
     // Step 0: Basic Info Validation
     private func validateBasicInfo() -> (isValid: Bool, message: String) {
-        // Validate name - trim whitespace and check if empty
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedName.isEmpty {
             return (false, "Please enter your name (only blank spaces are not allowed)")
         }
         
-        // Check for emojis in name
         if containsEmoji(trimmedName) {
             return (false, "Name cannot contain emojis")
         }
         
-        // Validate email
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedEmail.isEmpty {
             return (false, "Please enter your email")
         }
         
-        // Basic email format validation
         if !isValidEmail(trimmedEmail) {
             return (false, "Please enter a valid email address")
         }
         
-        // Validate major
         if major.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return (false, "Please select your major")
         }
@@ -163,7 +164,6 @@ class RegisterViewModel: ObservableObject {
             return (false, "Please select your gender")
         }
         
-        // Validate age (must be between 10 and 120 years old)
         let age = calculateAge()
         if age < 10 {
             return (false, "You must be at least 10 years old to register")
@@ -193,25 +193,21 @@ class RegisterViewModel: ObservableObject {
     
     // Step 4: Final Validation (all fields)
     private func validateAllFields() -> (isValid: Bool, message: String) {
-        // Validate basic info
         let basicValidation = validateBasicInfo()
         if !basicValidation.isValid {
             return basicValidation
         }
         
-        // Validate personal details
         let personalValidation = validatePersonalDetails()
         if !personalValidation.isValid {
             return personalValidation
         }
         
-        // Validate preferences
         let preferencesValidation = validatePreferences()
         if !preferencesValidation.isValid {
             return preferencesValidation
         }
         
-        // Validate free time slots
         let slotsValidation = validateFreeTimeSlots()
         if !slotsValidation.isValid {
             return slotsValidation
@@ -231,17 +227,10 @@ class RegisterViewModel: ObservableObject {
     private func containsEmoji(_ string: String) -> Bool {
         for scalar in string.unicodeScalars {
             switch scalar.value {
-            case 0x1F600...0x1F64F, // Emoticons
-                 0x1F300...0x1F5FF, // Misc Symbols and Pictographs
-                 0x1F680...0x1F6FF, // Transport and Map
-                 0x1F1E0...0x1F1FF, // Regional country flags
-                 0x2600...0x26FF,   // Misc symbols
-                 0x2700...0x27BF,   // Dingbats
-                 0xFE00...0xFE0F,   // Variation selectors
-                 0x1F900...0x1F9FF, // Supplemental Symbols and Pictographs
-                 0x1F018...0x1F270, // Various asian characters
-                 0x238C...0x2454,   // Misc items
-                 0x20D0...0x20FF:   // Combining Diacritical Marks for Symbols
+            case 0x1F600...0x1F64F, 0x1F300...0x1F5FF, 0x1F680...0x1F6FF,
+                 0x1F1E0...0x1F1FF, 0x2600...0x26FF, 0x2700...0x27BF,
+                 0xFE00...0xFE0F, 0x1F900...0x1F9FF, 0x1F018...0x1F270,
+                 0x238C...0x2454, 0x20D0...0x20FF:
                 return true
             default:
                 continue
@@ -250,7 +239,7 @@ class RegisterViewModel: ObservableObject {
         return false
     }
     
-    // MARK: - Save to Firebase
+    // MARK: - Save to Firebase (THREE-LAYER STRATEGY - UPDATED)
     func saveUserData() async throws {
         isLoading = true
         defer { isLoading = false }
@@ -261,7 +250,7 @@ class RegisterViewModel: ObservableObject {
                          userInfo: [NSLocalizedDescriptionKey: "No authenticated user found"])
         }
         
-        print("User ID: \(uid)")
+        print("🔑 User ID: \(uid)")
         
         // Final validation before saving
         let validation = validateAllFields()
@@ -270,7 +259,7 @@ class RegisterViewModel: ObservableObject {
                          userInfo: [NSLocalizedDescriptionKey: validation.message])
         }
         
-        print("Validation passed")
+        print("✅ Validation passed")
         
         // Trim whitespace from name and email before saving
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -280,8 +269,8 @@ class RegisterViewModel: ObservableObject {
         let photoUrl = Auth.auth().currentUser?.photoURL?.absoluteString ?? ""
         let age = calculateAge()
         
-        // Convert free time slots to array of dictionaries
-        let freeTimeSlotsData = freeTimeSlots
+        // Use ISO8601 date strings instead of FieldValue.serverTimestamp()
+        let currentDateString = iso8601Formatter.string(from: Date())
         
         // Prepare data matching Flutter UserData model structure
         let userData: [String: Any] = [
@@ -292,30 +281,38 @@ class RegisterViewModel: ObservableObject {
                 "major": major,
                 "gender": gender ?? "",
                 "age": age,
-                "created": FieldValue.serverTimestamp(),
-                "last_active": FieldValue.serverTimestamp()
+                "created": currentDateString,
+                "last_active": currentDateString
             ],
             "preferences": [
                 "indoor_outdoor_score": Int(indoorOutdoorScore),
                 "favorite_categories": favoriteCategories,
                 "notifications": [
-                    "free_time_slots": freeTimeSlotsData
+                    "free_time_slots": freeTimeSlots
                 ]
             ]
         ]
         
-        print("Attempting to save data to Firestore...")
+        print("💾 Implementing THREE-LAYER persistence strategy...")
         
+        // Use the sync service to handle three-layer strategy
         do {
-            try await db.collection("users").document(uid).setData(userData, merge: true)
-            print("✅ Successfully saved to Firestore!")
-
-            // Log analytics
-            AnalyticsService.shared.setUserId(uid)
-            AnalyticsService.shared.logOutdoorIndoorPreference(Int(indoorOutdoorScore))
+            try await syncService.saveRegistrationData(userData)
+            
+            // CRITICAL: Mark registration as completed in UserDefaults
+            // This ensures the app knows registration is done even if offline
+            UserDefaultsService.shared.markRegistrationCompleted()
+            
+            print("✅ Registration data saved successfully!")
+            
+            // Log analytics only if connected
+            if networkMonitor.isConnected {
+                AnalyticsService.shared.setUserId(uid)
+                AnalyticsService.shared.logOutdoorIndoorPreference(Int(indoorOutdoorScore))
+            }
             
         } catch {
-            print("❌ Firestore save error: \(error.localizedDescription)")
+            print("❌ Error during save: \(error.localizedDescription)")
             throw error
         }
     }

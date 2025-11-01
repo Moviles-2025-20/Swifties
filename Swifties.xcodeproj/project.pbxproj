@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		882B00692EB10437003042A5 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 882B00682EB10437003042A5 /* SQLite */; };
 		884694CB2EB3D84A0068BD86 /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 884694CA2EB3D84A0068BD86 /* RealmSwift */; };
+		E1465E5F2EB55E5200334799 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 882B00682EB10437003042A5 /* SQLite */; };
 		E162020F2EB42F9000EDBA93 /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = 884694CA2EB3D84A0068BD86 /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		E165F9152E921FD4001D8B00 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = E165F9142E921FD4001D8B00 /* FirebaseCrashlytics */; };
 		E168A9662E8DC88A00BAF013 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E168A9652E8DC88A00BAF013 /* GoogleSignIn */; };
@@ -95,13 +95,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E1465E5F2EB55E5200334799 /* SQLite in Frameworks */,
 				E1822BF42E8C4CF6008FC420 /* FirebaseAnalytics in Frameworks */,
 				E1822BF82E8C4CF6008FC420 /* FirebaseFirestore in Frameworks */,
 				E168A9682E8DC88A00BAF013 /* GoogleSignInSwift in Frameworks */,
 				E1822BF62E8C4CF6008FC420 /* FirebaseAuth in Frameworks */,
 				E1822BFA2E8C4CF6008FC420 /* FirebaseStorage in Frameworks */,
 				E165F9152E921FD4001D8B00 /* FirebaseCrashlytics in Frameworks */,
-				FE81A5FC2EB50EFA00099CDF /* SQLite in Frameworks */,
 				E1822BF22E8C4CF6008FC420 /* FirebaseAI in Frameworks */,
 				884694CB2EB3D84A0068BD86 /* RealmSwift in Frameworks */,
 				E168A9662E8DC88A00BAF013 /* GoogleSignIn in Frameworks */,
@@ -739,14 +739,6 @@
 				minimumVersion = 12.3.0;
 			};
 		};
-		FE81A5F92EB50BB600099CDF /* XCRemoteSwiftPackageReference "SQLite" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/stephencelis/SQLite.swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.15.4;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -799,11 +791,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E1822BF02E8C4CF6008FC420 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
-		};
-		FE81A5FB2EB50EFA00099CDF /* SQLite */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FE81A5F92EB50BB600099CDF /* XCRemoteSwiftPackageReference "SQLite" */;
-			productName = SQLite;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

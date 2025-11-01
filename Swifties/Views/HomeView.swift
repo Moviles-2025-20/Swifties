@@ -38,8 +38,8 @@ struct HomeView: View {
             ZStack {
                 Color("appPrimary")
                     .ignoresSafeArea()
-                
                 VStack {
+                    
                     CustomTopBar(
                         title: "Hi, \(getUserFirstName())!",
                         showNotificationButton: true, onBackTap: {

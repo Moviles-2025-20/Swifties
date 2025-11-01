@@ -42,7 +42,7 @@ class WishMeLuckViewModel: ObservableObject {
         return messages.randomElement() ?? messages[0]
     }
     
-    // MARK: - Calculate Days Since Last Wished (Three-Layer Cache)
+    // MARK: - Calculate Days Since Last Wished (Three-Layer Cache with GCD)
     
     func calculateDaysSinceLastWished() async {
         guard let userId = Auth.auth().currentUser?.uid else {
@@ -53,19 +53,19 @@ class WishMeLuckViewModel: ObservableObject {
         
         print("🚀 Loading days since last wished for user: \(userId)")
         
-        // Layer 1: Try memory cache
+        // Layer 1: Try memory cache (fast, on actor)
         if let cached = await cacheService.getCachedDaysSinceLastWished(userId: userId) {
             self.daysSinceLastWished = cached.daysSinceLastWished
             self.dataSource = .memoryCache
             print("✅ Loaded from memory cache: \(cached.daysSinceLastWished) days")
             
-            // Try to refresh in background if connected
+            // Refresh in background if connected
             refreshDaysInBackground(userId: userId)
             return
         }
         
-        // Layer 2: Try Realm storage
-        if let stored = storageService.loadDaysSinceLastWished(userId: userId) {
+        // Layer 2: Try Realm storage (background thread with semaphore)
+        if let stored = await storageService.loadDaysSinceLastWished(userId: userId) {
             self.daysSinceLastWished = stored.days
             self.dataSource = .realmStorage
             
@@ -78,7 +78,7 @@ class WishMeLuckViewModel: ObservableObject {
             
             print("✅ Loaded from Realm storage: \(stored.days) days")
             
-            // Try to refresh in background if connected
+            // Refresh in background if connected
             refreshDaysInBackground(userId: userId)
             return
         }
@@ -93,7 +93,6 @@ class WishMeLuckViewModel: ObservableObject {
         }
     }
     
-    // FIX 1: Always resume continuation to prevent hanging
     private func fetchDaysFromNetwork(userId: String) async {
         await withCheckedContinuation { continuation in
             networkService.fetchDaysSinceLastWished(userId: userId) { [weak self] result in
@@ -135,7 +134,6 @@ class WishMeLuckViewModel: ObservableObject {
         }
     }
     
-    // FIX 2: Use defer to ensure isRefreshing is always reset
     private func refreshDaysInBackground(userId: String) {
         guard networkMonitor.isConnected else { return }
         
@@ -149,16 +147,11 @@ class WishMeLuckViewModel: ObservableObject {
                 guard let self = self else { return }
                 
                 if case .success(let data) = result {
-                    // Check if data actually changed
                     let dataChanged = self.daysSinceLastWished != data.days
                     
-                    // Update data
                     self.daysSinceLastWished = data.days
-                    
-                    // ALWAYS update data source to network after successful refresh
                     self.dataSource = .network
                     
-                    // Update caches for next time
                     await self.cacheService.cacheDaysSinceLastWished(
                         userId: userId,
                         days: data.days,
@@ -178,9 +171,8 @@ class WishMeLuckViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Wish Me Luck with Smart Recommendations (with Rollback)
+    // MARK: - Wish Me Luck with GCD (Heavy Algorithm on Background Thread)
     
-    // FIX 3: Optimized rollback - removed unnecessary cache fetch
     func wishMeLuck() async {
         print("🎯 === WISH ME LUCK STARTED ===")
         
@@ -189,7 +181,6 @@ class WishMeLuckViewModel: ObservableObject {
             return
         }
         
-        // Check connection before proceeding
         guard networkMonitor.isConnected else {
             errorMessage = "No internet connection"
             return
@@ -199,93 +190,124 @@ class WishMeLuckViewModel: ObservableObject {
         errorMessage = nil
         currentEvent = nil
 
-        // Store previous values for rollback
         let previousDays = daysSinceLastWished
         let previousDataSource = dataSource
         
-        // Optimistically update UI
+        // Optimistically update UI on main thread
         print("💾 Optimistically updating to 0 days")
         daysSinceLastWished = 0
         
-        do {
-            try await Task.sleep(nanoseconds: 1_500_000_000)
-            
-            print("👤 User ID: \(userId)")
-            
-            // Get user data
-            let userDoc = try await db.collection("users").document(userId).getDocument()
-            guard let userData = userDoc.data() else {
-                throw NSError(domain: "WishMeLuck", code: 404,
-                            userInfo: [NSLocalizedDescriptionKey: "User data not found"])
+        // NESTED GCD: Background work inside utility queue
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                // Give UI time to update with animation
+                Thread.sleep(forTimeInterval: 1.5)
+                
+                // Heavy computational work on background thread
+                DispatchQueue.global(qos: .utility).async { [weak self] in
+                    guard let self = self else {
+                        DispatchQueue.main.async { continuation.resume() }
+                        return
+                    }
+                    
+                    print("🔧 Starting heavy algorithm on background thread...")
+                    print("👤 User ID: \(userId)")
+                    
+                    // Fetch user data
+                    self.db.collection("users").document(userId).getDocument { document, error in
+                        if let error = error {
+                            print("❌ Error: \(error.localizedDescription)")
+                            Task { @MainActor in
+                                self.errorMessage = "Failed to load event: \(error.localizedDescription)"
+                                self.daysSinceLastWished = previousDays
+                                self.dataSource = previousDataSource
+                                self.isLoading = false
+                                continuation.resume()
+                            }
+                            return
+                        }
+                        
+                        guard let document = document, document.exists,
+                              let userData = document.data() else {
+                            Task { @MainActor in
+                                self.errorMessage = "User data not found"
+                                self.daysSinceLastWished = previousDays
+                                self.dataSource = previousDataSource
+                                self.isLoading = false
+                                continuation.resume()
+                            }
+                            return
+                        }
+                        
+                        print("📄 User data retrieved")
+                        
+                        // Extract preferences (heavy computation on background)
+                        let preferences = userData["preferences"] as? [String: Any] ?? [:]
+                        let favoriteCategories = preferences["favorite_categories"] as? [String] ?? []
+                        let lastEventId = userData["last_event"] as? String
+                        let lastEventCategory = userData["event_last_category"] as? String
+                        
+                        print("⚙️ User Preferences:")
+                        print("   - Favorite Categories: \(favoriteCategories)")
+                        print("   - Last Event ID: \(lastEventId ?? "None")")
+                        print("   - Last Event Category: \(lastEventCategory ?? "None")")
+                        
+                        // Get recommended event (complex algorithm on background)
+                        Task {
+                            do {
+                                let event = try await self.getRecommendedEvent(
+                                    userId: userId,
+                                    favoriteCategories: favoriteCategories,
+                                    lastEventId: lastEventId,
+                                    lastEventCategory: lastEventCategory
+                                )
+                                
+                                if let event = event {
+                                    print("✅ Event Selected: \(event.title)")
+                                    
+                                    // Update network
+                                    try await self.updateLastWishedDateOnNetwork(userId: userId)
+                                    
+                                    // Update caches
+                                    await self.cacheService.cacheDaysSinceLastWished(
+                                        userId: userId,
+                                        days: 0,
+                                        lastWishedDate: Date()
+                                    )
+                                    self.storageService.saveDaysSinceLastWished(
+                                        userId: userId,
+                                        days: 0,
+                                        lastWishedDate: Date()
+                                    )
+                                    
+                                    // Update UI on main thread
+                                    await MainActor.run {
+                                        self.currentEvent = event
+                                        self.isLoading = false
+                                        print("✅ Cache and storage updated")
+                                        print("🎯 === WISH ME LUCK COMPLETED ===\n")
+                                        continuation.resume()
+                                    }
+                                } else {
+                                    throw NSError(domain: "WishMeLuck", code: 404,
+                                                userInfo: [NSLocalizedDescriptionKey: "No events available"])
+                                }
+                            } catch {
+                                print("❌ Error occurred, rolling back...")
+                                await MainActor.run {
+                                    self.errorMessage = "Failed to load event: \(error.localizedDescription)"
+                                    self.daysSinceLastWished = previousDays
+                                    self.dataSource = previousDataSource
+                                    self.isLoading = false
+                                    print("🎯 === WISH ME LUCK FAILED ===\n")
+                                    continuation.resume()
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            
-            print("📄 User data retrieved")
-            
-            // Extract user preferences
-            let preferences = userData["preferences"] as? [String: Any] ?? [:]
-            let favoriteCategories = preferences["favorite_categories"] as? [String] ?? []
-            let lastEventId = userData["last_event"] as? String
-            let lastEventCategory = userData["event_last_category"] as? String
-            
-            print("⚙️ User Preferences:")
-            print("   - Favorite Categories: \(favoriteCategories)")
-            print("   - Last Event ID: \(lastEventId ?? "None")")
-            print("   - Last Event Category: \(lastEventCategory ?? "None")")
-            
-            // Get recommended event
-            let event = try await getRecommendedEvent(
-                userId: userId,
-                favoriteCategories: favoriteCategories,
-                lastEventId: lastEventId,
-                lastEventCategory: lastEventCategory
-            )
-            
-            if let event = event {
-                print("✅ Event Selected:")
-                print("   - ID: \(event.id)")
-                print("   - Title: \(event.title)")
-                print("   - Description: \(event.description)")
-                currentEvent = event
-            } else {
-                print("❌ No event was selected")
-                errorMessage = "No events available at this time"
-                // Rollback on failure
-                daysSinceLastWished = previousDays
-                dataSource = previousDataSource
-                throw NSError(domain: "WishMeLuck", code: 404,
-                            userInfo: [NSLocalizedDescriptionKey: "No events available"])
-            }
-
-            // Only update cache/storage after successful event selection
-            try await updateLastWishedDateOnNetwork(userId: userId)
-            
-            // If network update succeeds, persist to cache
-            await cacheService.cacheDaysSinceLastWished(
-                userId: userId,
-                days: 0,
-                lastWishedDate: Date()
-            )
-            storageService.saveDaysSinceLastWished(
-                userId: userId,
-                days: 0,
-                lastWishedDate: Date()
-            )
-            
-            print("✅ Cache and storage updated after successful wish")
-            print("🎯 === WISH ME LUCK COMPLETED ===\n")
-            
-        } catch {
-            // Rollback on any error
-            print("❌ Error occurred, rolling back...")
-            daysSinceLastWished = previousDays
-            dataSource = previousDataSource
-            
-            self.errorMessage = "Failed to load event: \(error.localizedDescription)"
-            print("❌ Error Firestore: \(error)")
-            print("🎯 === WISH ME LUCK FAILED ===\n")
         }
-
-        isLoading = false
     }
     
     private func updateLastWishedDateOnNetwork(userId: String) async throws {
@@ -307,7 +329,7 @@ class WishMeLuckViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Sync Pending Updates (call when network returns)
+    // MARK: - Sync Pending Updates
     
     func syncPendingUpdates() async {
         guard hasPendingWishUpdate,
@@ -324,7 +346,7 @@ class WishMeLuckViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Get Recommended Event (existing code)
+    // MARK: - Get Recommended Event (Algorithm runs on background with GCD)
     
     private func getRecommendedEvent(
         userId: String,

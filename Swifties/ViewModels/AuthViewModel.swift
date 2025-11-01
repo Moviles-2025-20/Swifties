@@ -88,7 +88,7 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Check First Time User (WITH OFFLINE SUPPORT)
+    // MARK: - Check First Time User (WITH IMPROVED OFFLINE SUPPORT)
     private func checkFirstTimeUser() async {
         guard let user = user else {
             isCheckingProfile = false
@@ -111,6 +111,13 @@ class AuthViewModel: ObservableObject {
             return
         }
         
+        // Check if we have cached registration status for this user
+        if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
+            print("✅ Found cached registration status for user \(user.uid) - treating as returning user")
+            self.isFirstTimeUser = false
+            return
+        }
+        
         // Check Firestore if online
         if networkMonitor.isConnected {
             do {
@@ -120,26 +127,44 @@ class AuthViewModel: ObservableObject {
                 if !document.exists {
                     print("📡 First time user - no Firestore document found")
                     isFirstTimeUser = true
+                    // Cache this status
+                    userDefaultsService.cacheRegistrationStatus(uid: user.uid, completed: false)
                 } else if let data = document.data(),
                           let profile = data["profile"] as? [String: Any],
                           profile["name"] != nil {
                     // Document exists and has profile data - returning user
                     print("📡 Returning user - profile found in Firestore")
                     isFirstTimeUser = false
+                    // IMPORTANT: Cache this status for offline use
+                    userDefaultsService.cacheRegistrationStatus(uid: user.uid, completed: true)
                 } else {
                     // Document exists but incomplete - treat as first time
                     print("⚠️ Incomplete profile - treating as first time user")
                     isFirstTimeUser = true
+                    userDefaultsService.cacheRegistrationStatus(uid: user.uid, completed: false)
                 }
             } catch {
                 print("❌ Error checking user document: \(error.localizedDescription)")
-                // On error, assume first time user to be safe
-                isFirstTimeUser = true
+                
+                // On error while online, check if we have cached status to fall back on
+                if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
+                    print("⚠️ Using cached registration status due to Firestore error")
+                    isFirstTimeUser = false
+                } else {
+                    // No cached data and error - assume first time to be safe
+                    isFirstTimeUser = true
+                }
             }
         } else {
-            // Offline and no local registration data - assume first time
-            print("⚠️ Offline with no local registration data - treating as first time user")
-            isFirstTimeUser = true
+            // Offline - check if we have cached status for this specific user
+            if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
+                print("📱 Offline - using cached registration status: User has completed registration")
+                isFirstTimeUser = false
+            } else {
+                print("⚠️ Offline with no cached registration status - treating as first time user")
+                print("⚠️ This can happen after reinstall. User should connect to internet once to verify.")
+                isFirstTimeUser = true
+            }
         }
     }
     
@@ -306,11 +331,19 @@ class AuthViewModel: ObservableObject {
         error = nil
         
         do {
+            // Get UID before logout
+            let uid = user?.uid
+            
             try await authService.logout()
             self.user = nil
             
-            // Clear any pending registration data on logout
+            // Clear pending registration data
             userDefaultsService.clearAllData()
+            
+            // Clear cached registration status for this user
+            if let uid = uid {
+                userDefaultsService.cacheRegistrationStatus(uid: uid, completed: false)
+            }
             
         } catch {
             self.error = error.localizedDescription

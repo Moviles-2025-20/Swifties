@@ -45,9 +45,7 @@ struct SwiftiesApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     
     init() {
-        DispatchQueue.main.async {
-            NetworkMonitorService.shared.startMonitoring()
-        }
+        NetworkMonitorService.shared.startMonitoring()
     }
 
     var body: some Scene {

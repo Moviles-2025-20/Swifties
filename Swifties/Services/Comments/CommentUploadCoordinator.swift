@@ -80,12 +80,13 @@ final class CommentSubmitCoordinator {
         )
 
         // Schedule saving to Realm after small delay
-        queue.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+        queue.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self = self else { return }
             self.realmStorage.save(comment: storedComment, id: localId)
             print("Persisted comment to Realm with localId \(localId)")
         }
 
+        // TODO: Check for race condition in saving
         if networkMonitor.isConnected {
             print("Online: attempting to submit comment with localId \(localId) to backend")
             do {

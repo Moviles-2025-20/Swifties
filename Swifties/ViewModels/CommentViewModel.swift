@@ -144,8 +144,7 @@ final class CommentViewModel: ObservableObject {
 
 extension DocumentReference {
     func setData(toFirestore comment: Comment) async throws {
-        let vm = CommentViewModel()
-        let data = vm.toFirestore(comment: comment)
+        let data = CommentViewModel().toFirestore(comment: comment)
         try await setData(data)
     }
 }

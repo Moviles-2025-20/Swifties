@@ -7,6 +7,7 @@ struct EventListView: View {
     @StateObject var viewModel: EventListViewModel
     @State private var searchText = ""
     @State private var isMapView = false
+    @State private var mapOpenedTime: Date?
     @ObservedObject private var networkMonitor = NetworkMonitorService.shared
 
     // Filter events by search
@@ -170,6 +171,21 @@ struct EventListView: View {
                             }
                         }
                     }
+                }
+            }
+            .onChange(of: isMapView) { oldValue, newValue in
+                if newValue {
+                    // Map view opened
+                    mapOpenedTime = Date()
+                    AnalyticsService.shared.logMapViewOpened(
+                        source: .eventList,
+                        eventCount: filteredEvents.count
+                    )
+                } else if let openedTime = mapOpenedTime {
+                    // Map view closed - calculate duration
+                    let duration = Date().timeIntervalSince(openedTime)
+                    AnalyticsService.shared.logMapViewClosed(durationSeconds: duration)
+                    mapOpenedTime = nil
                 }
             }
             .onAppear {

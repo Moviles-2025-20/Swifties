@@ -7,6 +7,7 @@ struct EventListView: View {
     @StateObject var viewModel: EventListViewModel
     @State private var searchText = ""
     @State private var isMapView = false
+    @ObservedObject private var networkMonitor = NetworkMonitorService.shared
 
     // Filter events by search
     var filteredEvents: [Event] {
@@ -21,7 +22,7 @@ struct EventListView: View {
         }
     }
     
-    // MARK: - Computed Properties for Data Source (MOVIDAS AQUÍ)
+    // MARK: - Computed Properties for Data Source
     private var dataSourceIcon: String {
         switch viewModel.dataSource {
         case .memoryCache: return "memorychip"
@@ -50,8 +51,25 @@ struct EventListView: View {
                         print("Notification tapped")
                     })
                     
+                    // Connection status indicator
+                    if !networkMonitor.isConnected && !isMapView {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.slash")
+                                .foregroundColor(.red)
+                            Text("No Internet Connection")
+                                .font(.callout)
+                                .foregroundColor(.red)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                    }
+                    
                     // Data Source Indicator
-                    if !viewModel.isLoading && !viewModel.events.isEmpty  {
+                    if !viewModel.isLoading && !viewModel.events.isEmpty && !isMapView {
                         HStack {
                             Image(systemName: dataSourceIcon)
                                 .foregroundColor(.secondary)

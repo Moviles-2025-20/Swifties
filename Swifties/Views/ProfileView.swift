@@ -105,7 +105,7 @@ struct ProfileView: View {
                                     .padding(.horizontal, 20)
                                 
                                 if !networkMonitor.isConnected {
-                                    Text("You're offline. Cannot load from network or local storage.")
+                                    Text("You're offline. Unable to fetch fresh data from the network.")
                                         .foregroundColor(.secondary)
                                 }
                                 

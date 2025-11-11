@@ -61,7 +61,7 @@ class AuthViewModel: ObservableObject {
         networkMonitor.$isConnected
             .removeDuplicates()
             .sink { [weak self] isConnected in
-                guard let self = self, isConnected else { return }
+                guard let _ = self, isConnected else { return }
                 Task { @MainActor in
                     print("🌐 Network restored - attempting to sync pending data...")
                     await RegistrationSyncService.shared.syncPendingRegistration()
@@ -170,7 +170,7 @@ class AuthViewModel: ObservableObject {
     
     // MARK: - Recheck User Status (after sync)
     private func recheckUserStatus() async {
-        guard let uid = user?.uid else { return }
+        guard let _ = user?.uid else { return }
         print("🔄 Rechecking user status after sync...")
         await checkFirstTimeUser()
     }

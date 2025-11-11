@@ -14,6 +14,9 @@ struct HomeView: View {
     @StateObject var profileViewModel = ProfileViewModel()
     @ObservedObject private var networkMonitor = NetworkMonitorService.shared
     
+    @State private var showOfflineAlert = false
+    @State private var offlineAlertMessage = ""
+    
     // MARK: - Computed Properties for Data Source
     private var dataSourceIcon: String {
         switch homeViewModel.dataSource {
@@ -32,6 +35,15 @@ struct HomeView: View {
         case .none: return ""
         }
     }
+    
+    private var dataSourceColor: Color {
+        switch homeViewModel.dataSource {
+        case .memoryCache: return .purple
+        case .localStorage: return .blue
+        case .network: return .green
+        case .none: return .secondary
+        }
+    }
         
     var body: some View {
         NavigationStack {
@@ -46,31 +58,14 @@ struct HomeView: View {
                             print("Notifications tapped")
                         })
                     
-                    // Connection status indicator
-                    if !networkMonitor.isConnected {
-                        HStack(spacing: 8) {
-                            Image(systemName: "wifi.slash")
-                                .foregroundColor(.red)
-                            Text("No Internet Connection")
-                                .font(.callout)
-                                .foregroundColor(.red)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.red.opacity(0.1))
-                        .cornerRadius(8)
-                        .padding(.horizontal)
-                        .padding(.top, 4)
-                    }
-                    
                     // Data Source Indicator
                     if !homeViewModel.isLoading && !homeViewModel.recommendations.isEmpty {
                         HStack {
                             Image(systemName: dataSourceIcon)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(dataSourceColor)
                             Text(dataSourceText)
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(dataSourceColor)
                             
                             if homeViewModel.isRefreshing {
                                 ProgressView()
@@ -79,9 +74,21 @@ struct HomeView: View {
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
+                            
+                            Spacer()
+                            
+                            // Debug button (optional, remove in production)
+                            Button(action: {
+                                homeViewModel.debugCache()
+                            }) {
+                                Image(systemName: "ladybug")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         .padding(.horizontal)
-                        .padding(.top, 8)
+                        .padding(.vertical, 8)
+                        .background(Color(.systemBackground).opacity(0.8))
                     }
 
                     ScrollView {
@@ -161,52 +168,105 @@ struct HomeView: View {
                                     VStack(spacing: 16) {
                                         ProgressView()
                                             .scaleEffect(1.2)
-                                        Text("Loading recommendations…")
+                                        Text("Loading recommendations...")
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
                                     }
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 60)
                                     
-                                } else if let error = homeViewModel.errorMessage {
-                                    // Error state with context-aware messages
-                                    VStack(spacing: 16) {
-                                        Image(systemName: getErrorIcon(for: error))
-                                            .font(.system(size: 50))
-                                            .foregroundColor(.secondary)
+                                } else if !networkMonitor.isConnected && homeViewModel.recommendations.isEmpty {
+                                    // Offline state with no cached data
+                                    VStack(spacing: 20) {
+                                        Image(systemName: "wifi.slash")
+                                            .font(.system(size: 60))
+                                            .foregroundColor(.gray.opacity(0.6))
                                         
-                                        Text(error)
+                                        Text("No Internet Connection")
+                                            .font(.title3)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.primary)
+                                        
+                                        Text("No cached or stored data available")
                                             .font(.body)
-                                            .foregroundColor(.red)
+                                            .foregroundColor(.secondary)
                                             .multilineTextAlignment(.center)
-                                            .padding(.horizontal, 24)
+                                            .padding(.horizontal, 40)
                                         
-                                        Text(getErrorHint(for: error))
+                                        Text("Please connect to the internet and try again to load recommendations")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                             .multilineTextAlignment(.center)
-                                            .padding(.horizontal, 24)
+                                            .padding(.horizontal, 40)
                                         
-                                        if homeViewModel.dataSource == .none && networkMonitor.isConnected {
-                                            Button {
+                                        Button(action: {
+                                            if !networkMonitor.isConnected {
+                                                offlineAlertMessage = "Still no internet connection - Please check your network settings"
+                                                showOfflineAlert = true
+                                            } else {
                                                 Task {
                                                     await homeViewModel.getRecommendations()
                                                 }
-                                            } label: {
-                                                HStack {
-                                                    Image(systemName: "arrow.clockwise")
-                                                    Text("Try Again")
-                                                }
-                                                .padding(.horizontal, 24)
-                                                .padding(.vertical, 12)
-                                                .background(Color.blue)
-                                                .foregroundColor(.white)
-                                                .cornerRadius(10)
                                             }
-                                            .padding(.top, 8)
+                                        }) {
+                                            HStack {
+                                                Image(systemName: "arrow.clockwise")
+                                                Text("Retry")
+                                            }
+                                            .padding(.horizontal, 32)
+                                            .padding(.vertical, 12)
+                                            .background(Color.gray.opacity(0.6))
+                                            .foregroundColor(.white)
+                                            .cornerRadius(10)
                                         }
+                                        .padding(.top, 8)
                                     }
                                     .frame(maxWidth: .infinity)
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 40)
+                                    
+                                } else if let error = homeViewModel.errorMessage {
+                                    // Error state
+                                    VStack(spacing: 20) {
+                                        Image(systemName: getErrorIcon(for: error))
+                                            .font(.system(size: 60))
+                                            .foregroundColor(.red.opacity(0.8))
+                                        
+                                        Text("Something Went Wrong")
+                                            .font(.title3)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.primary)
+                                        
+                                        Text(error)
+                                            .font(.body)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, 40)
+                                        
+                                        Button(action: {
+                                            if !networkMonitor.isConnected {
+                                                offlineAlertMessage = "Cannot retry - No internet connection available"
+                                                showOfflineAlert = true
+                                            } else {
+                                                Task {
+                                                    await homeViewModel.getRecommendations()
+                                                }
+                                            }
+                                        }) {
+                                            HStack {
+                                                Image(systemName: "arrow.clockwise")
+                                                Text("Try Again")
+                                            }
+                                            .padding(.horizontal, 32)
+                                            .padding(.vertical, 12)
+                                            .background(Color.blue)
+                                            .foregroundColor(.white)
+                                            .cornerRadius(10)
+                                        }
+                                        .padding(.top, 8)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.horizontal, 24)
                                     .padding(.vertical, 40)
                                     
                                 } else if homeViewModel.recommendations.isEmpty {
@@ -273,6 +333,31 @@ struct HomeView: View {
                         }
                     }
                 }
+                
+                // Floating connection status banner (only when data is loaded)
+                if !networkMonitor.isConnected && !homeViewModel.recommendations.isEmpty {
+                    VStack {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.slash")
+                                .foregroundColor(.orange)
+                            Text("Offline - Using cached data")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.top, 60)
+                        
+                        Spacer()
+                    }
+                }
+            }
+            .alert("Connection Required", isPresented: $showOfflineAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(offlineAlertMessage)
             }
         }
         .task {
@@ -313,28 +398,12 @@ struct HomeView: View {
     }
     
     private func getErrorIcon(for error: String) -> String {
-        if error.contains("No internet connection") {
+        if error.contains("network") || error.contains("connection") {
             return "wifi.slash"
-        } else if error.contains("No authenticated user") {
+        } else if error.contains("auth") || error.contains("user") {
             return "person.crop.circle.badge.exclamationmark"
-        } else if error.contains("No recommendations available") {
-            return "tray"
         } else {
             return "exclamationmark.triangle"
-        }
-    }
-    
-    private func getErrorHint(for error: String) -> String {
-        if error.contains("No internet connection") {
-            return "Please check your connection and try again"
-        } else if error.contains("No authenticated user") {
-            return "Please sign in to view personalized recommendations"
-        } else if error.contains("No recommendations available") {
-            return "Check back later or try refreshing"
-        } else if error.contains("Failed to load") {
-            return "We're having trouble reaching our servers"
-        } else {
-            return "Something went wrong. Please try again"
         }
     }
 }

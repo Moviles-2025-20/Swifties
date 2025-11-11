@@ -4,6 +4,7 @@ import Combine
 class EventListViewModel: ObservableObject {
     @Published var events: [Event] = []
     @Published var isLoading = false
+    @Published var isRefreshing = false
     @Published var errorMessage: String?
     @Published var dataSource: DataSource = .none
     
@@ -40,6 +41,9 @@ class EventListViewModel: ObservableObject {
                 self.dataSource = .memoryCache
                 self.isLoading = false
                 print("Datos cargados desde caché de memoria")
+                
+                // Intentar actualizar en segundo plano si hay conexión
+                self.refreshInBackground()
                 return
             }
             
@@ -91,6 +95,7 @@ class EventListViewModel: ObservableObject {
             
             // Ya estamos en main thread gracias a ThreadManager
             self.isLoading = false
+            self.isRefreshing = false
             
             switch result {
             case .success(let events):
@@ -121,12 +126,27 @@ class EventListViewModel: ObservableObject {
     private func refreshInBackground() {
         guard networkMonitor.isConnected else { return }
         
+        // Set refreshing flag
+        threadManager.executeOnMain { [weak self] in
+            self?.isRefreshing = true
+        }
+        
         print("Actualizando datos en segundo plano...")
         
         networkService.fetchEvents { [weak self] result in
             guard let self = self else { return }
             
+            self.threadManager.executeOnMain {
+                self.isRefreshing = false
+            }
+            
             if case .success(let events) = result {
+                // Update UI if data changed
+                self.threadManager.executeOnMain {
+                    self.events = events
+                    self.dataSource = .network
+                }
+                
                 // Guardar en ambas capas de caché sin bloquear UI
                 self.threadManager.writeToCache {
                     self.cacheService.cacheEvents(events)

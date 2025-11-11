@@ -86,7 +86,7 @@ final class CommentViewModel: ObservableObject {
     }
     
     // Firestore payload
-    func toFirestore(comment: Comment) -> [String: Any] {
+    static func toFirestore(comment: Comment) -> [String: Any] {
         var metadataDict: [String: Any] = [
             "title": comment.metadata.title,
             "text": comment.metadata.text,
@@ -105,7 +105,12 @@ final class CommentViewModel: ObservableObject {
 
     // MARK: - Helpers
     private func uploadImage(_ image: UIImage, toPath path: String) async throws -> String {
-        guard let data = image.jpegData(compressionQuality: 0.85) else {
+        guard let data: Data = await withCheckedContinuation({ continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let encoded = image.jpegData(compressionQuality: 0.85)
+                continuation.resume(returning: encoded ?? Data())
+            }
+        }), !data.isEmpty else {
             throw NSError(domain: "CommentViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode image."])
         }
         let ref = storage.reference(withPath: path)
@@ -144,7 +149,7 @@ final class CommentViewModel: ObservableObject {
 
 extension DocumentReference {
     func setData(toFirestore comment: Comment) async throws {
-        let data = CommentViewModel().toFirestore(comment: comment)
+        let data = CommentViewModel.toFirestore(comment: comment)
         try await setData(data)
     }
 }

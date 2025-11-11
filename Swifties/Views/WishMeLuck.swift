@@ -408,11 +408,15 @@ struct WishMeLuckView: View {
             )
         }
         
-        var stats = EventStats(popularity: 0, rating: 0, totalCompletions: 0)
+        var stats = EventStats(popularity: 0,
+                               rating: 0,
+                               ratingList: [],
+                               totalCompletions: 0)
         if let statsData = data["stats"] as? [String: Any] {
             stats = EventStats(
                 popularity: statsData["popularity"] as? Int ?? 0,
                 rating: statsData["rating"] as? Int ?? 0,
+                ratingList: statsData["rating_list"] as? [Int?] ?? [],
                 totalCompletions: statsData["total_completions"] as? Int ?? 0
             )
         }

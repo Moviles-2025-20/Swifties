@@ -12,7 +12,7 @@ class EventDetailViewModel: ObservableObject {
     @Published var event: Event?
     @Published var isLoading = false
     @Published var errorMessage: String?
-    @Published var comments: [Comment?] = []
+    @Published var comments: [Comment] = []
     
     // Derived ratings from loaded comments
     @Published var averageRating: Double = 0.0
@@ -41,36 +41,66 @@ class EventDetailViewModel: ObservableObject {
             errorMessage = "Invalid event ID"
             return
         }
-        
+
         isLoading = true
         errorMessage = nil
-        
-        db.collection("events").document(eventId).getDocument { [weak self] document, error in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                self.isLoading = false
-                
-                if let error = error {
-                    self.errorMessage = "Error loading event: \(error.localizedDescription)"
-                    print(self.errorMessage ?? "")
-                    return
-                }
-                
-                guard let document = document, document.exists else {
-                    self.errorMessage = "Event not found"
-                    return
-                }
-                
-                // Parse the event from document data
-                let data = document.data() ?? [:]
-                self.event = self.parseEvent(documentId: document.documentID, data: data)
-                
-                if self.event == nil {
-                    self.errorMessage = "Error parsing event data"
-                } else {
-                    print("Event loaded successfully: \(self.event?.name ?? "")")
-                }
+
+        let group = DispatchGroup()
+
+        var loadedEvent: Event?
+        var loadedComments: [Comment] = []
+        var firstError: Error?
+
+        // Fetch event
+        self.db.collection("events").document(self.eventId).getDocument { document, error in
+            if let error = error {
+                if firstError == nil { firstError = error }
+                group.leave()
+                return
             }
+            guard let document = document, document.exists else {
+                if firstError == nil {
+                    firstError = NSError(domain: "EventDetailViewModel", code: 404, userInfo: [NSLocalizedDescriptionKey: "Event not found"])
+                }
+                group.leave()
+                return
+            }
+            let data = document.data() ?? [:]
+            loadedEvent = self.parseEvent(documentId: document.documentID, data: data)
+        }
+
+        // Fetch comments for this event
+        group.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            self.db.collection("comments")
+                .whereField("event_id", isEqualTo: self.eventId)
+                .order(by: "created", descending: true)
+                .getDocuments { snapshot, error in
+                    if let error = error {
+                        if firstError == nil { firstError = error }
+                        group.leave()
+                        return
+                    }
+                    guard let snapshot = snapshot else {
+                        group.leave()
+                        return
+                    }
+                    let parsed: [Comment] = snapshot.documents.compactMap { doc in
+                        do { return try doc.data(as: Comment.self) } catch { return nil }
+                    }
+                    loadedComments = parsed
+                    group.leave()
+                }
+        }
+
+        group.notify(queue: .main) {
+            self.isLoading = false
+            if let error = firstError {
+                self.errorMessage = error.localizedDescription
+            }
+            self.event = loadedEvent
+            self.comments = loadedComments
+            self.recalculateRatings()
         }
     }
     
@@ -81,7 +111,7 @@ class EventDetailViewModel: ObservableObject {
                 .order(by: "created", descending: true)
                 .getDocuments()
 
-            let parsed = snapshot.documents.compactMap { doc -> Comment? in
+            let parsed: [Comment] = snapshot.documents.compactMap { doc -> Comment? in
                 do {
                     return try doc.data(as: Comment.self)
                 } catch {
@@ -126,16 +156,13 @@ class EventDetailViewModel: ObservableObject {
                     }
                     return
                 }
-                do {
-                    let parsed: [Comment?] = try docs.map { doc in
-                        try doc.data(as: Comment.self)
-                    }
-                    DispatchQueue.main.async {
-                        self.comments = parsed
-                        self.recalculateRatings()
-                    }
-                } catch {
-                    print("Failed to decode comments: \(error)")
+                let parsed: [Comment] = docs.compactMap { doc in
+                    try? doc.data(as: Comment.self)
+                }
+                DispatchQueue.main.async {
+                    self.comments = parsed
+                    self.recalculateRatings()
+                    self.event?.stats.ratingList = self.comments.map(\.rating)
                 }
             }
     }
@@ -148,7 +175,7 @@ class EventDetailViewModel: ObservableObject {
     // MARK: - Ratings aggregation
     private func recalculateRatings() {
         // Filter to valid ratings 1...5
-        let validComments: [Comment] = comments.compactMap { $0 }.filter { comment in
+        let validComments: [Comment] = comments.filter { comment in
             if let rating = comment.rating { return (1...5).contains(rating) }
             return false
         }
@@ -232,11 +259,12 @@ class EventDetailViewModel: ObservableObject {
         }
         
         // Stats parsing
-        var stats = EventStats(popularity: 0, rating: 0, totalCompletions: 0)
+        var stats = EventStats(popularity: 0, rating: 0, ratingList: [], totalCompletions: 0)
         if let statsData = data["stats"] as? [String: Any] {
             stats = EventStats(
                 popularity: statsData["popularity"] as? Int ?? 0,
                 rating: statsData["rating"] as? Int ?? 0,
+                ratingList: statsData["rating_list"] as? [Int?] ?? [],
                 totalCompletions: statsData["total_completions"] as? Int ?? 0
             )
         }

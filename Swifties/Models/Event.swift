@@ -13,7 +13,7 @@ struct Event: Identifiable {
     let metadata: EventMetadata
     let name: String
     let schedule: EventSchedule
-    let stats: EventStats
+    var stats: EventStats
     let title: String
     let type: String
     let weatherDependent: Bool
@@ -31,7 +31,7 @@ struct CodableEvent: Codable {
     let metadata: EventMetadata
     let name: String
     let schedule: EventSchedule
-    let stats: EventStats
+    var stats: EventStats
     let title: String
     let type: String
     let weatherDependent: Bool
@@ -134,12 +134,14 @@ struct EventSchedule: Codable {
 // MARK: - Stats
 struct EventStats: Codable {
     let popularity: Int
-    let rating: Int
+    var rating: Int
+    var ratingList: [Int?]
     let totalCompletions: Int
     
     enum CodingKeys: String, CodingKey {
         case popularity
         case rating
+        case ratingList = "rating_list"
         case totalCompletions = "total_completions"
     }
 }

@@ -1,10 +1,3 @@
-//
-//  UserInfoView.swift
-//  Swifties
-//
-//  Created by
-//
-
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
@@ -36,15 +29,6 @@ struct UserInfoView: View {
         }
     }
     
-    private var dataSourceColor: Color {
-        switch viewModel.dataSource {
-        case .memoryCache: return .purple
-        case .localStorage: return .blue
-        case .network: return .green
-        case .none: return .secondary
-        }
-    }
-    
     var body: some View {
         ZStack {
             Color("appPrimary").ignoresSafeArea()
@@ -60,37 +44,48 @@ struct UserInfoView: View {
                     dismiss()
                 })
                 
-                // Data Source Indicator
+                // Connection status banner (placed before data source indicator)
+                if !networkMonitor.isConnected {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.slash")
+                            .foregroundColor(.red)
+                        Text("No Internet Connection")
+                            .font(.callout)
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+                }
+                
+                // Data Source Indicator (minimalist gray style like HomeView)
                 if !viewModel.isLoading && !viewModel.availableEvents.isEmpty {
                     HStack {
-                        Image(systemName: dataSourceIcon)
-                            .foregroundColor(dataSourceColor)
-                        Text(dataSourceText)
-                            .font(.caption)
-                            .foregroundColor(dataSourceColor)
+                        Spacer()
                         
-                        if viewModel.isRefreshing {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                            Text("Updating...")
-                                .font(.caption2)
+                        HStack(spacing: 6) {
+                            Image(systemName: dataSourceIcon)
                                 .foregroundColor(.secondary)
+                            Text(dataSourceText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            if viewModel.isRefreshing {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                Text("Updating...")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         
                         Spacer()
-                        
-                        // Debug button (optional, remove in production)
-                        Button(action: {
-                            viewModel.debugCache()
-                        }) {
-                            Image(systemName: "ladybug")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
                     }
                     .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemBackground).opacity(0.8))
+                    .padding(.top, 8)
                 }
                 
                 // MARK: - Main Content Area
@@ -111,7 +106,7 @@ struct UserInfoView: View {
                     VStack(spacing: 20) {
                         Image(systemName: "wifi.slash")
                             .font(.system(size: 60))
-                            .foregroundColor(.orange)
+                            .foregroundColor(.gray.opacity(0.6))
                         
                         Text("No Internet Connection")
                             .font(.title3)
@@ -144,7 +139,7 @@ struct UserInfoView: View {
                             }
                             .padding(.horizontal, 32)
                             .padding(.vertical, 12)
-                            .background(Color.orange)
+                            .background(Color.gray.opacity(0.6))
                             .foregroundColor(.white)
                             .cornerRadius(10)
                         }
@@ -292,26 +287,6 @@ struct UserInfoView: View {
                         }
                         .padding(.top, 16)
                     }
-                }
-            }
-            
-            // Floating connection status banner at the top
-            if !networkMonitor.isConnected && (!viewModel.availableEvents.isEmpty || !viewModel.freeTimeSlots.isEmpty) {
-                VStack {
-                    HStack(spacing: 8) {
-                        Image(systemName: "wifi.slash")
-                            .foregroundColor(.orange)
-                        Text("Offline - Using cached data")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.orange.opacity(0.1))
-                    .cornerRadius(8)
-                    .padding(.top, 60)
-                    
-                    Spacer()
                 }
             }
         }

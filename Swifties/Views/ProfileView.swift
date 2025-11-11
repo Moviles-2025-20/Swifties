@@ -12,6 +12,9 @@ struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var networkMonitor = NetworkMonitorService.shared
     
+    @State private var showOfflineAlert = false
+    @State private var offlineAlertMessage = ""
+    
     // MARK: - Data Source Indicator (matches HomeView)
     private var dataSourceIcon: String {
         switch viewModel.dataSource {
@@ -60,23 +63,6 @@ struct ProfileView: View {
                     .padding(.top, 4)
                 }
                 
-                // If profile information is empty
-                if !networkMonitor.isConnected, viewModel.dataSource == .none {
-                    HStack(spacing: 8) {
-                        Image(systemName: "wifi.slash")
-                            .foregroundColor(.red)
-                        Text("Cannot load profile from cache")
-                            .font(.callout)
-                            .foregroundColor(.red)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(8)
-                    .padding(.horizontal)
-                    .padding(.top, 4)
-                }
-                
                 // Data Source Indicator (matches other views)
                 if !viewModel.isLoading, viewModel.profile != nil {
                     HStack {
@@ -97,6 +83,54 @@ struct ProfileView: View {
                         if viewModel.isLoading {
                             ProgressView("Loading profile…")
                                 .padding(.top, 40)
+                        } else if !networkMonitor.isConnected && viewModel.profile == nil {
+                            // Offline state with no cached data - similar to WeeklyChallengeView
+                            VStack(spacing: 20) {
+                                Image(systemName: "wifi.slash")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.orange)
+                                
+                                Text("No Internet Connection")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.primary)
+                                
+                                Text("No cached or stored data available")
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 40)
+                                
+                                Text("Please connect to the internet and try again to load your profile")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 40)
+                                
+                                Button(action: {
+                                    if !networkMonitor.isConnected {
+                                        offlineAlertMessage = "Still no internet connection - Please check your network settings"
+                                        showOfflineAlert = true
+                                    } else {
+                                        viewModel.loadProfile()
+                                    }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "arrow.clockwise")
+                                        Text("Retry")
+                                    }
+                                    .padding(.horizontal, 32)
+                                    .padding(.vertical, 12)
+                                    .background(Color.orange)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                                }
+                                .padding(.top, 8)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 40)
+                            
                         } else if let error = viewModel.errorMessage {
                             VStack(spacing: 12) {
                                 Text(error)
@@ -109,10 +143,24 @@ struct ProfileView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 
-                                Button("Retry") {
-                                    viewModel.loadProfile()
+                                Button(action: {
+                                    if !networkMonitor.isConnected {
+                                        offlineAlertMessage = "Cannot retry - No internet connection available"
+                                        showOfflineAlert = true
+                                    } else {
+                                        viewModel.loadProfile()
+                                    }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "arrow.clockwise")
+                                        Text("Retry")
+                                    }
+                                    .padding(.horizontal, 32)
+                                    .padding(.vertical, 12)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
                                 }
-                                .buttonStyle(.borderedProminent)
                                 
                                 Spacer()
                             }
@@ -138,10 +186,10 @@ struct ProfileView: View {
                             if !networkMonitor.isConnected {
                                 HStack(spacing: 8) {
                                     Image(systemName: "wifi.slash")
-                                        .foregroundColor(.red)
+                                        .foregroundColor(.orange)
                                     Text("Actions disabled while offline")
                                         .font(.callout)
-                                        .foregroundColor(.red)
+                                        .foregroundColor(.orange)
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
@@ -150,50 +198,66 @@ struct ProfileView: View {
                                 .padding(.horizontal, 20)
                             }
 
-                            // Action Buttons
+                            // Action Buttons with Offline Protection
                             VStack(spacing: 15) {
                                 ActionButton(
                                     title: "Change your password",
                                     backgroundColor: Color("appBlue")
                                 ) {
-                                    // Handle password change
-                                    print("Change password tapped")
+                                    if !networkMonitor.isConnected {
+                                        offlineAlertMessage = "Cannot change password - No internet connection available"
+                                        showOfflineAlert = true
+                                    } else {
+                                        // Handle password change
+                                        print("Change password tapped")
+                                    }
                                 }
-                                .disabled(!networkMonitor.isConnected)
                                 .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
 
                                 ActionButton(
                                     title: "Change your profile information",
                                     backgroundColor: Color("appBlue")
                                 ) {
-                                    // Handle profile info change
-                                    print("Change profile info tapped")
+                                    if !networkMonitor.isConnected {
+                                        offlineAlertMessage = "Cannot change profile - No internet connection available"
+                                        showOfflineAlert = true
+                                    } else {
+                                        // Handle profile info change
+                                        print("Change profile info tapped")
+                                    }
                                 }
-                                .disabled(!networkMonitor.isConnected)
                                 .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
 
                                 ActionButton(
                                     title: "Log Out",
                                     backgroundColor: Color("appRed")
                                 ) {
-                                    // Handle log out
-                                    Task {
-                                        await authViewModel.logout()
+                                    if !networkMonitor.isConnected {
+                                        offlineAlertMessage = "Cannot log out - No internet connection available"
+                                        showOfflineAlert = true
+                                    } else {
+                                        // Handle log out
+                                        Task {
+                                            await authViewModel.logout()
+                                        }
                                     }
                                 }
-                                .disabled(!networkMonitor.isConnected)
                                 .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
 
                                 ActionButton(
                                     title: "Delete your account",
                                     backgroundColor: Color("appRed")
                                 ) {
-                                    // Handle account deletion
-                                    Task {
-                                        await authViewModel.deleteAccount()
+                                    if !networkMonitor.isConnected {
+                                        offlineAlertMessage = "Cannot delete account - No internet connection available"
+                                        showOfflineAlert = true
+                                    } else {
+                                        // Handle account deletion
+                                        Task {
+                                            await authViewModel.deleteAccount()
+                                        }
                                     }
                                 }
-                                .disabled(!networkMonitor.isConnected)
                                 .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
                             }
                             .padding(.horizontal, 20)
@@ -219,6 +283,11 @@ struct ProfileView: View {
                 }
             }
             .ignoresSafeArea(.all, edges: .bottom)
+        }
+        .alert("Connection Required", isPresented: $showOfflineAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(offlineAlertMessage)
         }
     }
 }

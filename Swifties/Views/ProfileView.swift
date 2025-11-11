@@ -127,6 +127,22 @@ struct ProfileView: View {
                             Divider()
                                 .padding(.horizontal, 20)
 
+                            // Offline warning message for action buttons
+                            if !networkMonitor.isConnected {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "wifi.slash")
+                                        .foregroundColor(.red)
+                                    Text("Actions disabled while offline")
+                                        .font(.callout)
+                                        .foregroundColor(.red)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.orange.opacity(0.1))
+                                .cornerRadius(8)
+                                .padding(.horizontal, 20)
+                            }
+
                             // Action Buttons
                             VStack(spacing: 15) {
                                 ActionButton(
@@ -137,6 +153,7 @@ struct ProfileView: View {
                                     print("Change password tapped")
                                 }
                                 .disabled(!networkMonitor.isConnected)
+                                .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
 
                                 ActionButton(
                                     title: "Change your profile information",
@@ -146,6 +163,7 @@ struct ProfileView: View {
                                     print("Change profile info tapped")
                                 }
                                 .disabled(!networkMonitor.isConnected)
+                                .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
 
                                 ActionButton(
                                     title: "Log Out",
@@ -157,6 +175,7 @@ struct ProfileView: View {
                                     }
                                 }
                                 .disabled(!networkMonitor.isConnected)
+                                .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
 
                                 ActionButton(
                                     title: "Delete your account",
@@ -168,6 +187,7 @@ struct ProfileView: View {
                                     }
                                 }
                                 .disabled(!networkMonitor.isConnected)
+                                .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
                             }
                             .padding(.horizontal, 20)
 

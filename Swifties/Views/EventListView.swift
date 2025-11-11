@@ -9,6 +9,9 @@ struct EventListView: View {
     @State private var isMapView = false
     @State private var mapOpenedTime: Date?
     @ObservedObject private var networkMonitor = NetworkMonitorService.shared
+    
+    @State private var showOfflineAlert = false
+    @State private var offlineAlertMessage = ""
 
     // Filter events by search
     var filteredEvents: [Event] {
@@ -41,6 +44,15 @@ struct EventListView: View {
         case .none: return ""
         }
     }
+    
+    private var dataSourceColor: Color {
+        switch viewModel.dataSource {
+        case .memoryCache: return .purple
+        case .localStorage: return .blue
+        case .network: return .green
+        case .none: return .secondary
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -52,61 +64,146 @@ struct EventListView: View {
                         print("Notification tapped")
                     })
                     
-                    // Connection status indicator
-                    if !networkMonitor.isConnected && !isMapView {
-                        HStack(spacing: 8) {
-                            Image(systemName: "wifi.slash")
-                                .foregroundColor(.red)
-                            Text("No Internet Connection")
-                                .font(.callout)
-                                .foregroundColor(.red)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.red.opacity(0.1))
-                        .cornerRadius(8)
-                        .padding(.horizontal)
-                        .padding(.top, 4)
-                    }
-                    
-                    // Data Source Indicator
+                    // Data Source Indicator (enhanced)
                     if !viewModel.isLoading && !viewModel.events.isEmpty && !isMapView {
                         HStack {
                             Image(systemName: dataSourceIcon)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(dataSourceColor)
                             Text(dataSourceText)
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(dataSourceColor)
+                            
+                            if viewModel.isRefreshing {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                Text("Updating...")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            // Debug button (optional, remove in production)
+                            Button(action: {
+                                EventStorageService.shared.debugStorage()
+                            }) {
+                                Image(systemName: "ladybug")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         .padding(.horizontal)
-                        .padding(.top, 8)
+                        .padding(.vertical, 8)
+                        .background(Color(.systemBackground).opacity(0.8))
                     }
 
-                    // Main content
+                    // MARK: - Main Content Area
                     if viewModel.isLoading {
-                        Spacer()
-                        ProgressView("Loading events…")
-                            .foregroundColor(.primary)
-                        Spacer()
-                    } else if let error = viewModel.errorMessage {
+                        // Loading state
                         Spacer()
                         VStack(spacing: 16) {
-                            Text("⚠️")
-                                .font(.system(size: 50))
-                            Text(error)
-                                .foregroundColor(.red)
-                                .multilineTextAlignment(.center)
-                                .padding()
-                            Button("Retry") {
-                                viewModel.loadEvents()
-                            }
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
+                            ProgressView()
+                                .scaleEffect(1.2)
+                            Text("Loading events...")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                         }
                         Spacer()
+                        
+                    } else if !networkMonitor.isConnected && viewModel.events.isEmpty {
+                        // Offline state with no cached data
+                        Spacer()
+                        VStack(spacing: 20) {
+                            Image(systemName: "wifi.slash")
+                                .font(.system(size: 60))
+                                .foregroundColor(.orange)
+                            
+                            Text("No Internet Connection")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                            
+                            Text("No cached or stored data available")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                            
+                            Text("Please connect to the internet and try again to load events")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                            
+                            Button(action: {
+                                if !networkMonitor.isConnected {
+                                    offlineAlertMessage = "Still no internet connection - Please check your network settings"
+                                    showOfflineAlert = true
+                                } else {
+                                    viewModel.loadEvents()
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "arrow.clockwise")
+                                    Text("Retry")
+                                }
+                                .padding(.horizontal, 32)
+                                .padding(.vertical, 12)
+                                .background(Color.orange)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                            }
+                            .padding(.top, 8)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 24)
+                        Spacer()
+                        
+                    } else if let error = viewModel.errorMessage {
+                        // Error state
+                        Spacer()
+                        VStack(spacing: 20) {
+                            Image(systemName: getErrorIcon(for: error))
+                                .font(.system(size: 60))
+                                .foregroundColor(.red.opacity(0.8))
+                            
+                            Text("Something Went Wrong")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                            
+                            Text(error)
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                            
+                            Button(action: {
+                                if !networkMonitor.isConnected {
+                                    offlineAlertMessage = "Cannot retry - No internet connection available"
+                                    showOfflineAlert = true
+                                } else {
+                                    viewModel.loadEvents()
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "arrow.clockwise")
+                                    Text("Try Again")
+                                }
+                                .padding(.horizontal, 32)
+                                .padding(.vertical, 12)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                            }
+                            .padding(.top, 8)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 24)
+                        Spacer()
+                        
                     } else {
+                        // Success state - show content
                         VStack(spacing: 0) {
                             // Keep scroll for list mode only, but show search + toggle above map as well
                             VStack(spacing: 16) {
@@ -172,6 +269,31 @@ struct EventListView: View {
                         }
                     }
                 }
+                
+                // Floating connection status banner at the top
+                if !networkMonitor.isConnected && !viewModel.events.isEmpty {
+                    VStack {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.slash")
+                                .foregroundColor(.orange)
+                            Text("Offline - Using cached data")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.top, 60)
+                        
+                        Spacer()
+                    }
+                }
+            }
+            .alert("Connection Required", isPresented: $showOfflineAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(offlineAlertMessage)
             }
             .onChange(of: isMapView) { oldValue, newValue in
                 if newValue {
@@ -197,6 +319,17 @@ struct EventListView: View {
                     AnalyticsService.shared.logDiscoveryMethod(.manualBrowse)
                 }
             }
+        }
+    }
+
+    // MARK: - Helper Functions
+    private func getErrorIcon(for error: String) -> String {
+        if error.contains("network") || error.contains("connection") {
+            return "wifi.slash"
+        } else if error.contains("auth") || error.contains("user") {
+            return "person.crop.circle.badge.exclamationmark"
+        } else {
+            return "exclamationmark.triangle"
         }
     }
 
@@ -287,9 +420,7 @@ private func formatEventTime(event: Event) -> String {
 private struct EventListView_PreviewContainer: View {
     let viewModel: EventListViewModel = {
         let vm = EventListViewModel()
-        let mockEvents: [Event] = [
-           
-        ]
+        let mockEvents: [Event] = []
         vm.events = mockEvents
         return vm
     }()

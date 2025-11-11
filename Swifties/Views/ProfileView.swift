@@ -60,7 +60,24 @@ struct ProfileView: View {
                     .padding(.top, 4)
                 }
                 
-                // Data Source Indicator (matches HomeView)
+                // If profile information is empty
+                if !networkMonitor.isConnected, viewModel.dataSource == .none {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.slash")
+                            .foregroundColor(.red)
+                        Text("No Profile Found to be Displayed")
+                            .font(.callout)
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+                }
+                
+                // Data Source Indicator (matches other views)
                 if !viewModel.isLoading, viewModel.profile != nil {
                     HStack {
                         Image(systemName: dataSourceIcon)
@@ -88,7 +105,7 @@ struct ProfileView: View {
                                     .padding(.horizontal, 20)
                                 
                                 if !networkMonitor.isConnected {
-                                    Text("You're offline. Some actions are disabled.")
+                                    Text("You're offline. Cannot load from network or local storage.")
                                         .foregroundColor(.secondary)
                                 }
                                 
@@ -98,16 +115,6 @@ struct ProfileView: View {
                                 .buttonStyle(.borderedProminent)
                                 
                                 Spacer()
-                                
-                                ActionButton(
-                                    title: "Delete your account",
-                                    backgroundColor: Color("appRed")
-                                ) {
-                                    // Handle account deletion
-                                    Task {
-                                        await authViewModel.deleteAccount()
-                                    }
-                                }
                             }
                             .padding(.top, 40)
                         } else if let profile = viewModel.profile {

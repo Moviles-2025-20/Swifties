@@ -65,7 +65,7 @@ struct ProfileView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "wifi.slash")
                             .foregroundColor(.red)
-                        Text("No Profile Found to be Displayed")
+                        Text("Cannot load profile from cache")
                             .font(.callout)
                             .foregroundColor(.red)
                     }

@@ -5,40 +5,44 @@ import RealmSwift
 class CommentRealmStorage {
     static let shared = CommentRealmStorage()
     
-    private let realm: Realm
+    private let configuration: Realm.Configuration
+    private let realmQueue = DispatchQueue(label: "CommentRealmStorage.realmQueue")
     
     private init() {
-        do {
-            realm = try Realm()
-        } catch {
-            print("⚠️ Failed to initialize Realm: \(error)")
-            do {
-                realm = try Realm(configuration: Realm.Configuration(inMemoryIdentifier: "InMemoryRealm"))
-                print("✅ Using in-memory Realm fallback")
-            } catch {
-                fatalError("❌ Failed to initialize even in-memory Realm: \(error)")
-            }
-        }
+        configuration = Realm.Configuration.defaultConfiguration
+        print("✅ Using default Realm configuration")
     }
-
     
     func save(comment: StoredComment, id: String) {
+        let encoder = JSONEncoder()
+        var data: Data
         do {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(comment)
-            let object = RealmPendingComment()
-            object.id = id
-            object.json = data
-            object.createdAt = Date()
-            try realm.write {
-                realm.add(object, update: .modified)
-            }
+            data = try encoder.encode(comment)
         } catch {
-            print("Failed to save comment with id \(id): \(error)")
+            print("Cannot use encoder for comment with id \(id): \(error)")
+            return
+        }
+        let object = RealmPendingComment()
+        object.id = id
+        object.json = data
+        object.createdAt = Date()
+        realmQueue.async {
+            do {
+                let realm = try Realm(configuration: self.configuration)
+                try realm.write {
+                    realm.add(object, update: .modified)
+                }
+            } catch {
+                print("Failed to save comment with id \(id): \(error)")
+            }
         }
     }
     
     func load(id: String) -> StoredComment? {
+        guard let realm = try? Realm(configuration: configuration) else {
+            print("Failed to open Realm for load(id:): unable to create Realm instance")
+            return nil
+        }
         guard let object = realm.object(ofType: RealmPendingComment.self, forPrimaryKey: id) else {
             return nil
         }
@@ -53,6 +57,10 @@ class CommentRealmStorage {
     }
     
     func loadAll() -> [StoredComment] {
+        guard let realm = try? Realm(configuration: configuration) else {
+            print("Failed to open Realm for loadAll()")
+            return []
+        }
         let objects = realm.objects(RealmPendingComment.self).sorted(byKeyPath: "createdAt", ascending: true)
         let decoder = JSONDecoder()
         var comments: [StoredComment] = []
@@ -68,26 +76,36 @@ class CommentRealmStorage {
     }
     
     func remove(id: String) {
-        guard let object = realm.object(ofType: RealmPendingComment.self, forPrimaryKey: id) else {
+        guard (try? Realm(configuration: configuration)) != nil else {
+            print("Failed to open Realm for remove(id:)")
             return
         }
-        do {
-            try realm.write {
-                realm.delete(object)
+        realmQueue.async {
+            do {
+                let realm = try Realm(configuration: self.configuration)
+                guard let object = realm.object(ofType: RealmPendingComment.self, forPrimaryKey: id) else {
+                    return
+                }
+                try realm.write {
+                    realm.delete(object)
+                }
+            } catch {
+                print("Failed to remove comment with id \(id): \(error)")
             }
-        } catch {
-            print("Failed to remove comment with id \(id): \(error)")
         }
     }
     
     func removeAll() {
-        let objects = realm.objects(RealmPendingComment.self)
-        do {
-            try realm.write {
-                realm.delete(objects)
+        realmQueue.async {
+            do {
+                let realm = try Realm(configuration: self.configuration)
+                let objects = realm.objects(RealmPendingComment.self)
+                try realm.write {
+                    realm.delete(objects)
+                }
+            } catch {
+                print("Failed to remove all comments: \(error)")
             }
-        } catch {
-            print("Failed to remove all comments: \(error)")
         }
     }
 }

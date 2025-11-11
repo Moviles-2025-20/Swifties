@@ -46,7 +46,7 @@ class WishMeLuckStorageService {
     func saveDaysSinceLastWished(userId: String, days: Int, lastWishedDate: Date?) {
         // Realm operations on dedicated queue
         realmQueue.async { [weak self] in
-            guard let self = self else { return }
+            guard let _ = self else { return }
             
             // Get Realm instance on this thread
             guard let realm = try? Realm() else {
@@ -139,7 +139,7 @@ class WishMeLuckStorageService {
     
     func clearAllStorage() {
         realmQueue.async { [weak self] in
-            guard let self = self else { return }
+            guard let _ = self else { return }
             guard let realm = try? Realm() else { return }
             
             do {
@@ -158,7 +158,7 @@ class WishMeLuckStorageService {
     
     func debugStorage(userId: String) {
         realmQueue.async { [weak self] in
-            guard let self = self else { return }
+            guard let _ = self else { return }
             guard let realm = try? Realm() else {
                 print("❌ Realm not initialized")
                 return

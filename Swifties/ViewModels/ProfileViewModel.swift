@@ -193,6 +193,8 @@ final class ProfileViewModel: ObservableObject {
             self.profile = cached
             self.dataSource = .memoryCache
             self.isLoading = false
+            // Refresh in background if online
+            refreshInBackground()
             return
         }
 
@@ -201,7 +203,7 @@ final class ProfileViewModel: ObservableObject {
             self.profile = stored
             self.dataSource = .localStorage
             self.isLoading = false
-            // refresh in background if online
+            // Refresh in background if online
             refreshInBackground()
             return
         }
@@ -242,6 +244,8 @@ final class ProfileViewModel: ObservableObject {
                 if case .success(let profile) = result {
                     self.cacheService.cacheProfile(profile)
                     self.storageService.saveProfile(profile)
+                    self.profile = profile
+                    self.dataSource = .network
                 }
             }
         }

@@ -11,6 +11,25 @@ struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var networkMonitor = NetworkMonitorService.shared
+    
+    // MARK: - Data Source Indicator (matches HomeView)
+    private var dataSourceIcon: String {
+        switch viewModel.dataSource {
+        case .memoryCache: return "memorychip"
+        case .localStorage: return "internaldrive"
+        case .network: return "wifi"
+        case .none: return "questionmark"
+        }
+    }
+    
+    private var dataSourceText: String {
+        switch viewModel.dataSource {
+        case .memoryCache: return "Memory Cache"
+        case .localStorage: return "Local Storage"
+        case .network: return "Updated from Network"
+        case .none: return ""
+        }
+    }
         
     var body: some View {
         
@@ -24,15 +43,38 @@ struct ProfileView: View {
                         print("Notifications tapped")
                     })
                 
+                // Connection status indicator
+                if !networkMonitor.isConnected {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.slash")
+                            .foregroundColor(.red)
+                        Text("No Internet Connection")
+                            .font(.callout)
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+                }
+                
+                // Data Source Indicator (matches HomeView)
+                if !viewModel.isLoading, viewModel.profile != nil {
+                    HStack {
+                        Image(systemName: dataSourceIcon)
+                            .foregroundColor(.secondary)
+                        Text(dataSourceText)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                }
+                
                 ScrollView {
                     VStack(spacing: 25) {
-                        
-                        if !networkMonitor.isConnected {
-                            Text("Offline mode: Showing cached data if available")
-                                .font(.footnote)
-                                .foregroundColor(.yellow)
-                                .padding(.top, 8)
-                        }
                         
                         // Loading / Error / Content States
                         if viewModel.isLoading {

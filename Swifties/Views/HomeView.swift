@@ -181,6 +181,7 @@ struct HomeView: View {
                                         Image(systemName: "wifi.slash")
                                             .font(.system(size: 60))
                                             .foregroundColor(.gray.opacity(0.6))
+                                            .accessibilityLabel("No internet connection")
                                         
                                         Text("No Internet Connection")
                                             .font(.title3)

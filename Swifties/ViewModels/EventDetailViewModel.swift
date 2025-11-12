@@ -9,7 +9,7 @@ import FirebaseFirestore
 import Combine
 
 class EventDetailViewModel: ObservableObject {
-    @Published var event: Event
+    @Published var event: Event?
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var comments: [Comment] = []
@@ -65,7 +65,7 @@ class EventDetailViewModel: ObservableObject {
 
                     // Update event using secondary variable to trigger @Published
                     var updatedEvent = self.event
-                    updatedEvent.stats.ratingList = self.comments.map(\.rating)
+                    updatedEvent?.stats.ratingList = self.comments.map(\.rating)
                     self.event = updatedEvent
                 }
             }

@@ -98,7 +98,7 @@ final class CommentSubmitCoordinator {
                 cache.remove(id: localId)
                 if savedLocally {
                     queue.async() {
-                        realmStorage.remove(id: localId)
+                        self.realmStorage.remove(id: localId)
                     }
                 }
                 return .success(())

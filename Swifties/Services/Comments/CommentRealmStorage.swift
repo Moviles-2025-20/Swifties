@@ -19,7 +19,7 @@ class CommentRealmStorage {
         do {
             data = try encoder.encode(comment)
         } catch {
-            print("Cannot use encoder for comment with id \(id): \(error)")
+            print("Cannot use encoder for comment with id \(id). Saving operation skipped with error: \(error)")
             return
         }
         let object = RealmPendingComment()

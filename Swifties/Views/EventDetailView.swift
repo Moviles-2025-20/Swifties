@@ -213,7 +213,7 @@ struct EventDetailView: View {
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
                                 } else {
-                                    ForEach(viewModel.comments.compactMap { $0 }, id: \.id) { comment in
+                                    ForEach(viewModel.comments, id: \.id) { comment in
                                         ZStack {
                                             Rectangle()
                                                 .fill(Color(.appSecondary))

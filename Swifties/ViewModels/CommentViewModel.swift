@@ -105,12 +105,7 @@ final class CommentViewModel: ObservableObject {
 
     // MARK: - Helpers
     private func uploadImage(_ image: UIImage, toPath path: String) async throws -> String {
-        guard let data: Data = await withCheckedContinuation({ continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let encoded = image.jpegData(compressionQuality: 0.85)
-                continuation.resume(returning: encoded ?? Data())
-            }
-        }), !data.isEmpty else {
+        guard let data: Data = image.jpegData(compressionQuality: 0.85) else {
             throw NSError(domain: "CommentViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode image."])
         }
         let ref = storage.reference(withPath: path)

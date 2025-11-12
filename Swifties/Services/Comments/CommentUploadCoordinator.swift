@@ -97,7 +97,9 @@ final class CommentSubmitCoordinator {
                 print("Submission succeeded for localId \(localId), cleaning up cache and realm")
                 cache.remove(id: localId)
                 if savedLocally {
-                    realmStorage.remove(id: localId)
+                    queue.async() {
+                        realmStorage.remove(id: localId)
+                    }
                 }
                 return .success(())
             } catch {

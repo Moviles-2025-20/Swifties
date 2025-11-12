@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-class EventListViewModel: ObservableObject {    
+class EventListViewModel: ObservableObject {
     @Published var events: [Event] = []
     @Published var isLoading = false
     @Published var isRefreshing = false

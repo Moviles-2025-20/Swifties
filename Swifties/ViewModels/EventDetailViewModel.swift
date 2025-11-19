@@ -25,7 +25,7 @@ class EventDetailViewModel: ObservableObject {
     private var commentsListener: ListenerRegistration? = nil
     
     init(event: Event) {
-        self.event? = event
+        self.event = event
         // Configure Firestore settings
         let firestore = Firestore.firestore()
         let settings = FirestoreSettings()
@@ -65,7 +65,7 @@ class EventDetailViewModel: ObservableObject {
 
                     // Update event using secondary variable to trigger @Published
                     var updatedEvent = self.event
-                    updatedEvent?.stats.ratingList = self.comments.map(\.rating)
+                    updatedEvent?.stats.ratingList = self.comments.compactMap(\.rating)
                     self.event = updatedEvent
                 }
             }

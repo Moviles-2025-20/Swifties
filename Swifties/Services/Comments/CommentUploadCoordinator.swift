@@ -8,7 +8,6 @@ final class CommentSubmitCoordinator {
 
     @Published private(set) var isConnected: Bool = false
     private var cancellables = Set<AnyCancellable>()
-    private var savedLocally = false
     
     private lazy var commentViewModel = CommentViewModel()
     private lazy var networkMonitor = NetworkMonitorService.shared
@@ -41,7 +40,6 @@ final class CommentSubmitCoordinator {
     public func submitOfflineFirst(payload: CommentViewModel.SubmissionPayload) async throws -> Result<Void, Error> {
         let localId = UUID().uuidString
         let createdDate = Date()
-        savedLocally = false
         
         let comment = Comment(
             id: localId,
@@ -86,7 +84,6 @@ final class CommentSubmitCoordinator {
             guard let self = self else { return }
             self.realmStorage.save(comment: storedComment, id: localId)
             print("Persisted comment to Realm with localId \(localId)")
-            savedLocally = true
         }
 
         // TODO: Check for race condition in saving
@@ -96,10 +93,8 @@ final class CommentSubmitCoordinator {
                 try await commentViewModel.onlineSubmit(payload)
                 print("Submission succeeded for localId \(localId), cleaning up cache and realm")
                 cache.remove(id: localId)
-                if savedLocally {
-                    queue.async() {
-                        self.realmStorage.remove(id: localId)
-                    }
+                queue.async() {
+                    self.realmStorage.remove(id: localId)
                 }
                 return .success(())
             } catch {
@@ -116,7 +111,7 @@ final class CommentSubmitCoordinator {
     private func syncPendingComments() async {
         print("Syncing pending comments...")
 
-        let pendingComments = realmStorage.loadAll()
+        let pendingComments = await realmStorage.loadAll()
         guard !pendingComments.isEmpty else {
             print("No pending comments to sync")
             return

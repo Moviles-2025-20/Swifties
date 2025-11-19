@@ -9,8 +9,19 @@ class CommentRealmStorage {
     private let realmQueue = DispatchQueue(label: "CommentRealmStorage.realmQueue")
     
     private init() {
-        configuration = Realm.Configuration.defaultConfiguration
-        print("✅ Using default Realm configuration")
+        // Align schemaVersion with other services (WeeklyChallenge/WishMeLuck use 1)
+        configuration = Realm.Configuration(
+            schemaVersion: 1,
+            migrationBlock: { migration, oldSchemaVersion in
+                // Add migration steps if you ever bump schemaVersion > 1
+                if oldSchemaVersion < 1 {
+                    // No-op: v1 initial schema for comments
+                }
+            }
+        )
+        // Optionally set as default to keep entire app consistent
+        // Realm.Configuration.defaultConfiguration = configuration
+        print("✅ Using Realm configuration (schemaVersion: \(configuration.schemaVersion)) for CommentRealmStorage")
     }
     
     func save(comment: StoredComment, id: String) {
@@ -38,48 +49,55 @@ class CommentRealmStorage {
         }
     }
     
-    func load(id: String) -> StoredComment? {
-        guard let realm = try? Realm(configuration: configuration) else {
-            print("Failed to open Realm for load(id:): unable to create Realm instance")
-            return nil
-        }
-        guard let object = realm.object(ofType: RealmPendingComment.self, forPrimaryKey: id) else {
-            return nil
-        }
-        do {
-            let decoder = JSONDecoder()
-            let comment = try decoder.decode(StoredComment.self, from: object.json)
-            return comment
-        } catch {
-            print("Failed to decode comment with id \(id): \(error)")
-            return nil
+    // Async version that performs Realm I/O on realmQueue and resumes with the result
+    func load(id: String) async -> StoredComment? {
+        await withCheckedContinuation { continuation in
+            realmQueue.async {
+                do {
+                    let realm = try Realm(configuration: self.configuration)
+                    guard let object = realm.object(ofType: RealmPendingComment.self, forPrimaryKey: id) else {
+                        print("Failed to load comment with id \(id): Not found in database")
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    let decoder = JSONDecoder()
+                    let comment = try decoder.decode(StoredComment.self, from: object.json)
+                    continuation.resume(returning: comment)
+                } catch {
+                    print("Failed to load comment with id \(id): \(error)")
+                    continuation.resume(returning: nil)
+                }
+            }
         }
     }
     
-    func loadAll() -> [StoredComment] {
-        guard let realm = try? Realm(configuration: configuration) else {
-            print("Failed to open Realm for loadAll()")
-            return []
-        }
-        let objects = realm.objects(RealmPendingComment.self).sorted(byKeyPath: "createdAt", ascending: true)
-        let decoder = JSONDecoder()
-        var comments: [StoredComment] = []
-        for object in objects {
-            do {
-                let comment = try decoder.decode(StoredComment.self, from: object.json)
-                comments.append(comment)
-            } catch {
-                print("Failed to decode comment with id \(object.id): \(error)")
+    // Async version that performs Realm I/O on realmQueue and resumes with the array
+    func loadAll() async -> [StoredComment] {
+        await withCheckedContinuation { continuation in
+            realmQueue.async {
+                do {
+                    let realm = try Realm(configuration: self.configuration)
+                    let objects = realm.objects(RealmPendingComment.self).sorted(byKeyPath: "createdAt", ascending: true)
+                    let decoder = JSONDecoder()
+                    var comments: [StoredComment] = []
+                    for object in objects {
+                        do {
+                            let comment = try decoder.decode(StoredComment.self, from: object.json)
+                            comments.append(comment)
+                        } catch {
+                            print("Failed to decode comment with id \(object.id): \(error)")
+                        }
+                    }
+                    continuation.resume(returning: comments)
+                } catch {
+                    print("Failed to open Realm for loadAll(): \(error)")
+                    continuation.resume(returning: [])
+                }
             }
         }
-        return comments
     }
     
     func remove(id: String) {
-        guard (try? Realm(configuration: configuration)) != nil else {
-            print("Failed to open Realm for remove(id:)")
-            return
-        }
         realmQueue.async {
             do {
                 let realm = try Realm(configuration: self.configuration)
@@ -116,7 +134,7 @@ class RealmPendingComment: Object {
     @Persisted var createdAt: Date = Date()
 }
 
-public struct StoredMetadata: Codable {
+public struct StoredMetadata: Codable, Sendable {
     let image: Data?
     let title: String
     let text: String
@@ -128,7 +146,7 @@ public struct StoredMetadata: Codable {
     }
 }
 
-public struct StoredComment: Codable {
+public struct StoredComment: Codable, Sendable {
     let id: String?
     let created: Date
     let eventId: String

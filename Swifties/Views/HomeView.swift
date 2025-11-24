@@ -17,7 +17,7 @@ struct HomeView: View {
     @State private var showOfflineAlert = false
     @State private var offlineAlertMessage = ""
     
-    // MARK: - Computed Properties for Data Source
+    // MARK: - Computed Properties for Data Source Indicator
     private var dataSourceIcon: String {
         switch homeViewModel.dataSource {
         case .memoryCache: return "memorychip"
@@ -35,15 +35,6 @@ struct HomeView: View {
         case .none: return ""
         }
     }
-    
-    private var dataSourceColor: Color {
-        switch homeViewModel.dataSource {
-        case .memoryCache: return .purple
-        case .localStorage: return .blue
-        case .network: return .green
-        case .none: return .secondary
-        }
-    }
         
     var body: some View {
         NavigationStack {
@@ -58,37 +49,48 @@ struct HomeView: View {
                             print("Notifications tapped")
                         })
                     
-                    // Data Source Indicator
+                    // Connection status banner
+                    if !networkMonitor.isConnected {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.slash")
+                                .foregroundColor(.red)
+                            Text("No Internet Connection")
+                                .font(.callout)
+                                .foregroundColor(.red)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                    }
+                    
+                    // Data Source Indicator (minimalist gray style)
                     if !homeViewModel.isLoading && !homeViewModel.recommendations.isEmpty {
                         HStack {
-                            Image(systemName: dataSourceIcon)
-                                .foregroundColor(dataSourceColor)
-                            Text(dataSourceText)
-                                .font(.caption)
-                                .foregroundColor(dataSourceColor)
+                            Spacer()
                             
-                            if homeViewModel.isRefreshing {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                                Text("Updating...")
-                                    .font(.caption2)
+                            HStack(spacing: 6) {
+                                Image(systemName: dataSourceIcon)
                                     .foregroundColor(.secondary)
+                                Text(dataSourceText)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                if homeViewModel.isRefreshing {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                    Text("Updating...")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             
                             Spacer()
-                            
-                            // Debug button (optional, remove in production)
-                            Button(action: {
-                                homeViewModel.debugCache()
-                            }) {
-                                Image(systemName: "ladybug")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
                         }
                         .padding(.horizontal)
-                        .padding(.vertical, 8)
-                        .background(Color(.systemBackground).opacity(0.8))
+                        .padding(.top, 8)
                     }
 
                     ScrollView {
@@ -335,25 +337,6 @@ struct HomeView: View {
                     }
                 }
                 
-                // Floating connection status banner (only when data is loaded)
-                if !networkMonitor.isConnected && !homeViewModel.recommendations.isEmpty {
-                    VStack {
-                        HStack(spacing: 8) {
-                            Image(systemName: "wifi.slash")
-                                .foregroundColor(.orange)
-                            Text("Offline - Using cached data")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(8)
-                        .padding(.top, 60)
-                        
-                        Spacer()
-                    }
-                }
             }
             .alert("Connection Required", isPresented: $showOfflineAlert) {
                 Button("OK", role: .cancel) {}

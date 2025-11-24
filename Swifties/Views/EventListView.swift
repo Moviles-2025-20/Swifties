@@ -44,15 +44,6 @@ struct EventListView: View {
         case .none: return ""
         }
     }
-    
-    private var dataSourceColor: Color {
-        switch viewModel.dataSource {
-        case .memoryCache: return .purple
-        case .localStorage: return .blue
-        case .network: return .green
-        case .none: return .secondary
-        }
-    }
 
     var body: some View {
         NavigationStack {
@@ -64,37 +55,48 @@ struct EventListView: View {
                         print("Notification tapped")
                     })
                     
-                    // Data Source Indicator (enhanced)
+                    // Connection status banner
+                    if !networkMonitor.isConnected {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wifi.slash")
+                                .foregroundColor(.red)
+                            Text("No Internet Connection")
+                                .font(.callout)
+                                .foregroundColor(.red)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                    }
+                    
+                    // Data Source Indicator (minimalist gray style)
                     if !viewModel.isLoading && !viewModel.events.isEmpty && !isMapView {
                         HStack {
-                            Image(systemName: dataSourceIcon)
-                                .foregroundColor(dataSourceColor)
-                            Text(dataSourceText)
-                                .font(.caption)
-                                .foregroundColor(dataSourceColor)
+                            Spacer()
                             
-                            if viewModel.isRefreshing {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                                Text("Updating...")
-                                    .font(.caption2)
+                            HStack(spacing: 6) {
+                                Image(systemName: dataSourceIcon)
                                     .foregroundColor(.secondary)
+                                Text(dataSourceText)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                if viewModel.isRefreshing {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                    Text("Updating...")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             
                             Spacer()
-                            
-                            // Debug button (optional, remove in production)
-                            Button(action: {
-                                EventStorageService.shared.debugStorage()
-                            }) {
-                                Image(systemName: "ladybug")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
                         }
                         .padding(.horizontal)
-                        .padding(.vertical, 8)
-                        .background(Color(.systemBackground).opacity(0.8))
+                        .padding(.top, 8)
                     }
 
                     // MARK: - Main Content Area
@@ -270,25 +272,6 @@ struct EventListView: View {
                     }
                 }
                 
-                // Floating connection status banner at the top
-                if !networkMonitor.isConnected && !viewModel.events.isEmpty {
-                    VStack {
-                        HStack(spacing: 8) {
-                            Image(systemName: "wifi.slash")
-                                .foregroundColor(.orange)
-                            Text("Offline - Using cached data")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(8)
-                        .padding(.top, 60)
-                        
-                        Spacer()
-                    }
-                }
             }
             .alert("Connection Required", isPresented: $showOfflineAlert) {
                 Button("OK", role: .cancel) {}

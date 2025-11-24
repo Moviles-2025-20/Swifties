@@ -21,6 +21,7 @@ class AuthViewModel: ObservableObject {
     @Published var isEmailVerified: Bool = false
     @Published var isCheckingProfile: Bool = true
     
+    
     // AuthService singleton
     private let authService = AuthService.shared
     let db = Firestore.firestore(database: "default")
@@ -98,9 +99,12 @@ class AuthViewModel: ObservableObject {
         isCheckingProfile = true
         defer { isCheckingProfile = false }
         
-        // CRITICAL: First check if registration was completed offline
-        if userDefaultsService.hasCompletedRegistrationLocally() {
-            print("✅ Found completed registration in UserDefaults - treating as returning user")
+        print("🔍 Checking first time user status for: \(user.uid)")
+        
+        // Check user-specific registration flag first, then fall back to global registration flag
+        // First check: Has this specific user completed registration?
+        if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
+            print("✅ Found cached registration status for user \(user.uid) - treating as returning user")
             self.isFirstTimeUser = false
             
             // If we have pending data to sync, try syncing it now
@@ -111,10 +115,19 @@ class AuthViewModel: ObservableObject {
             return
         }
         
-        // Check if we have cached registration status for this user
-        if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
-            print("✅ Found cached registration status for user \(user.uid) - treating as returning user")
+        // Second check: Has ANY registration been completed locally?
+        // This catches the case where the user completed registration offline
+        if userDefaultsService.hasCompletedRegistrationLocally() {
+            print("✅ Found completed registration in UserDefaults - treating as returning user")
+            // IMPORTANT: Also cache this for the specific user
+            userDefaultsService.cacheRegistrationStatus(uid: user.uid, completed: true)
             self.isFirstTimeUser = false
+            
+            // If we have pending data to sync, try syncing it now
+            if userDefaultsService.hasPendingRegistration() && networkMonitor.isConnected {
+                print("🔄 Found pending registration data - attempting to sync...")
+                await RegistrationSyncService.shared.syncPendingRegistration()
+            }
             return
         }
         
@@ -125,7 +138,7 @@ class AuthViewModel: ObservableObject {
                 
                 // User is first-time if document doesn't exist OR doesn't have profile data
                 if !document.exists {
-                    print("📡 First time user - no Firestore document found")
+                    print("First time user - no Firestore document found")
                     isFirstTimeUser = true
                     // Cache this status
                     userDefaultsService.cacheRegistrationStatus(uid: user.uid, completed: false)
@@ -133,13 +146,14 @@ class AuthViewModel: ObservableObject {
                           let profile = data["profile"] as? [String: Any],
                           profile["name"] != nil {
                     // Document exists and has profile data - returning user
-                    print("📡 Returning user - profile found in Firestore")
+                    print("Returning user - profile found in Firestore")
                     isFirstTimeUser = false
                     // IMPORTANT: Cache this status for offline use
                     userDefaultsService.cacheRegistrationStatus(uid: user.uid, completed: true)
+                    userDefaultsService.markRegistrationCompleted()
                 } else {
                     // Document exists but incomplete - treat as first time
-                    print("⚠️ Incomplete profile - treating as first time user")
+                    print("==== Incomplete profile - treating as first time user")
                     isFirstTimeUser = true
                     userDefaultsService.cacheRegistrationStatus(uid: user.uid, completed: false)
                 }
@@ -148,7 +162,7 @@ class AuthViewModel: ObservableObject {
                 
                 // On error while online, check if we have cached status to fall back on
                 if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
-                    print("⚠️ Using cached registration status due to Firestore error")
+                    print("==== Using cached registration status due to Firestore error")
                     isFirstTimeUser = false
                 } else {
                     // No cached data and error - assume first time to be safe
@@ -158,11 +172,11 @@ class AuthViewModel: ObservableObject {
         } else {
             // Offline - check if we have cached status for this specific user
             if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
-                print("📱 Offline - using cached registration status: User has completed registration")
+                print("Offline - using cached registration status: User has completed registration")
                 isFirstTimeUser = false
             } else {
-                print("⚠️ Offline with no cached registration status - treating as first time user")
-                print("⚠️ This can happen after reinstall. User should connect to internet once to verify.")
+                print("=-==== Offline with no cached registration status - treating as first time user")
+                print("-==== This can happen after reinstall. User should connect to internet once to verify.")
                 isFirstTimeUser = true
             }
         }

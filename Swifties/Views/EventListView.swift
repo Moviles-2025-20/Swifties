@@ -319,12 +319,13 @@ struct EventListView: View {
     // Helper container to manage selection and actions from map
     @ViewBuilder
     func EventMapContainerView(events: [Event]) -> some View {
-        EventMapContent(events: events)
+        EventMapContent(events: events, viewModel: viewModel)
     }
 }
 
 struct EventMapContent: View {
     let events: [Event]
+    let viewModel: EventListViewModel
     @State private var selectedEvent: Event?
     @State private var showActionSheet = false
     @State private var showDetailsSheet = false

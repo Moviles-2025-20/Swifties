@@ -89,7 +89,6 @@ class EventCacheService {
     }
     
     // MARK: - Debug
-    
     func debugCache() {
         let info = getCacheInfo()
         print("\n=== DEBUG MEMORY CACHE ===")

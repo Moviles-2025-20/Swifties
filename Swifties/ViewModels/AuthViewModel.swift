@@ -101,7 +101,7 @@ class AuthViewModel: ObservableObject {
         
         print("🔍 Checking first time user status for: \(user.uid)")
         
-        // CRITICAL FIX: Check BOTH the user-specific AND the global registration flags
+        // Check user-specific registration flag first, then fall back to global registration flag
         // First check: Has this specific user completed registration?
         if userDefaultsService.hasCompletedRegistration(uid: user.uid) {
             print("✅ Found cached registration status for user \(user.uid) - treating as returning user")

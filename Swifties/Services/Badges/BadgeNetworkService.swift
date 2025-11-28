@@ -380,11 +380,3 @@ class BadgeNetworkService {
         }
     }
 }
-
-// MARK: - User Stats Helper
-
-struct UserStats {
-    let eventsAttended: Int
-    let activitiesCompleted: Int
-    let categoriesCompleted: Int
-}

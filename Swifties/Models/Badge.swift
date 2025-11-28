@@ -74,7 +74,7 @@ enum CriteriaType: String, Codable {
     case activitiesCompleted = "activities_completed"
     case weeklyChallenges = "weekly_challenges"
     
-    // 🆕 Nuevos criterios
+    // 🆕 New criteria
     case morningActivities = "morning_activities"
     case nightActivities = "night_activities"
     case allDayWarrior = "all_day_warrior"

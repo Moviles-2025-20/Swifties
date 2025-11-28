@@ -25,8 +25,7 @@ class BadgeCacheService {
     
     private init() {}
     
-    // MARK: - Cache Operations
-    
+
     func getCachedBadges(userId: String) -> BadgeCache? {
         guard let cached = cache[userId] else {
             print("❌ No badge cache found for user: \(userId)")

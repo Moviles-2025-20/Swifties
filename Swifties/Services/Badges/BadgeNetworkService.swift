@@ -265,7 +265,7 @@ class BadgeNetworkService {
                         return source == "weekly_challenge" || type == "event"
                     }.count
                     
-                    // 🆕 Count activities by time of day
+                    // Count activities by time of day
                     for doc in documents {
                         let data = doc.data()
                         
@@ -340,7 +340,7 @@ class BadgeNetworkService {
         case .weeklyChallenges:
             return stats.weeklyChallengesCompleted
             
-        // 🆕 Nuevos casos
+        // Nuevos casos
         case .morningActivities:
             return stats.morningActivities
         case .nightActivities:

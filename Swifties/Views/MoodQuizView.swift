@@ -284,6 +284,7 @@ struct MoodQuizView: View {
                 Text(result.emoji)
                     .font(.system(size: 100))
                     .padding(.bottom, 16)
+                    .accessibilityLabel("Result: \(result.moodCategory)")
                 
                 // Category title - with dynamic sizing
                 Text(result.moodCategory)
@@ -359,10 +360,10 @@ struct MoodQuizView: View {
                 .disabled(viewModel.isLoading)
                 
                 Button(action: {
-                    withAnimation {
-                        viewModel.resetQuiz()
-                    }
-                }) {
+                    Task {  // Wrap in Task
+                            await viewModel.resetQuiz()
+                        }
+                    }) {
                     HStack {
                         Image(systemName: "arrow.clockwise")
                         Text("Retake Quiz")
@@ -396,6 +397,7 @@ struct MoodQuizView: View {
 }
 
 // MARK: - Sizing helper function
+
 private func dynamicTitleSize(for text: String) -> CGFloat {
     if text.count > 25 {
         return 22

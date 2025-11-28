@@ -21,7 +21,8 @@ class MoodQuizViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var quizResult: QuizResult?
     @Published var showResult: Bool = false
-    
+    @Published var hasSavedResult: Bool = false
+
     // MARK: - Private Properties
     private let db = Firestore.firestore(database: "default")
     private var cancellables = Set<AnyCancellable>()
@@ -88,7 +89,26 @@ class MoodQuizViewModel: ObservableObject {
                         continue
                     }
                     
+                    // Validate points range
+                    guard points >= 0 && points <= 100 else {
+                        print("⚠️ Invalid points value: \(points) for option '\(optionText)' in question '\(id)'")
+                        continue
+                    }
+                    
+                    // Validate category
+                    let validCategories = Set(QuizResult.categoryDisplayNames.keys)
+                    guard validCategories.contains(category) else {
+                        print("⚠️ Invalid category: \(category) for option '\(optionText)' in question '\(id)'")
+                        continue
+                    }
+                    
                     options.append(QuizOption(text: optionText, category: category, points: points))
+                }
+                
+                // Only add question if it has valid options
+                guard !options.isEmpty else {
+                    print("⚠️ Question '\(id)' has no valid options, skipping")
+                    continue
                 }
                 
                 fetchedQuestions.append(QuizQuestion(id: id, text: text, imageUrl: imageUrl, options: options))
@@ -179,55 +199,45 @@ class MoodQuizViewModel: ObservableObject {
         let result: QuizResult
         
         if topCategories.count == 1 {
-            // No tie - single winner
             let category = topCategories[0]
             let displayName = QuizResult.categoryDisplayNames[category] ?? category
             
             result = QuizResult(
-                moodCategory: displayName,  // Use display name instead of raw category
+                moodCategory: displayName,
+                rawCategory: category,  // Add this
                 isTied: false,
                 tiedCategories: [],
                 emoji: QuizResult.categoryEmojis[category] ?? "😊",
                 description: QuizResult.categoryDescriptions[category] ?? "¡Resultado único!",
                 totalScore: totalScore
             )
-            print("✅ Result: Single winner - \(displayName)")
-            
         } else if topCategories.count == 2 {
-            // 2-way tie - mixed result
             let sortedCategories = topCategories.sorted()
             let displayNames = sortedCategories.compactMap { QuizResult.categoryDisplayNames[$0] }
-            
-            // Use "&" instead of "+" for shorter display
             let mixedCategory = displayNames.joined(separator: " & ")
-            let mixedEmoji = sortedCategories.compactMap { QuizResult.categoryEmojis[$0] }.joined(separator: " ")
-            let mixedDescription = "You are a perfect blend of \(displayNames[0]) and \(displayNames[1]). You have qualities from both worlds."
             
             result = QuizResult(
                 moodCategory: mixedCategory,
+                rawCategory: sortedCategories.joined(separator: "_"),  // e.g., "creative_social_planner"
                 isTied: true,
                 tiedCategories: topCategories,
-                emoji: mixedEmoji,
-                description: mixedDescription,
+                emoji: sortedCategories.compactMap { QuizResult.categoryEmojis[$0] }.joined(separator: " "),
+                description: "You are a perfect blend of \(displayNames[0]) and \(displayNames[1]).",
                 totalScore: totalScore
             )
-            print("✅ Result: 2-way tie - \(mixedCategory)")
-            
         } else {
-            // 3+ way tie - use priority
             let winner = QuizResult.categoryPriority.first { topCategories.contains($0) } ?? topCategories[0]
             let displayName = QuizResult.categoryDisplayNames[winner] ?? winner
-            let displayDescription = QuizResult.categoryDescriptions[winner] ?? ""
             
             result = QuizResult(
-                moodCategory: displayName,  // Use display name
+                moodCategory: displayName,
+                rawCategory: winner,  // Add this
                 isTied: true,
                 tiedCategories: topCategories,
                 emoji: QuizResult.categoryEmojis[winner] ?? "😊",
-                description: displayDescription + " (Multiple affinities detected)",
+                description: QuizResult.categoryDescriptions[winner]! + " (Multiple affinities detected)",
                 totalScore: totalScore
             )
-            print("✅ Result: 3+ way tie resolved to \(displayName) by priority")
         }
         
         quizResult = result
@@ -237,11 +247,16 @@ class MoodQuizViewModel: ObservableObject {
     // MARK: - Save Result
     func saveResultToFirebase() async {
         guard let uid = Auth.auth().currentUser?.uid,
-              let result = quizResult else {
-            print("❌ Cannot save: No user or result")
-            errorMessage = "Unable to save result. Please try again."
-            return
-        }
+                  let result = quizResult,
+                  !hasSavedResult else {  // Prevent duplicate saves
+                if hasSavedResult {
+                    print("⚠️ Result already saved")
+                } else {
+                    print("❌ Cannot save: No user or result")
+                    errorMessage = "Unable to save result. Please try again."
+                }
+                return
+            }
         
         isLoading = true
         errorMessage = nil  // Clear any previous errors
@@ -282,7 +297,7 @@ class MoodQuizViewModel: ObservableObject {
                 "stats.last_quiz_date": FieldValue.serverTimestamp(),
                 "stats.total_quizzes": FieldValue.increment(Int64(1))
             ])
-            
+            hasSavedResult = true
             isLoading = false
             
         } catch {
@@ -293,10 +308,15 @@ class MoodQuizViewModel: ObservableObject {
     }
     
     // MARK: - Reset Quiz
-    func resetQuiz() {
+    func resetQuiz() async {
         currentQuestionIndex = 0
         selectedAnswers.removeAll()
         quizResult = nil
         showResult = false
+        errorMessage = nil
+        hasSavedResult = false
+        
+        // Reshuffle questions for variety
+        await fetchQuestions()
     }
 }

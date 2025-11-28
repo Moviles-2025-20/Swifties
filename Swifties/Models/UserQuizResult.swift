@@ -50,16 +50,15 @@ struct UserQuizResult: Codable {
         scores: [String: Int],
         result: QuizResult
     ) -> UserQuizResult {
-        // Determine result type and categories
         let resultType: String
         let resultCategory: [String]
         
         if result.isTied {
             resultType = "mixed"
-            resultCategory = result.tiedCategories.sorted()
+            resultCategory = result.tiedCategories.sorted()  // Already raw keys
         } else {
             resultType = "single"
-            resultCategory = [result.moodCategory]
+            resultCategory = [result.rawCategory]  // Use raw category, not display name
         }
         
         return UserQuizResult(

@@ -41,7 +41,8 @@ struct QuizOption: Codable, Identifiable {
 
 // MARK: - Quiz Result Model
 struct QuizResult {
-    let moodCategory: String
+    let moodCategory: String  // DISPLAY name
+    let rawCategory: String   // Actual category key
     let isTied: Bool
     let tiedCategories: [String]
     let emoji: String

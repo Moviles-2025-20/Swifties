@@ -235,7 +235,16 @@ class BadgeNetworkService {
         
         var eventsAttended = 0
         var activitiesCompleted = 0
-   
+        
+        // 🆕 Nuevas variables
+        var morningActivities = 0
+        var afternoonActivities = 0
+        var eveningActivities = 0
+        var nightActivities = 0
+        var timeSlots = Set<String>()
+        var commentsLeft = 0
+        var weeklyChallengesCompleted = 0
+        
         var fetchError: Error?
         
         // Count activities
@@ -256,32 +265,64 @@ class BadgeNetworkService {
                         return source == "weekly_challenge" || type == "event"
                     }.count
                     
-            
+                    // 🆕 Count activities by time of day
+                    for doc in documents {
+                        let data = doc.data()
+                        
+                        // Count time slots
+                        if let timeOfDay = data["time_of_day"] as? String {
+                            timeSlots.insert(timeOfDay)
+                            
+                            switch timeOfDay {
+                            case "morning":
+                                morningActivities += 1
+                            case "afternoon":
+                                afternoonActivities += 1
+                            case "evening":
+                                eveningActivities += 1
+                            case "night":
+                                nightActivities += 1
+                            default:
+                                break
+                            }
+                        }
+                        
+                        // Count comments
+                        if data["comment_id"] != nil && !(data["comment_id"] is NSNull) {
+                            commentsLeft += 1
+                        }
+                        
+                        // Count weekly challenges
+                        let source = data["source"] as? String
+                        let type = data["type"] as? String
+                        if source == "weekly_challenge" || type == "weekly_challenge" {
+                            weeklyChallengesCompleted += 1
+                        }
+                    }
                 }
                 group.leave()
             }
-        
-        // Get completed categories from user preferences
-        group.enter()
-        db.collection("users").document(userId).getDocument { snapshot, error in
-            if let error = error {
-                fetchError = error
-            } else if let data = snapshot?.data(),
-                      let preferences = data["preferences"] as? [String: Any],
-                      let completed = preferences["completed_categories"] as? [String] {
-                categoriesCompleted = Set(completed)
-            }
-            group.leave()
-        }
         
         group.notify(queue: .main) {
             if let error = fetchError {
                 completion(.failure(error))
             } else {
+                // Check if user has activities in all time slots
+                let hasAllTimeSlots = timeSlots.contains("morning") &&
+                                      timeSlots.contains("afternoon") &&
+                                      timeSlots.contains("evening") &&
+                                      timeSlots.contains("night")
+                
                 let stats = UserStats(
                     eventsAttended: eventsAttended,
                     activitiesCompleted: activitiesCompleted,
-                    
+                    morningActivities: morningActivities,
+                    afternoonActivities: afternoonActivities,
+                    eveningActivities: eveningActivities,
+                    nightActivities: nightActivities,
+                    hasAllTimeSlots: hasAllTimeSlots,
+                    commentsLeft: commentsLeft,
+                    weeklyChallengesCompleted: weeklyChallengesCompleted
                 )
                 completion(.success(stats))
             }
@@ -296,9 +337,22 @@ class BadgeNetworkService {
             return stats.eventsAttended
         case .activitiesCompleted:
             return stats.activitiesCompleted
-      
         case .weeklyChallenges:
-            return 0 // Will be updated separately
+            return stats.weeklyChallengesCompleted
+            
+        // 🆕 Nuevos casos
+        case .morningActivities:
+            return stats.morningActivities
+        case .nightActivities:
+            return stats.nightActivities
+        case .allDayWarrior:
+            return stats.hasAllTimeSlots ? 1 : 0
+        case .firstComment:
+            return stats.commentsLeft > 0 ? 1 : 0
+        case .commentsLeft:
+            return stats.commentsLeft
+        case .firstWeeklyChallenge:
+            return stats.weeklyChallengesCompleted > 0 ? 1 : 0
         }
     }
     

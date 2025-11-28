@@ -8,30 +8,7 @@
 import Foundation
 
 extension CriteriaType {
-    var displayName: String {
-        switch self {
-        case .eventsAttended:
-            return "Attend Events"
-        case .activitiesCompleted:
-            return "Complete Activities"
-        case .weeklyChallenges:
-            return "Weekly Challenges"
-        case .morningActivities:
-            return "Morning Activities"
-        case .nightActivities:
-            return "Night Activities"
-        case .allDayWarrior:
-            return "All Time Slots"
-        case .firstComment:
-            return "Leave First Comment"
-        case .commentsLeft:
-            return "Leave Comments"
-        case .firstWeeklyChallenge:
-            return "Complete First Weekly Challenge"
-        }
-    }
-    
-    var description: String {
+    var detailedDescription: String {
         switch self {
         case .eventsAttended:
             return "Participate in events to unlock this badge"

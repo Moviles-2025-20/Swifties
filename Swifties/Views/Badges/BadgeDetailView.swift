@@ -311,7 +311,7 @@ struct BadgeInfoSectionView: View {
             Divider()
             
             VStack(alignment: .leading, spacing: 12) {
-                InfoRow(icon: "target", title: "Requirement", value: detail.badge.criteriaType.displayName)
+                InfoRow(icon: detail.badge.criteriaType.icon, title: "Requirement", value: detail.badge.criteriaType.displayName)
                 InfoRow(icon: "number", title: "Goal", value: "\(detail.badge.criteriaValue)")
                 InfoRow(icon: "star.fill", title: "Rarity", value: detail.badge.rarity.displayName)
                 

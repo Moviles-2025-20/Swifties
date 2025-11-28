@@ -25,9 +25,9 @@ class BadgeDetailViewModel: ObservableObject {
     private let badgeId: String
     private let userId: String
     
-    private let detailCacheService = BadgeDetailCacheService.shared
-    private let detailStorageService = BadgeDetailStorageService.shared
-    private let detailNetworkService = BadgeDetailNetworkService.shared
+    private let cacheService = BadgeDetailCacheService.shared
+    private let storageService = BadgeDetailStorageService.shared
+    private let networkService = BadgeDetailNetworkService.shared
     private let networkMonitor = NetworkMonitorService.shared
     
     init(badgeId: String, userId: String) {
@@ -44,29 +44,29 @@ class BadgeDetailViewModel: ObservableObject {
         print("🚀 Loading badge detail: \(badgeId) for user: \(userId)")
         
         // Layer 1: Memory Cache
-        if let cached = detailCacheService.getCachedDetail(badgeId: badgeId, userId: userId) {
+        if let cached = cacheService.getCachedDetail(badgeId: badgeId, userId: userId) {
             self.badgeDetail = cached
             self.dataSource = .memoryCache
             self.isLoading = false
             print("✅ Loaded from memory cache")
             
-            // Refresh in background if connected
+            // Try to refresh in background if connected
             refreshInBackground()
             return
         }
         
         // Layer 2: Local Storage (SQLite via Realm)
-        if let stored = detailStorageService.loadDetail(badgeId: badgeId, userId: userId) {
+        if let stored = storageService.loadDetail(badgeId: badgeId, userId: userId) {
             self.badgeDetail = stored
             self.dataSource = .localStorage
             self.isLoading = false
             
             // Cache in memory
-            detailCacheService.cacheDetail(badgeId: badgeId, userId: userId, detail: stored)
+            cacheService.cacheDetail(badgeId: badgeId, userId: userId, detail: stored)
             
             print("✅ Loaded from local storage")
             
-            // Refresh in background if connected
+            // Try to refresh in background if connected
             refreshInBackground()
             return
         }
@@ -82,7 +82,7 @@ class BadgeDetailViewModel: ObservableObject {
     }
     
     private func fetchFromNetwork() {
-        detailNetworkService.fetchBadgeDetail(badgeId: badgeId, userId: userId) { [weak self] result in
+        networkService.fetchBadgeDetail(badgeId: badgeId, userId: userId) { [weak self] result in
             Task { @MainActor in
                 guard let self = self else { return }
                 self.isLoading = false
@@ -93,8 +93,8 @@ class BadgeDetailViewModel: ObservableObject {
                     self.dataSource = .network
                     
                     // Save to both cache layers
-                    self.detailCacheService.cacheDetail(badgeId: self.badgeId, userId: self.userId, detail: detail)
-                    self.detailStorageService.saveDetail(badgeId: self.badgeId, userId: self.userId, detail: detail)
+                    self.cacheService.cacheDetail(badgeId: self.badgeId, userId: self.userId, detail: detail)
+                    self.storageService.saveDetail(badgeId: self.badgeId, userId: self.userId, detail: detail)
                     
                     print("✅ Loaded from network and cached")
                     
@@ -109,7 +109,7 @@ class BadgeDetailViewModel: ObservableObject {
     private func refreshInBackground() {
         guard networkMonitor.isConnected else { return }
         
-        detailNetworkService.fetchBadgeDetail(badgeId: badgeId, userId: userId) { [weak self] result in
+        networkService.fetchBadgeDetail(badgeId: badgeId, userId: userId) { [weak self] result in
             Task { @MainActor in
                 guard let self = self else { return }
                 
@@ -117,8 +117,8 @@ class BadgeDetailViewModel: ObservableObject {
                     self.badgeDetail = detail
                     
                     // Update caches
-                    self.detailCacheService.cacheDetail(badgeId: self.badgeId, userId: self.userId, detail: detail)
-                    self.detailStorageService.saveDetail(badgeId: self.badgeId, userId: self.userId, detail: detail)
+                    self.cacheService.cacheDetail(badgeId: self.badgeId, userId: self.userId, detail: detail)
+                    self.storageService.saveDetail(badgeId: self.badgeId, userId: self.userId, detail: detail)
                     
                     print("✅ Updated in background")
                 }

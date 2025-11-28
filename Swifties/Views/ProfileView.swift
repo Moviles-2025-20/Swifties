@@ -192,7 +192,7 @@ struct ProfileView: View {
                                     
                                     Spacer()
                                     
-                                    // Opcional: Mostrar conteo de badges desbloqueados
+                                    // Optional: Show count of unlocked badges
                                     Text("View all")
                                         .font(.caption)
                                         .foregroundColor(.secondary)

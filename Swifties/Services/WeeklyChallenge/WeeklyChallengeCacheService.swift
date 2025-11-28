@@ -63,7 +63,7 @@ class WeeklyChallengeCacheService {
     }
     
     func cacheChallenge(userId: String, event: Event?, hasAttended: Bool, totalChallenges: Int, chartData: [WeeklyChallengeChartData]) {
-        let key = cacheKey(for: userId)  //  Reutiliza método
+        let key = cacheKey(for: userId)  // Reuses method
         
         let cache = WeeklyChallengeCache(
             event: event,

@@ -1,0 +1,331 @@
+//
+//  MoodQuizViewModel.swift
+//  Swifties
+//
+//  Created by Natalia Villegas Calderón on 27/11/25.
+//
+
+import Foundation
+import SwiftUI
+import FirebaseFirestore
+import FirebaseAuth
+import Combine
+
+@MainActor
+class MoodQuizViewModel: ObservableObject {
+    // MARK: - Published Properties
+    @Published var questions: [QuizQuestion] = []
+    @Published var currentQuestionIndex: Int = 0
+    @Published var selectedAnswers: [String: UserAnswer] = [:] // questionId: answer
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String?
+    @Published var quizResult: QuizResult?
+    @Published var showResult: Bool = false
+    @Published var hasSavedResult: Bool = false
+
+    // MARK: - Private Properties
+    private let db = Firestore.firestore(database: "default")
+    private var cancellables = Set<AnyCancellable>()
+    private let quizBankDocumentId = "lOhEPYC8ci9lBEo08G47"
+    private let quizBankId = "personality_v1"
+    
+    // MARK: - Computed Properties
+    var currentQuestion: QuizQuestion? {
+        guard currentQuestionIndex < questions.count else { return nil }
+        return questions[currentQuestionIndex]
+    }
+    
+    var progress: Double {
+        guard !questions.isEmpty else { return 0 }
+        return Double(currentQuestionIndex + 1) / Double(questions.count)
+    }
+    
+    var canGoNext: Bool {
+        guard let currentQuestionId = currentQuestion?.id else { return false }
+        return selectedAnswers[currentQuestionId] != nil
+    }
+    
+    var isLastQuestion: Bool {
+        return currentQuestionIndex == questions.count - 1
+    }
+    
+    // MARK: - Fetch Questions from Firebase
+    func fetchQuestions() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            print("------->>>>> Fetching quiz questions from Firebase...")
+            
+            // Fetch from the document that contains the questions array
+            let docRef = db.collection("quiz_questions").document(quizBankDocumentId)
+            let document = try await docRef.getDocument()
+            
+            guard let data = document.data(),
+                  let questionsArray = data["questions"] as? [[String: Any]] else {
+                print("!!!!!!! No questions found in document")
+                errorMessage = "No quiz questions available at the moment"
+                isLoading = false
+                return
+            }
+            
+            // Parse questions manually since they're in a nested array
+            var fetchedQuestions: [QuizQuestion] = []
+            
+            for questionData in questionsArray {
+                guard let id = questionData["id"] as? String,
+                      let text = questionData["text"] as? String,
+                      let optionsArray = questionData["options"] as? [[String: Any]] else {
+                    continue
+                }
+                
+                let imageUrl = questionData["imageUrl"] as? String
+                
+                var options: [QuizOption] = []
+                for optionData in optionsArray {
+                    guard let optionText = optionData["text"] as? String,
+                          let category = optionData["category"] as? String,
+                          let points = optionData["points"] as? Int else {
+                        continue
+                    }
+                    
+                    // Validate points range
+                    guard points >= 0 && points <= 100 else {
+                        print("⚠️ Invalid points value: \(points) for option '\(optionText)' in question '\(id)'")
+                        continue
+                    }
+                    
+                    // Validate category
+                    let validCategories = Set(QuizResult.categoryDisplayNames.keys)
+                    guard validCategories.contains(category) else {
+                        print("⚠️ Invalid category: \(category) for option '\(optionText)' in question '\(id)'")
+                        continue
+                    }
+                    
+                    options.append(QuizOption(text: optionText, category: category, points: points))
+                }
+                
+                // Only add question if it has valid options
+                guard !options.isEmpty else {
+                    print("⚠️ Question '\(id)' has no valid options, skipping")
+                    continue
+                }
+                
+                fetchedQuestions.append(QuizQuestion(id: id, text: text, imageUrl: imageUrl, options: options))
+            }
+            
+            if fetchedQuestions.isEmpty {
+                print("!!!!!!! No valid questions parsed")
+                errorMessage = "Failed to parse quiz questions"
+            } else {
+                // Randomly select 5 questions from the pool
+                questions = Array(fetchedQuestions.shuffled().prefix(5))
+                print("✅ Loaded \(questions.count) random questions from \(fetchedQuestions.count) total")
+            }
+            
+            isLoading = false
+        } catch {
+            print("❌ Error fetching questions: \(error.localizedDescription)")
+            errorMessage = "Failed to load quiz questions: \(error.localizedDescription)"
+            isLoading = false
+        }
+    }
+    
+    // MARK: - Answer Selection
+    func selectAnswer(option: QuizOption) {
+        guard let questionId = currentQuestion?.id else { return }
+        
+        let answer = UserAnswer(
+            questionId: questionId,
+            selectedOptionId: option.text, // Using text as ID since options don't have separate IDs
+            category: option.category,
+            points: option.points,
+            timestamp: Date()
+        )
+        
+        selectedAnswers[questionId] = answer
+        print("✅ Answer selected: \(option.text) (\(option.category): +\(option.points))")
+    }
+    
+    func isOptionSelected(_ optionText: String) -> Bool {
+        guard let questionId = currentQuestion?.id else { return false }
+        return selectedAnswers[questionId]?.selectedOptionId == optionText
+    }
+    
+    // MARK: - Navigation
+    func goToNextQuestion() {
+        guard canGoNext else { return }
+        
+        if isLastQuestion {
+            // Calculate result
+            calculateResult()
+        } else {
+            currentQuestionIndex += 1
+        }
+    }
+    
+    func goToPreviousQuestion() {
+        guard currentQuestionIndex > 0 else { return }
+        currentQuestionIndex -= 1
+    }
+    
+    // MARK: - Calculate Result
+    private func calculateResult() {
+        print("\n ----->>>> Calculating quiz result...")
+        
+        // Count points per category
+        var categoryScores: [String: Int] = [:]
+        var totalScore = 0
+        
+        for answer in selectedAnswers.values {
+            categoryScores[answer.category, default: 0] += answer.points
+            totalScore += answer.points
+        }
+        
+        print("Category scores: \(categoryScores)")
+        
+        // Find max score
+        guard let maxScore = categoryScores.values.max() else {
+            print("❌ No scores found")
+            return
+        }
+        
+        // Find all categories with max score (ties)
+        let topCategories = categoryScores.filter { $0.value == maxScore }.map { $0.key }
+        
+        print("Top categories: \(topCategories) with score: \(maxScore)")
+        
+        // Determine result based on tie rules
+        let result: QuizResult
+        
+        if topCategories.count == 1 {
+            let category = topCategories[0]
+            let displayName = QuizResult.categoryDisplayNames[category] ?? category
+            
+            result = QuizResult(
+                moodCategory: displayName,
+                rawCategory: category,  // Add this
+                isTied: false,
+                tiedCategories: [],
+                emoji: QuizResult.categoryEmojis[category] ?? "😊",
+                description: QuizResult.categoryDescriptions[category] ?? "¡Resultado único!",
+                totalScore: totalScore
+            )
+        } else if topCategories.count == 2 {
+            let sortedCategories = topCategories.sorted()
+            let displayNames = sortedCategories.compactMap { QuizResult.categoryDisplayNames[$0] }
+            let mixedCategory = displayNames.joined(separator: " & ")
+            
+            result = QuizResult(
+                moodCategory: mixedCategory,
+                rawCategory: sortedCategories.joined(separator: "_"),  // e.g., "creative_social_planner"
+                isTied: true,
+                tiedCategories: topCategories,
+                emoji: sortedCategories.compactMap { QuizResult.categoryEmojis[$0] }.joined(separator: " "),
+                description: "You are a perfect blend of \(displayNames[0]) and \(displayNames[1]).",
+                totalScore: totalScore
+            )
+        } // In the 3+ way tie case
+        else {
+            let winner = QuizResult.categoryPriority.first { topCategories.contains($0) } ?? topCategories[0]
+            let displayName = QuizResult.categoryDisplayNames[winner] ?? winner
+            
+            result = QuizResult(
+                moodCategory: displayName,
+                rawCategory: winner,
+                isTied: true,
+                tiedCategories: topCategories,
+                emoji: QuizResult.categoryEmojis[winner] ?? "😊",
+                description: (QuizResult.categoryDescriptions[winner] ?? "Your unique personality blend!") + " (Multiple affinities detected)",
+                totalScore: totalScore
+            )
+        }
+        
+        quizResult = result
+        showResult = true
+    }
+    
+    // MARK: - Save Result
+    func saveResultToFirebase() async {
+        guard let uid = Auth.auth().currentUser?.uid,
+                  let result = quizResult,
+                  !hasSavedResult else {  // Prevent duplicate saves
+                if hasSavedResult {
+                    print("⚠️ Result already saved")
+                } else {
+                    print("❌ Cannot save: No user or result")
+                    errorMessage = "Unable to save result. Please try again."
+                }
+                return
+            }
+        
+        isLoading = true
+        errorMessage = nil  // Clear any previous errors
+        
+        do {
+            // Calculate category scores
+            var categoryScores: [String: Int] = [:]
+            for answer in selectedAnswers.values {
+                categoryScores[answer.category, default: 0] += answer.points
+            }
+            
+            // Get selected question IDs in order
+            let selectedQuestionIds = questions.compactMap { $0.id }
+
+            // Validate that we have question IDs
+            guard selectedQuestionIds.count == questions.count else {
+                print("⚠️ Some questions missing IDs")
+                errorMessage = "Unable to save result due to missing question data."
+                isLoading = false
+                return
+            }
+            
+            // Create UserQuizResult
+            let userQuizResult = UserQuizResult.from(
+                userId: uid,
+                quizBankId: quizBankId,  // Now using the constant
+                selectedQuestionIds: selectedQuestionIds,
+                scores: categoryScores,
+                result: result
+            )
+            
+            // Save to quiz_answers collection
+            let resultData = userQuizResult.toFirestoreData()
+            try await db.collection("quiz_answers").addDocument(data: resultData)
+            
+            print("✅ Quiz result saved successfully")
+            print("   User: \(uid)")
+            print("   Quiz ID: \(quizBankId)")
+            print("   Selected Questions: \(selectedQuestionIds)")
+            print("   Scores: \(categoryScores)")
+            print("   Result Category: \(userQuizResult.resultCategory)")
+            print("   Result Type: \(userQuizResult.resultType)")
+            
+            // Update user stats
+            try await db.collection("users").document(uid).updateData([
+                "stats.last_quiz_date": FieldValue.serverTimestamp(),
+                "stats.total_quizzes": FieldValue.increment(Int64(1))
+            ])
+            hasSavedResult = true
+            isLoading = false
+            
+        } catch {
+            print("❌ Error saving result: \(error.localizedDescription)")
+            errorMessage = "Failed to save result. Please try again."
+            isLoading = false
+        }
+    }
+    
+    // MARK: - Reset Quiz
+    func resetQuiz() async {
+        currentQuestionIndex = 0
+        selectedAnswers.removeAll()
+        quizResult = nil
+        showResult = false
+        errorMessage = nil
+        hasSavedResult = false
+        
+        // Reshuffle questions for variety
+        await fetchQuestions()
+    }
+}

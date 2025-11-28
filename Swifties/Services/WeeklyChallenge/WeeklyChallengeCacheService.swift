@@ -24,7 +24,6 @@ class WeeklyChallengeCacheService {
     private var currentWeekId: String {
         let now = Date()
         
-     
         if let cached = cachedWeekId,
            let timestamp = weekIdTimestamp,
            now.timeIntervalSince(timestamp) < 3600 {

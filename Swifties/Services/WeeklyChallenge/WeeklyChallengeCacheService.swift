@@ -19,7 +19,7 @@ class WeeklyChallengeCacheService {
     
     private init() {}
     
-    // MARK: - Helper Methods (Evitar recreación)
+    // MARK: - Helper Methods (Avoid recreation)
     
     private var currentWeekId: String {
         let now = Date()

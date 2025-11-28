@@ -114,7 +114,7 @@ struct BadgeDetailView: View {
                             
                             // Unlock Date (if unlocked)
                             if detail.userBadge.isUnlocked, let earnedAt = detail.userBadge.earnedAt {
-                                UnlockDateView(date: earnedAt)
+                                BadgeUnlockDateView(date: earnedAt)
                             }
                             
                             Spacer(minLength: 40)
@@ -311,12 +311,12 @@ struct BadgeInfoSectionView: View {
             Divider()
             
             VStack(alignment: .leading, spacing: 12) {
-                InfoRow(icon: detail.badge.criteriaType.icon, title: "Requirement", value: detail.badge.criteriaType.displayName)
-                InfoRow(icon: "number", title: "Goal", value: "\(detail.badge.criteriaValue)")
-                InfoRow(icon: "star.fill", title: "Rarity", value: detail.badge.rarity.displayName)
+                BadgeInfoRowView(icon: detail.badge.criteriaType.icon, title: "Requirement", value: detail.badge.criteriaType.displayName)
+                BadgeInfoRowView(icon: "number", title: "Goal", value: "\(detail.badge.criteriaValue)")
+                BadgeInfoRowView(icon: "star.fill", title: "Rarity", value: detail.badge.rarity.displayName)
                 
                 if detail.badge.isSecret {
-                    InfoRow(icon: "eye.slash.fill", title: "Type", value: "Secret Badge")
+                    BadgeInfoRowView(icon: "eye.slash.fill", title: "Type", value: "Secret Badge")
                 }
             }
         }
@@ -338,14 +338,14 @@ struct BadgeStatsSectionView: View {
                 .fontWeight(.bold)
             
             HStack(spacing: 16) {
-                StatCard(
+                BadgeStatCardView(
                     icon: "person.3.fill",
                     title: "Earned By",
                     value: "\(detail.totalUsersWithBadge)",
                     subtitle: "users"
                 )
                 
-                StatCard(
+                BadgeStatCardView(
                     icon: "chart.bar.fill",
                     title: "Completion",
                     value: "\(detail.completionRate)%",
@@ -361,7 +361,7 @@ struct BadgeStatsSectionView: View {
 }
 
 // MARK: - Unlock Date View
-struct UnlockDateView: View {
+struct BadgeUnlockDateView: View {
     let date: Date
     
     private var formattedDate: String {
@@ -393,8 +393,8 @@ struct UnlockDateView: View {
     }
 }
 
-// MARK: - Helper Views
-struct InfoRow: View {
+// MARK: - Helper Views (renamed to avoid conflicts)
+struct BadgeInfoRowView: View {
     let icon: String
     let title: String
     let value: String
@@ -419,7 +419,7 @@ struct InfoRow: View {
     }
 }
 
-struct StatCard: View {
+struct BadgeStatCardView: View {
     let icon: String
     let title: String
     let value: String

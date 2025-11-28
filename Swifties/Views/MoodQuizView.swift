@@ -360,7 +360,7 @@ struct MoodQuizView: View {
                 .disabled(viewModel.isLoading)
                 
                 Button(action: {
-                    Task {  // Wrap in Task
+                    Task {
                             await viewModel.resetQuiz()
                         }
                     }) {

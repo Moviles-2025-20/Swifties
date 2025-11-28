@@ -225,17 +225,18 @@ class MoodQuizViewModel: ObservableObject {
                 description: "You are a perfect blend of \(displayNames[0]) and \(displayNames[1]).",
                 totalScore: totalScore
             )
-        } else {
+        } // In the 3+ way tie case
+        else {
             let winner = QuizResult.categoryPriority.first { topCategories.contains($0) } ?? topCategories[0]
             let displayName = QuizResult.categoryDisplayNames[winner] ?? winner
             
             result = QuizResult(
                 moodCategory: displayName,
-                rawCategory: winner,  // Add this
+                rawCategory: winner,
                 isTied: true,
                 tiedCategories: topCategories,
                 emoji: QuizResult.categoryEmojis[winner] ?? "😊",
-                description: QuizResult.categoryDescriptions[winner]! + " (Multiple affinities detected)",
+                description: (QuizResult.categoryDescriptions[winner] ?? "Your unique personality blend!") + " (Multiple affinities detected)",
                 totalScore: totalScore
             )
         }
@@ -269,7 +270,15 @@ class MoodQuizViewModel: ObservableObject {
             }
             
             // Get selected question IDs in order
-            let selectedQuestionIds = questions.map { $0.id ?? "" }
+            let selectedQuestionIds = questions.compactMap { $0.id }
+
+            // Validate that we have question IDs
+            guard selectedQuestionIds.count == questions.count else {
+                print("⚠️ Some questions missing IDs")
+                errorMessage = "Unable to save result due to missing question data."
+                isLoading = false
+                return
+            }
             
             // Create UserQuizResult
             let userQuizResult = UserQuizResult.from(

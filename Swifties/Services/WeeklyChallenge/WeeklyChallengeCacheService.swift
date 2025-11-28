@@ -85,7 +85,7 @@ class WeeklyChallengeCacheService {
     }
     
     func debugCache(userId: String) {
-        let key = cacheKey(for: userId)  //  Reutiliza método
+        let key = cacheKey(for: userId)  // Reuses method
         
         print("\n=== DEBUG WEEKLY CHALLENGE CACHE ===")
         print("Key: \(key)")

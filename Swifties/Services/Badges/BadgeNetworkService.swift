@@ -235,7 +235,7 @@ class BadgeNetworkService {
         
         var eventsAttended = 0
         var activitiesCompleted = 0
-        var categoriesCompleted: Set<String> = []
+   
         var fetchError: Error?
         
         // Count activities
@@ -256,13 +256,7 @@ class BadgeNetworkService {
                         return source == "weekly_challenge" || type == "event"
                     }.count
                     
-                    // Extract unique categories
-                    for doc in documents {
-                        if let eventId = doc.data()["event_id"] as? String {
-                            // You might need to fetch the event to get its category
-                            // For now, we'll use a simplified approach
-                        }
-                    }
+            
                 }
                 group.leave()
             }
@@ -287,7 +281,7 @@ class BadgeNetworkService {
                 let stats = UserStats(
                     eventsAttended: eventsAttended,
                     activitiesCompleted: activitiesCompleted,
-                    categoriesCompleted: categoriesCompleted.count
+                    
                 )
                 completion(.success(stats))
             }
@@ -302,8 +296,7 @@ class BadgeNetworkService {
             return stats.eventsAttended
         case .activitiesCompleted:
             return stats.activitiesCompleted
-        case .categoriesCompleted:
-            return stats.categoriesCompleted
+      
         case .weeklyChallenges:
             return 0 // Will be updated separately
         }

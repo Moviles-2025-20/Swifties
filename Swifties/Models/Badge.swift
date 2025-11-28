@@ -48,6 +48,12 @@ enum BadgeRarity: String, Codable {
     case rare = "rare"
     case epic = "epic"
     case legendary = "legendary"
+    case morningActivities = "morning_activities"
+    case nightActivities = "night_activities"
+    case allDayWarrior = "all_day_warrior"
+    case firstComment = "first_comment"
+    case commentsLeft = "comments_left"
+    case firstWeeklyChallenge = "first_weekly_challenge"
     
     var color: String {
         switch self {
@@ -60,10 +66,15 @@ enum BadgeRarity: String, Codable {
     
     var displayName: String {
         switch self {
-        case .common: return "Common"
-        case .rare: return "Rare"
-        case .epic: return "Epic"
-        case .legendary: return "Legendary"
+        case .eventsAttended: return "Events Attended"
+        case .activitiesCompleted: return "Activities Completed"
+        case .weeklyChallenges: return "Weekly Challenges"
+        case .morningActivities: return "Morning Activities"
+        case .nightActivities: return "Night Activities"
+        case .allDayWarrior: return "All-Day Warrior"
+        case .firstComment: return "First Comment"
+        case .commentsLeft: return "Comments Left"
+        case .firstWeeklyChallenge: return "First Weekly Challenge"
         }
     }
 }

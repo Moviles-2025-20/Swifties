@@ -27,8 +27,6 @@ class BadgeProgressService {
             
             switch result {
             case .success(let stats):
-           
-                
                 // Update ALL relevant badges based on current stats
                 self.updateAllBadges(userId: userId, stats: stats)
                 

@@ -21,7 +21,7 @@ final class ProfileStorageService {
     private func setupDatabase() {
         do {
             guard let path = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first else {
-                print("Error: Documents directory unavailable.")
+                print("Error: Documents directory unavailable: Profile.")
                 return
             }
             let dbPath = "\(path)/profile.sqlite3"

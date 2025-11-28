@@ -24,7 +24,7 @@ class EventListViewModel: ObservableObject {
     init() {}
     
     func loadEvents() {
-        // Actualizar UI en main thread
+        // Updates UI on main
         threadManager.executeOnMain { [weak self] in
             self?.isLoading = true
             self?.errorMessage = nil

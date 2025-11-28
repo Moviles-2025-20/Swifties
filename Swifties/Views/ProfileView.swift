@@ -178,7 +178,7 @@ struct ProfileView: View {
                             // Preferences Section
                             PreferencesSection(preferences: profile.preferences.favoriteCategories)
 
-                            // NUEVO: Badges Button
+                            // NEW: Badges Button
                             NavigationLink(destination: BadgesView()) {
                                 HStack {
                                     Image(systemName: "rosette")

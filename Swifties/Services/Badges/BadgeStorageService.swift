@@ -21,7 +21,7 @@ class BadgeStorageService {
     private func setupRealm() {
         do {
             let config = Realm.Configuration(
-                schemaVersion: 2, // Incrementar si ya tienes versión 1
+                schemaVersion: 2, // Increment if you already have version 1
                 migrationBlock: { migration, oldSchemaVersion in
                     if oldSchemaVersion < 2 {
                         // Handle migrations if needed

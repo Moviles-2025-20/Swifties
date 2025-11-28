@@ -58,7 +58,7 @@ class NewsViewModel: ObservableObject {
         // 3) Network
         guard networkMonitor.isConnected else {
             self.isLoading = false
-            self.errorMessage = "No internet connection and no saved profile found"
+            self.errorMessage = "No internet connection and no saved news found"
             return
         }
         

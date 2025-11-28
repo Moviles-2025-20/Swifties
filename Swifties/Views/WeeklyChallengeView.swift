@@ -311,8 +311,6 @@ struct WeeklyChallengeView: View {
                                 Text("Your Progress")
                                     .font(.title3)
                                     .fontWeight(.bold)
-                                
-                                // ... unchanged stats UI ...
                             }
                             
                             Spacer(minLength: 80)

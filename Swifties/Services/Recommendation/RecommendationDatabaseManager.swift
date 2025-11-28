@@ -39,7 +39,9 @@ class RecommendationDatabaseManager {
             let dbPath = "\(path)/recommendations.sqlite3"
             db = try Connection(dbPath)
             
+            #if DEBUG
             print("Recommendations database path: \(dbPath)")
+            #endif
             createTable()
             createIndexes()
         } catch {
@@ -60,11 +62,12 @@ class RecommendationDatabaseManager {
                 table.column(timestamp)
                 
                 // Composite primary key: (user_id, id)
-                // This ensures each user can have their own copy of the same event
                 table.primaryKey(userId, id)
             })
             
+            #if DEBUG
             print("Recommendations table created successfully with composite primary key")
+            #endif
         } catch {
             print("Error creating recommendations table: \(error)")
         }
@@ -74,16 +77,12 @@ class RecommendationDatabaseManager {
         guard let db = db else { return }
         
         do {
-            // Index on user_id for faster user-specific queries
             try db.run("CREATE INDEX IF NOT EXISTS idx_recommendations_user_id ON recommendations(user_id)")
-            
-            // Index on timestamp for expiration checks
             try db.run("CREATE INDEX IF NOT EXISTS idx_recommendations_timestamp ON recommendations(timestamp)")
-            
-            // Composite index on user_id and position for ordered retrieval
             try db.run("CREATE INDEX IF NOT EXISTS idx_recommendations_user_position ON recommendations(user_id, position)")
-            
+            #if DEBUG
             print("Recommendations indexes created successfully")
+            #endif
         } catch {
             print("Error creating recommendations indexes: \(error)")
         }
@@ -98,41 +97,46 @@ class RecommendationDatabaseManager {
         }
         
         do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            
             try db.transaction {
-                // Clear existing recommendations for this user
-                try db.run(recommendationsTable.filter(self.userId == userId).delete())
-                
-                // Insert new recommendations with position tracking
-                let encoder = JSONEncoder()
-                encoder.dateEncodingStrategy = .iso8601
-                
+                // Upsert each recommendation; preserve order via 'position'
                 for (index, event) in recommendations.enumerated() {
                     guard let eventId = event.id else {
+                        #if DEBUG
                         print("⚠️ Skipping event without ID at position \(index)")
+                        #endif
                         continue
                     }
                     
-                    // Convert Event to CodableEvent
                     let codableEvent = event.toCodable()
-                    let eventJSON = String(
-                        data: try encoder.encode(codableEvent),
-                        encoding: .utf8
-                    )!
+                    guard let eventJSON = String(data: try encoder.encode(codableEvent), encoding: .utf8) else {
+                        #if DEBUG
+                        print("⚠️ Failed to encode event \(eventId)")
+                        #endif
+                        continue
+                    }
                     
-                    let insert = recommendationsTable.insert(
-                        id <- eventId,
-                        self.userId <- userId,
-                        eventData <- eventJSON,
-                        score <- nil, // Can be populated if you track recommendation scores
-                        position <- index,
-                        timestamp <- Date()
-                    )
-                    
-                    try db.run(insert)
+                    // INSERT OR REPLACE to upsert by composite primary key (user_id, id)
+                    // SQLite.swift lacks direct conflict API for composite PK; use raw SQL for upsert.
+                    let sql = """
+                    INSERT OR REPLACE INTO recommendations (id, user_id, event_data, score, position, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """
+                    let stmt = try db.prepare(sql)
+                    try stmt.run(eventId, userId, eventJSON, nil as Double?, index, Date())
                 }
+                
+                // Optional: delete any rows for this user that are beyond the new list size (cleanup old positions)
+                let cleanup = recommendationsTable
+                    .filter(self.userId == userId && position >= recommendations.count)
+                _ = try? db.run(cleanup.delete())
             }
             
-            print("✅ \(recommendations.count) recommendations saved to SQLite for user \(userId)")
+            #if DEBUG
+            print("✅ \(recommendations.count) recommendations upserted to SQLite for user \(userId)")
+            #endif
         } catch {
             print("❌ Error saving recommendations: \(error)")
         }
@@ -149,29 +153,33 @@ class RecommendationDatabaseManager {
             decoder.dateDecodingStrategy = .iso8601
             var events: [Event] = []
             
-            // Load recommendations ordered by position
             let query = recommendationsTable
                 .filter(self.userId == userId)
                 .order(position.asc)
             
             for row in try db.prepare(query) {
                 guard let data = row[eventData].data(using: .utf8) else {
+                    #if DEBUG
                     print("⚠️ Failed to decode event data at position \(row[position])")
+                    #endif
                     continue
                 }
                 
                 do {
-                    // Decode as CodableEvent and convert to Event
                     let codableEvent = try decoder.decode(CodableEvent.self, from: data)
                     let event = Event.from(codable: codableEvent)
                     events.append(event)
                 } catch {
+                    #if DEBUG
                     print("⚠️ Failed to decode event at position \(row[position]): \(error)")
+                    #endif
                     continue
                 }
             }
             
+            #if DEBUG
             print("✅ \(events.count) recommendations loaded from SQLite for user \(userId)")
+            #endif
             return events.isEmpty ? nil : events
         } catch {
             print("❌ Error loading recommendations: \(error)")
@@ -184,7 +192,9 @@ class RecommendationDatabaseManager {
         
         do {
             let deleted = try db.run(recommendationsTable.filter(self.userId == userId).delete())
+            #if DEBUG
             print("✅ \(deleted) recommendations deleted from SQLite for user \(userId)")
+            #endif
         } catch {
             print("❌ Error deleting recommendations: \(error)")
         }
@@ -222,12 +232,10 @@ class RecommendationDatabaseManager {
     
     // MARK: - Migration Helper (if needed)
     
-    /// Call this once if you need to migrate from old schema to new composite key schema
     func migrateToCompositeKey() {
         guard let db = db else { return }
         
         do {
-            // Check if migration is needed by trying to detect old schema
             let oldTableExists = try db.scalar(
                 "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='recommendations'"
             ) as! Int64 > 0
@@ -235,20 +243,13 @@ class RecommendationDatabaseManager {
             if oldTableExists {
                 print("!!!! Starting migration to composite key schema...")
                 
-                // Rename old table
                 try db.run("ALTER TABLE recommendations RENAME TO recommendations_old")
-                
-                // Create new table with composite key
                 createTable()
-                
-                // Copy data from old table (this will group by user_id automatically)
                 try db.run("""
                     INSERT INTO recommendations (id, user_id, event_data, score, position, timestamp)
                     SELECT id, user_id, event_data, score, position, timestamp
                     FROM recommendations_old
                 """)
-                
-                // Drop old table
                 try db.run("DROP TABLE recommendations_old")
                 
                 print("✅ Migration completed successfully")
@@ -280,7 +281,6 @@ class RecommendationDatabaseManager {
                 print("Last update: \(formatter.string(from: lastUpdate))")
             }
             
-            // Show first 5 recommendations
             let query = recommendationsTable
                 .filter(self.userId == userId)
                 .order(position.asc)
@@ -297,7 +297,6 @@ class RecommendationDatabaseManager {
                 }
             }
             
-            // Check total database size
             let allUsersCount = try db.scalar(recommendationsTable.count)
             print("\nTotal recommendations across all users: \(allUsersCount)")
             
@@ -308,3 +307,4 @@ class RecommendationDatabaseManager {
         print("======================================\n")
     }
 }
+

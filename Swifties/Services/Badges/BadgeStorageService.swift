@@ -77,7 +77,7 @@ class BadgeStorageService {
             return nil
         }
         
-        guard let realmData = realm.object(ofType: RealmBadgeCache.self, forPrimaryKey: userId) else {
+        guard let realmData = realm.object(ofType: RealmBadgeCache.self, forPrimaryKey: userId as AnyObject) else {
             print("❌ No badge data found in Realm for: \(userId)")
             return nil
         }

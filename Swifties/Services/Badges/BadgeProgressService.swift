@@ -244,11 +244,3 @@ enum ActivityType {
     case event
     case regularActivity
 }
-
-// MARK: - User Stats Helper
-
-struct UserStats {
-    let eventsAttended: Int
-    let activitiesCompleted: Int
-    let categoriesCompleted: Int
-}

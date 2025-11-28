@@ -16,7 +16,8 @@ struct HomeView: View {
     
     @State private var showOfflineAlert = false
     @State private var offlineAlertMessage = ""
-    
+    @State private var showMoodQuiz = false
+
     // MARK: - Computed Properties for Data Source Indicator
     private var dataSourceIcon: String {
         switch homeViewModel.dataSource {
@@ -129,9 +130,9 @@ struct HomeView: View {
                             
                             HStack(spacing: 15) {
                                 Button(action: {
-                              
+                                    showMoodQuiz = true
                                 }) {
-                                    Text("Coming soon...")
+                                    Text("Mood Quiz")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.white)
@@ -343,6 +344,9 @@ struct HomeView: View {
             } message: {
                 Text(offlineAlertMessage)
             }
+        }
+        .sheet(isPresented: $showMoodQuiz) {
+            MoodQuizView()
         }
         .task {
             // Load profile data when view appears

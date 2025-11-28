@@ -1,8 +1,12 @@
-// MoodQuizViewModel.swift
-// Swifties
-// Created by Assistant
+//
+//  MoodQuizViewModel.swift
+//  Swifties
+//
+//  Created by Natalia Villegas Calderón on 27/11/25.
+//
 
 import Foundation
+import SwiftUI
 import FirebaseFirestore
 import FirebaseAuth
 import Combine
@@ -134,18 +138,13 @@ class MoodQuizViewModel: ObservableObject {
             // Calculate result
             calculateResult()
         } else {
-            withAnimation {
-                currentQuestionIndex += 1
-            }
+            currentQuestionIndex += 1
         }
     }
     
     func goToPreviousQuestion() {
         guard currentQuestionIndex > 0 else { return }
-        
-        withAnimation {
-            currentQuestionIndex -= 1
-        }
+        currentQuestionIndex -= 1
     }
     
     // MARK: - Calculate Result

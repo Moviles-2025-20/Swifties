@@ -1,3 +1,9 @@
+//
+//  QuizQuestion.swift
+//  Swifties
+//
+//  Created by Natalia Villegas Calderón on 27/11/25.
+//
 // QuizModel.swift
 // Swifties
 // Created by Assistant
@@ -21,7 +27,7 @@ struct QuizQuestion: Identifiable, Codable {
 }
 
 // MARK: - Quiz Option Model
-struct QuizOption: Codable {
+struct QuizOption: Codable, Identifiable {
     var text: String
     var category: String
     var points: Int

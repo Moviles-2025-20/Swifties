@@ -2,8 +2,9 @@
 //  UserQuizResult.swift
 //  Swifties
 //
-//  Created by Assistant on 27/11/25.
+//  Created by Natalia Villegas Calderón on 27/11/25.
 //
+
 
 import Foundation
 import FirebaseFirestore

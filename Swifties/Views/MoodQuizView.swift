@@ -13,6 +13,8 @@ struct MoodQuizView: View {
     @StateObject private var viewModel = MoodQuizViewModel()
     @Environment(\.dismiss) var dismiss
     @State private var showExitAlert = false
+    @State private var showSaveSuccess = false
+    @State private var showSaveError = false
     
     var body: some View {
         NavigationStack {
@@ -52,6 +54,16 @@ struct MoodQuizView: View {
                 }
             } message: {
                 Text("Your progress will be lost if you exit now.")
+            }
+            .alert("Success!", isPresented: $showSaveSuccess) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Your quiz result has been saved successfully!")
+            }
+            .alert("Error", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(viewModel.errorMessage ?? "Failed to save result. Please try again.")
             }
         }
         .task {
@@ -315,6 +327,11 @@ struct MoodQuizView: View {
                 Button(action: {
                     Task {
                         await viewModel.saveResultToFirebase()
+                        if viewModel.errorMessage == nil {
+                            showSaveSuccess = true
+                        } else {
+                            showSaveError = true
+                        }
                     }
                 }) {
                     HStack {

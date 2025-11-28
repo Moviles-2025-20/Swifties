@@ -52,7 +52,7 @@ class MoodQuizViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            print("📥 Fetching quiz questions from Firebase...")
+            print("------->>>>> Fetching quiz questions from Firebase...")
             
             // Fetch from the document that contains the questions array
             let docRef = db.collection("quiz_questions").document("lOhEPYC8ci9lBEo08G47")
@@ -60,7 +60,7 @@ class MoodQuizViewModel: ObservableObject {
             
             guard let data = document.data(),
                   let questionsArray = data["questions"] as? [[String: Any]] else {
-                print("⚠️ No questions found in document")
+                print("!!!!!!! No questions found in document")
                 errorMessage = "No quiz questions available at the moment"
                 isLoading = false
                 return
@@ -93,7 +93,7 @@ class MoodQuizViewModel: ObservableObject {
             }
             
             if fetchedQuestions.isEmpty {
-                print("⚠️ No valid questions parsed")
+                print("!!!!!!! No valid questions parsed")
                 errorMessage = "Failed to parse quiz questions"
             } else {
                 // Randomly select 5 questions from the pool
@@ -224,46 +224,60 @@ class MoodQuizViewModel: ObservableObject {
         showResult = true
     }
     
-    // MARK: - Save Result (Optional)
+    // MARK: - Save Result
     func saveResultToFirebase() async {
         guard let uid = Auth.auth().currentUser?.uid,
               let result = quizResult else {
             print("❌ Cannot save: No user or result")
+            errorMessage = "Unable to save result. Please try again."
             return
         }
         
         isLoading = true
+        errorMessage = nil
         
         do {
-            let resultData: [String: Any] = [
-                "user_id": uid,
-                "mood_category": result.moodCategory,
-                "is_tied": result.isTied,
-                "tied_categories": result.tiedCategories,
-                "total_score": result.totalScore,
-                "timestamp": FieldValue.serverTimestamp(),
-                "answers": selectedAnswers.values.map { answer in
-                    return [
-                        "question_id": answer.questionId,
-                        "selected_option_id": answer.selectedOptionId,
-                        "category": answer.category,
-                        "points": answer.points
-                    ]
-                }
-            ]
+            // Calculate category scores
+            var categoryScores: [String: Int] = [:]
+            for answer in selectedAnswers.values {
+                categoryScores[answer.category, default: 0] += answer.points
+            }
             
-            try await db.collection("quiz_results").addDocument(data: resultData)
-            print("✅ Quiz result saved to Firebase")
+            // Get selected question IDs in order
+            let selectedQuestionIds = questions.map { $0.id ?? "" }
             
-            // Optionally update user's stats
+            // Create UserQuizResult
+            let userQuizResult = UserQuizResult.from(
+                userId: uid,
+                quizBankId: "personality_v1",  // You can make this dynamic if needed
+                selectedQuestionIds: selectedQuestionIds,
+                scores: categoryScores,
+                result: result
+            )
+            
+            // Save to quiz_answers collection
+            let resultData = userQuizResult.toFirestoreData()
+            try await db.collection("quiz_answers").addDocument(data: resultData)
+            
+            print("✅ Quiz result saved successfully")
+            print("   User: \(uid)")
+            print("   Quiz ID: personality_v1")
+            print("   Selected Questions: \(selectedQuestionIds)")
+            print("   Scores: \(categoryScores)")
+            print("   Result Category: \(userQuizResult.resultCategory)")
+            print("   Result Type: \(userQuizResult.resultType)")
+            
+            // Update user stats
             try await db.collection("users").document(uid).updateData([
                 "stats.last_quiz_date": FieldValue.serverTimestamp(),
                 "stats.total_quizzes": FieldValue.increment(Int64(1))
             ])
             
             isLoading = false
+            
         } catch {
             print("❌ Error saving result: \(error.localizedDescription)")
+            errorMessage = "Failed to save result. Please try again."
             isLoading = false
         }
     }

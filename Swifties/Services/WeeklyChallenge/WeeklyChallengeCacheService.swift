@@ -78,7 +78,7 @@ class WeeklyChallengeCacheService {
     }
     
     func clearCache(userId: String) {
-        let key = cacheKey(for: userId)  //  Reutiliza método
+        let key = cacheKey(for: userId)  // Reuses method
         cache.removeValue(forKey: key)
         print("🗑️ Cache cleared for key: \(key)")
     }

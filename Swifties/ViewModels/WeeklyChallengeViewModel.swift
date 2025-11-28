@@ -192,7 +192,10 @@ class WeeklyChallengeViewModel: ObservableObject {
                 case .success():
                     print("✅ Successfully marked as attending")
                     AnalyticsService.shared.logCheckIn(activityId: event.name, category: event.category)
-                    
+                    BadgeProgressService.shared.updateProgressAfterActivity(
+                        userId: userId,
+                        activityType: .weeklyChallenge
+                    )
                     // Clear cache and reload to get fresh data
                     self.forceRefresh()
                     

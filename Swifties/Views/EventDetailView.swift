@@ -334,7 +334,7 @@ struct EventDetailView: View {
             "with_friends": false
         ]
         
-        // Save to UserActivity
+        
         db.collection("user_activities").addDocument(data: activityData) { error in
             if let error = error {
                 print("Error saving attendance: \(error.localizedDescription)")
@@ -342,15 +342,19 @@ struct EventDetailView: View {
             }
             
             print("Attendance saved successfully!")
-
             
             AnalyticsService.shared.logCheckIn(activityId: event.id ?? "unknown_event", category: event.category)
             
-            // Update user's most recent event
+           
+            BadgeProgressService.shared.updateProgressAfterActivity(
+                userId: userId,
+                activityType: .event
+            )
+            
+            
             self.updateUserLastEvent(userId: userId)
         }
     }
-    
     private func updateUserLastEvent(userId: String) {
         let userRef = db.collection("users").document(userId)
         

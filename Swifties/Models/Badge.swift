@@ -72,14 +72,14 @@ enum BadgeRarity: String, Codable {
 enum CriteriaType: String, Codable {
     case eventsAttended = "events_attended"
     case activitiesCompleted = "activities_completed"
-    case categoriesCompleted = "categories_completed"
+
     case weeklyChallenges = "weekly_challenges"
     
     var displayName: String {
         switch self {
         case .eventsAttended: return "Events Attended"
         case .activitiesCompleted: return "Activities Completed"
-        case .categoriesCompleted: return "Categories Completed"
+      
         case .weeklyChallenges: return "Weekly Challenges"
         }
     }

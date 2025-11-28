@@ -76,8 +76,7 @@ class BadgeProgressService {
                     currentProgress = stats.eventsAttended
                 case .activitiesCompleted:
                     currentProgress = stats.activitiesCompleted
-                case .categoriesCompleted:
-                    currentProgress = stats.categoriesCompleted
+         
                 case .weeklyChallenges:
                     currentProgress = 0 // Not implemented yet
                 }

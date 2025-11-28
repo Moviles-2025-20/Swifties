@@ -92,7 +92,7 @@ class BadgeStorageService {
             return nil
         }
         
-        // ✅ CORRECCIÓN: Convertir explícitamente a Array
+        // FIX: Explicitly convert to Array
         let badges = Array(realmData.badges.map { $0.toBadge() })
         let userBadges = Array(realmData.userBadges.map { $0.toUserBadge() })
         

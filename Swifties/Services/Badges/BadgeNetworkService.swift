@@ -340,7 +340,7 @@ class BadgeNetworkService {
         case .weeklyChallenges:
             return stats.weeklyChallengesCompleted
             
-        // Nuevos casos
+        // New cases
         case .morningActivities:
             return stats.morningActivities
         case .nightActivities:

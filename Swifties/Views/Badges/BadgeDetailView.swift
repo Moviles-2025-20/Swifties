@@ -109,9 +109,7 @@ struct BadgeDetailView: View {
                             // Information Section
                             BadgeInfoSectionView(detail: detail)
                             
-                            // Statistics Section
-                            BadgeStatsSectionView(detail: detail)
-                            
+                        
                             // Unlock Date (if unlocked)
                             if detail.userBadge.isUnlocked, let earnedAt = detail.userBadge.earnedAt {
                                 BadgeUnlockDateView(date: earnedAt)

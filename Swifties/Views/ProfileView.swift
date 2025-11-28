@@ -209,7 +209,6 @@ struct ProfileView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 10)
                             
-                            
                             // Divider
                             Divider()
                                 .padding(.horizontal, 20)

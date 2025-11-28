@@ -31,7 +31,6 @@ class WeeklyChallengeCacheService {
             return cached
         }
         
-   
         let newWeekId = now.weekIdentifier()
         cachedWeekId = newWeekId
         weekIdTimestamp = now

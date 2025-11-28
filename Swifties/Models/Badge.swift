@@ -48,12 +48,6 @@ enum BadgeRarity: String, Codable {
     case rare = "rare"
     case epic = "epic"
     case legendary = "legendary"
-    case morningActivities = "morning_activities"
-    case nightActivities = "night_activities"
-    case allDayWarrior = "all_day_warrior"
-    case firstComment = "first_comment"
-    case commentsLeft = "comments_left"
-    case firstWeeklyChallenge = "first_weekly_challenge"
     
     var color: String {
         switch self {
@@ -66,6 +60,30 @@ enum BadgeRarity: String, Codable {
     
     var displayName: String {
         switch self {
+        case .common: return "Common"
+        case .rare: return "Rare"
+        case .epic: return "Epic"
+        case .legendary: return "Legendary"
+        }
+    }
+}
+
+// MARK: - Criteria Type
+enum CriteriaType: String, Codable {
+    case eventsAttended = "events_attended"
+    case activitiesCompleted = "activities_completed"
+    case weeklyChallenges = "weekly_challenges"
+    
+    // 🆕 Nuevos criterios
+    case morningActivities = "morning_activities"
+    case nightActivities = "night_activities"
+    case allDayWarrior = "all_day_warrior"
+    case firstComment = "first_comment"
+    case commentsLeft = "comments_left"
+    case firstWeeklyChallenge = "first_weekly_challenge"
+    
+    var displayName: String {
+        switch self {
         case .eventsAttended: return "Events Attended"
         case .activitiesCompleted: return "Activities Completed"
         case .weeklyChallenges: return "Weekly Challenges"
@@ -75,23 +93,6 @@ enum BadgeRarity: String, Codable {
         case .firstComment: return "First Comment"
         case .commentsLeft: return "Comments Left"
         case .firstWeeklyChallenge: return "First Weekly Challenge"
-        }
-    }
-}
-
-// MARK: - Criteria Type
-enum CriteriaType: String, Codable {
-    case eventsAttended = "events_attended"
-    case activitiesCompleted = "activities_completed"
-
-    case weeklyChallenges = "weekly_challenges"
-    
-    var displayName: String {
-        switch self {
-        case .eventsAttended: return "Events Attended"
-        case .activitiesCompleted: return "Activities Completed"
-      
-        case .weeklyChallenges: return "Weekly Challenges"
         }
     }
 }

@@ -79,6 +79,19 @@ class BadgeProgressService {
          
                 case .weeklyChallenges:
                     currentProgress = 0 // Not implemented yet
+                case .morningActivities:
+                    currentProgress = stats.morningActivities
+                case .nightActivities:
+                    currentProgress = stats.nightActivities
+                case .allDayWarrior:
+                    currentProgress = stats.hasAllTimeSlots ? 1 : 0
+                case .firstComment:
+                    currentProgress = stats.commentsLeft > 0 ? 1 : 0
+                case .commentsLeft:
+                    currentProgress = stats.commentsLeft
+                case .firstWeeklyChallenge:
+                    currentProgress = stats.weeklyChallengesCompleted > 0 ? 1 : 0
+                
                 }
                 
                 let isUnlocked = currentProgress >= criteriaValue
@@ -166,7 +179,16 @@ class BadgeProgressService {
         
         var eventsAttended = 0
         var activitiesCompleted = 0
-        var categoriesCompleted: Set<String> = []
+        
+        // 🆕 Nuevas variables
+        var morningActivities = 0
+        var afternoonActivities = 0
+        var eveningActivities = 0
+        var nightActivities = 0
+        var timeSlots = Set<String>()
+        var commentsLeft = 0
+        var weeklyChallengesCompleted = 0
+        
         var fetchError: Error?
         
         // Count activities from user_activities
@@ -199,23 +221,45 @@ class BadgeProgressService {
                     }.count
                     print("📊 Events attended: \(eventsAttended)")
                     
-                    // Extract unique event_ids to count categories
-                    let eventIds = Set(documents.compactMap { $0.data()["event_id"] as? String })
-                    print("📊 Unique event IDs: \(eventIds.count)")
-                    
-                    // Fetch events to get their categories
-                    if !eventIds.isEmpty {
-                        group.enter()
-                        self.db.collection("events")
-                            .whereField(FieldPath.documentID(), in: Array(eventIds))
-                            .getDocuments { eventsSnapshot, eventsError in
-                                if let eventsDocs = eventsSnapshot?.documents {
-                                    categoriesCompleted = Set(eventsDocs.compactMap { $0.data()["category"] as? String })
-                                    print("📊 Categories completed: \(categoriesCompleted.count) - \(categoriesCompleted)")
-                                }
-                                group.leave()
+                    // 🆕 Count activities by time of day
+                    for doc in documents {
+                        let data = doc.data()
+                        
+                        // Count time slots
+                        if let timeOfDay = data["time_of_day"] as? String {
+                            timeSlots.insert(timeOfDay)
+                            
+                            switch timeOfDay {
+                            case "morning":
+                                morningActivities += 1
+                            case "afternoon":
+                                afternoonActivities += 1
+                            case "evening":
+                                eveningActivities += 1
+                            case "night":
+                                nightActivities += 1
+                            default:
+                                break
                             }
+                        }
+                        
+                        // Count comments
+                        if data["comment_id"] != nil && !(data["comment_id"] is NSNull) {
+                            commentsLeft += 1
+                        }
+                        
+                        // Count weekly challenges
+                        let source = data["source"] as? String
+                        let type = data["type"] as? String
+                        if source == "weekly_challenge" || type == "weekly_challenge" {
+                            weeklyChallengesCompleted += 1
+                        }
                     }
+                    
+                    print("📊 Morning: \(morningActivities), Afternoon: \(afternoonActivities), Evening: \(eveningActivities), Night: \(nightActivities)")
+                    print("📊 Comments left: \(commentsLeft)")
+                    print("📊 Weekly challenges: \(weeklyChallengesCompleted)")
+                    print("📊 Time slots covered: \(timeSlots)")
                 }
                 group.leave()
             }
@@ -224,18 +268,29 @@ class BadgeProgressService {
             if let error = fetchError {
                 completion(.failure(error))
             } else {
+                // Check if user has activities in all time slots
+                let hasAllTimeSlots = timeSlots.contains("morning") &&
+                                      timeSlots.contains("afternoon") &&
+                                      timeSlots.contains("evening") &&
+                                      timeSlots.contains("night")
+                
                 let stats = UserStats(
                     eventsAttended: eventsAttended,
                     activitiesCompleted: activitiesCompleted,
-            
+                    morningActivities: morningActivities,
+                    afternoonActivities: afternoonActivities,
+                    eveningActivities: eveningActivities,
+                    nightActivities: nightActivities,
+                    hasAllTimeSlots: hasAllTimeSlots,
+                    commentsLeft: commentsLeft,
+                    weeklyChallengesCompleted: weeklyChallengesCompleted
                 )
-                print("📊 Final stats - Events: \(eventsAttended), Activities: \(activitiesCompleted), Categories: \(categoriesCompleted.count)")
+                print("📊 Final stats - Events: \(eventsAttended), Activities: \(activitiesCompleted)")
                 completion(.success(stats))
             }
         }
     }
 }
-
 // MARK: - Activity Type Enum
 
 enum ActivityType {

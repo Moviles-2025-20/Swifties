@@ -14,6 +14,7 @@ struct ProfileView: View {
     
     @State private var showOfflineAlert = false
     @State private var offlineAlertMessage = ""
+    @State private var showNews: Bool = false
     
     // MARK: - Data Source Indicator (matches HomeView)
     private var dataSourceIcon: String {
@@ -35,13 +36,13 @@ struct ProfileView: View {
     }
         
     var body: some View {
-        
-        ZStack{Color("appPrimary").ignoresSafeArea()
+        ZStack{ Color("appPrimary").ignoresSafeArea()
             VStack(spacing: 0) {
-                // Custom Top Bar with notification button
+                // Custom Top Bar with news button
                 CustomTopBar(
                     title: "Profile",
                     showNotificationButton: true,
+                    onNotificationTap: { showNews = true },
                     onBackTap:  {
                         print("Notifications tapped")
                     })
@@ -289,6 +290,9 @@ struct ProfileView: View {
         } message: {
             Text(offlineAlertMessage)
         }
+        .navigationDestination(isPresented: $showNews) {
+            NewsView()
+        }
     }
 }
 
@@ -296,3 +300,4 @@ struct ProfileView: View {
 #Preview {
     ProfileView()
 }
+

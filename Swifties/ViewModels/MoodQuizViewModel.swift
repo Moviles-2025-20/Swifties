@@ -25,6 +25,8 @@ class MoodQuizViewModel: ObservableObject {
     // MARK: - Private Properties
     private let db = Firestore.firestore(database: "default")
     private var cancellables = Set<AnyCancellable>()
+    private let quizBankDocumentId = "lOhEPYC8ci9lBEo08G47"
+    private let quizBankId = "personality_v1"
     
     // MARK: - Computed Properties
     var currentQuestion: QuizQuestion? {
@@ -55,7 +57,7 @@ class MoodQuizViewModel: ObservableObject {
             print("------->>>>> Fetching quiz questions from Firebase...")
             
             // Fetch from the document that contains the questions array
-            let docRef = db.collection("quiz_questions").document("lOhEPYC8ci9lBEo08G47")
+            let docRef = db.collection("quiz_questions").document(quizBankDocumentId)
             let document = try await docRef.getDocument()
             
             guard let data = document.data(),
@@ -149,7 +151,7 @@ class MoodQuizViewModel: ObservableObject {
     
     // MARK: - Calculate Result
     private func calculateResult() {
-        print("\n📊 Calculating quiz result...")
+        print("\n ----->>>> Calculating quiz result...")
         
         // Count points per category
         var categoryScores: [String: Int] = [:]
@@ -179,21 +181,27 @@ class MoodQuizViewModel: ObservableObject {
         if topCategories.count == 1 {
             // No tie - single winner
             let category = topCategories[0]
+            let displayName = QuizResult.categoryDisplayNames[category] ?? category
+            
             result = QuizResult(
-                moodCategory: category,
+                moodCategory: displayName,  // Use display name instead of raw category
                 isTied: false,
                 tiedCategories: [],
                 emoji: QuizResult.categoryEmojis[category] ?? "😊",
                 description: QuizResult.categoryDescriptions[category] ?? "¡Resultado único!",
                 totalScore: totalScore
             )
-            print("✅ Result: Single winner - \(category)")
+            print("✅ Result: Single winner - \(displayName)")
             
         } else if topCategories.count == 2 {
             // 2-way tie - mixed result
-            let mixedCategory = topCategories.sorted().joined(separator: " + ")
-            let mixedEmoji = topCategories.compactMap { QuizResult.categoryEmojis[$0] }.joined()
-            let mixedDescription = "Eres una mezcla perfecta entre \(topCategories[0]) y \(topCategories[1]). Tienes cualidades de ambos mundos."
+            let sortedCategories = topCategories.sorted()
+            let displayNames = sortedCategories.compactMap { QuizResult.categoryDisplayNames[$0] }
+            
+            // Use "&" instead of "+" for shorter display
+            let mixedCategory = displayNames.joined(separator: " & ")
+            let mixedEmoji = sortedCategories.compactMap { QuizResult.categoryEmojis[$0] }.joined(separator: " ")
+            let mixedDescription = "You are a perfect blend of \(displayNames[0]) and \(displayNames[1]). You have qualities from both worlds."
             
             result = QuizResult(
                 moodCategory: mixedCategory,
@@ -208,16 +216,18 @@ class MoodQuizViewModel: ObservableObject {
         } else {
             // 3+ way tie - use priority
             let winner = QuizResult.categoryPriority.first { topCategories.contains($0) } ?? topCategories[0]
+            let displayName = QuizResult.categoryDisplayNames[winner] ?? winner
+            let displayDescription = QuizResult.categoryDescriptions[winner] ?? ""
             
             result = QuizResult(
-                moodCategory: winner,
+                moodCategory: displayName,  // Use display name
                 isTied: true,
                 tiedCategories: topCategories,
                 emoji: QuizResult.categoryEmojis[winner] ?? "😊",
-                description: (QuizResult.categoryDescriptions[winner] ?? "") + " (Múltiples afinidades detectadas)",
+                description: displayDescription + " (Multiple affinities detected)",
                 totalScore: totalScore
             )
-            print("✅ Result: 3+ way tie resolved to \(winner) by priority")
+            print("✅ Result: 3+ way tie resolved to \(displayName) by priority")
         }
         
         quizResult = result
@@ -234,7 +244,7 @@ class MoodQuizViewModel: ObservableObject {
         }
         
         isLoading = true
-        errorMessage = nil
+        errorMessage = nil  // Clear any previous errors
         
         do {
             // Calculate category scores
@@ -249,7 +259,7 @@ class MoodQuizViewModel: ObservableObject {
             // Create UserQuizResult
             let userQuizResult = UserQuizResult.from(
                 userId: uid,
-                quizBankId: "personality_v1",  // You can make this dynamic if needed
+                quizBankId: quizBankId,  // Now using the constant
                 selectedQuestionIds: selectedQuestionIds,
                 scores: categoryScores,
                 result: result
@@ -261,7 +271,7 @@ class MoodQuizViewModel: ObservableObject {
             
             print("✅ Quiz result saved successfully")
             print("   User: \(uid)")
-            print("   Quiz ID: personality_v1")
+            print("   Quiz ID: \(quizBankId)")
             print("   Selected Questions: \(selectedQuestionIds)")
             print("   Scores: \(categoryScores)")
             print("   Result Category: \(userQuizResult.resultCategory)")

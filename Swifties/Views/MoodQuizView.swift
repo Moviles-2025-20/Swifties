@@ -282,21 +282,26 @@ struct MoodQuizView: View {
             if let result = viewModel.quizResult {
                 // Emoji
                 Text(result.emoji)
-                    .font(.system(size: 120))
-                    .padding(.bottom, 20)
+                    .font(.system(size: 100))
+                    .padding(.bottom, 16)
                 
-                // Category title
-                Text(result.moodCategory.capitalized)
-                    .font(.system(size: 32, weight: .bold))
+                // Category title - with dynamic sizing
+                Text(result.moodCategory)
+                    .font(.system(size: dynamicTitleSize(for: result.moodCategory), weight: .bold))
                     .foregroundColor(.black.opacity(0.87))
                     .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 24)
                 
                 // Description
                 Text(result.description)
                     .font(.system(size: 16))
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
                 
                 // Score
                 Text("Total Score: \(result.totalScore)")
@@ -317,6 +322,7 @@ struct MoodQuizView: View {
                     .padding(.vertical, 8)
                     .background(Color.orange.opacity(0.1))
                     .cornerRadius(8)
+                    .padding(.top, 8)
                 }
             }
             
@@ -386,6 +392,17 @@ struct MoodQuizView: View {
             .padding(.bottom, 32)
         }
         .padding(.horizontal, 24)
+    }
+}
+
+// MARK: - Sizing helper function
+private func dynamicTitleSize(for text: String) -> CGFloat {
+    if text.count > 25 {
+        return 22
+    } else if text.count > 20 {
+        return 26
+    } else {
+        return 32
     }
 }
 

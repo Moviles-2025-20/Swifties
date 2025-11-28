@@ -4,9 +4,6 @@
 //
 //  Created by Natalia Villegas Calderón on 27/11/25.
 //
-// QuizModel.swift
-// Swifties
-// Created by Assistant
 
 import Foundation
 import FirebaseFirestore
@@ -59,7 +56,15 @@ struct QuizResult {
         "chill": "😌"
     ]
     
-    // Category descriptions - UPDATED for your 4 categories
+    // Category display names
+    static let categoryDisplayNames: [String: String] = [
+        "creative": "Creative",
+        "social_planner": "Social Planner",
+        "cultural_explorer": "Cultural Explorer",
+        "chill": "Chill"
+    ]
+    
+    // Category descriptions - For the 4 categories
     static let categoryDescriptions: [String: String] = [
         "creative": "You're a creative soul! You see beauty in aesthetics and love expressing yourself through art and design.",
         "social_planner": "You're the life of the party! You thrive in social settings and love bringing people together.",
@@ -67,7 +72,7 @@ struct QuizResult {
         "chill": "You're zen and peaceful! You value tranquility, nature, and taking time to relax and recharge."
     ]
     
-    // Priority order for 3+ way ties - UPDATED for your 4 categories
+    // Priority order for 3+ way ties
     static let categoryPriority: [String] = [
         "social_planner",
         "creative",

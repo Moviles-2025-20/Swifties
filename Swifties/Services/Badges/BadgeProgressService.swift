@@ -27,7 +27,7 @@ class BadgeProgressService {
             
             switch result {
             case .success(let stats):
-                print("📊 Current stats - Events: \(stats.eventsAttended), Activities: \(stats.activitiesCompleted), Categories: \(stats.categoriesCompleted)")
+           
                 
                 // Update ALL relevant badges based on current stats
                 self.updateAllBadges(userId: userId, stats: stats)
@@ -227,7 +227,7 @@ class BadgeProgressService {
                 let stats = UserStats(
                     eventsAttended: eventsAttended,
                     activitiesCompleted: activitiesCompleted,
-                    categoriesCompleted: categoriesCompleted.count
+            
                 )
                 print("📊 Final stats - Events: \(eventsAttended), Activities: \(activitiesCompleted), Categories: \(categoriesCompleted.count)")
                 completion(.success(stats))

@@ -13,7 +13,7 @@ class WeeklyChallengeCacheService {
     private var cache: [String: WeeklyChallengeCache] = [:]
     private let cacheExpirationSeconds: TimeInterval = 3600
     
-    // Cachear el weekId actual (se actualiza solo cuando cambia la semana)
+    // Cache the current weekId (updates only when the week changes)
     private var cachedWeekId: String?
     private var weekIdTimestamp: Date?
     

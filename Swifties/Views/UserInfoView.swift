@@ -9,6 +9,7 @@ struct UserInfoView: View {
     
     @State private var showOfflineAlert = false
     @State private var offlineAlertMessage = ""
+    @State private var showNews: Bool = false
     
     // MARK: - Computed Properties for Data Source
     private var dataSourceIcon: String {
@@ -38,7 +39,7 @@ struct UserInfoView: View {
                              showNotificationButton: true,
                              showBackButton: true,
                              onNotificationTap: {
-                    print("Notification tapped")
+                    showNews = true
                 },
                              onBackTap: {
                     dismiss()
@@ -301,6 +302,9 @@ struct UserInfoView: View {
                 viewModel.loadData()
             }
         }
+        .navigationDestination(isPresented: $showNews) {
+            NewsView()
+        }
     }
     
     // MARK: - Helper Functions
@@ -335,3 +339,4 @@ struct UserInfoView_Previews: PreviewProvider {
         }
     }
 }
+

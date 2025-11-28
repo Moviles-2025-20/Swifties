@@ -16,6 +16,7 @@ struct HomeView: View {
     
     @State private var showOfflineAlert = false
     @State private var offlineAlertMessage = ""
+    @State private var showNews: Bool = false
     
     // MARK: - Computed Properties for Data Source Indicator
     private var dataSourceIcon: String {
@@ -35,7 +36,7 @@ struct HomeView: View {
         case .none: return ""
         }
     }
-        
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -45,7 +46,9 @@ struct HomeView: View {
                     
                     CustomTopBar(
                         title: "Hi, \(getUserFirstName())!",
-                        showNotificationButton: true, onBackTap: {
+                        showNotificationButton: true,
+                        onNotificationTap: { showNews = true },
+                        onBackTap: {
                             print("Notifications tapped")
                         })
                     
@@ -343,6 +346,9 @@ struct HomeView: View {
             } message: {
                 Text(offlineAlertMessage)
             }
+            .navigationDestination(isPresented: $showNews) {
+                NewsView()
+            }
         }
         .task {
             // Load profile data when view appears
@@ -408,3 +414,4 @@ private func formatEventTime(event: Event) -> String {
     HomeView()
         .environmentObject(AuthViewModel())
 }
+

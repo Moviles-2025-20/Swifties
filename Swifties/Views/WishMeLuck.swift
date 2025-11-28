@@ -10,6 +10,7 @@ struct WishMeLuckView: View {
     @State private var animateBall = false
     @State private var isShaking = false
     @State private var showEventDetail = false
+    @State private var showNews = false
     @State private var fullEventForDetail: Event?
     @State private var isLoadingFullEvent = false
     @State private var showNoConnectionAlert = false
@@ -54,7 +55,7 @@ struct WishMeLuckView: View {
                     CustomTopBar(
                         title: "Wish Me Luck",
                         showNotificationButton: true,
-                        onBackTap: {}
+                        onBackTap: { showNews = true }
                     )
                     
                     // Connection status banner
@@ -274,6 +275,9 @@ struct WishMeLuckView: View {
                         await viewModel.calculateDaysSinceLastWished()
                     }
                 }
+            }
+            .navigationDestination(isPresented: $showNews) {
+                NewsView()
             }
         }
     }

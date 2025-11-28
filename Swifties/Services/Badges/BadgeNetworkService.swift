@@ -236,7 +236,7 @@ class BadgeNetworkService {
         var eventsAttended = 0
         var activitiesCompleted = 0
         
-        // 🆕 Nuevas variables
+        // New variables
         var morningActivities = 0
         var afternoonActivities = 0
         var eveningActivities = 0

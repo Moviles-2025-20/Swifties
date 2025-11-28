@@ -11,22 +11,45 @@ class WeeklyChallengeCacheService {
     static let shared = WeeklyChallengeCacheService()
     
     private var cache: [String: WeeklyChallengeCache] = [:]
-    private let cacheExpirationSeconds: TimeInterval = 3600 // 1 hour
+    private let cacheExpirationSeconds: TimeInterval = 3600
+    
+    // Cache the current weekId (updates only when the week changes)
+    private var cachedWeekId: String?
+    private var weekIdTimestamp: Date?
     
     private init() {}
     
-    // MARK: - Cache Operations
+    // MARK: - Helper Methods (Avoid recreation)
+    
+    private var currentWeekId: String {
+        let now = Date()
+        
+        if let cached = cachedWeekId,
+           let timestamp = weekIdTimestamp,
+           now.timeIntervalSince(timestamp) < 3600 {
+            return cached
+        }
+        
+        let newWeekId = now.weekIdentifier()
+        cachedWeekId = newWeekId
+        weekIdTimestamp = now
+        return newWeekId
+    }
+    
+    private func cacheKey(for userId: String) -> String {
+        "\(userId)_\(currentWeekId)"
+    }
+    
+    // MARK: - Cache Operations (Refactored)
     
     func getCachedChallenge(userId: String) -> WeeklyChallengeCache? {
-        let weekId = Date().weekIdentifier()
-        let key = "\(userId)_\(weekId)"
+        let key = cacheKey(for: userId)  // Reutiliza método
         
         guard let cached = cache[key] else {
             print("❌ No cache found for key: \(key)")
             return nil
         }
         
-        // Check if cache is still valid
         let age = Date().timeIntervalSince(cached.timestamp)
         if age > cacheExpirationSeconds {
             print("⏰ Cache expired (age: \(String(format: "%.1f", age/60)) minutes)")
@@ -39,8 +62,7 @@ class WeeklyChallengeCacheService {
     }
     
     func cacheChallenge(userId: String, event: Event?, hasAttended: Bool, totalChallenges: Int, chartData: [WeeklyChallengeChartData]) {
-        let weekId = Date().weekIdentifier()
-        let key = "\(userId)_\(weekId)"
+        let key = cacheKey(for: userId)  // Reuses method
         
         let cache = WeeklyChallengeCache(
             event: event,
@@ -55,22 +77,13 @@ class WeeklyChallengeCacheService {
     }
     
     func clearCache(userId: String) {
-        let weekId = Date().weekIdentifier()
-        let key = "\(userId)_\(weekId)"
+        let key = cacheKey(for: userId)  // Reuses method
         cache.removeValue(forKey: key)
         print("🗑️ Cache cleared for key: \(key)")
     }
     
-    func clearAllCache() {
-        cache.removeAll()
-        print("🗑️ All cache cleared")
-    }
-    
-    // MARK: - Debug
-    
     func debugCache(userId: String) {
-        let weekId = Date().weekIdentifier()
-        let key = "\(userId)_\(weekId)"
+        let key = cacheKey(for: userId)  // Reuses method
         
         print("\n=== DEBUG WEEKLY CHALLENGE CACHE ===")
         print("Key: \(key)")

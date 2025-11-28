@@ -41,7 +41,7 @@ class WeeklyChallengeCacheService {
         "\(userId)_\(currentWeekId)"
     }
     
-    // MARK: - Cache Operations (Refactorizadas)
+    // MARK: - Cache Operations (Refactored)
     
     func getCachedChallenge(userId: String) -> WeeklyChallengeCache? {
         let key = cacheKey(for: userId)  // Reutiliza método

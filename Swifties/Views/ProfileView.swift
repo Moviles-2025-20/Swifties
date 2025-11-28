@@ -178,6 +178,38 @@ struct ProfileView: View {
                             // Preferences Section
                             PreferencesSection(preferences: profile.preferences.favoriteCategories)
 
+                            // NUEVO: Badges Button
+                            NavigationLink(destination: BadgesView()) {
+                                HStack {
+                                    Image(systemName: "rosette")
+                                        .font(.title2)
+                                        .foregroundColor(.orange)
+                                        .frame(width: 40)
+                                    
+                                    Text("My Badges")
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    // Opcional: Mostrar conteo de badges desbloqueados
+                                    Text("View all")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                }
+                                .padding()
+                                .background(Color(.systemBackground))
+                                .cornerRadius(12)
+                                .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 10)
+                            
+                            
                             // Divider
                             Divider()
                                 .padding(.horizontal, 20)

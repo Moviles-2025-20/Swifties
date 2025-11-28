@@ -50,10 +50,10 @@ struct QuizResult {
     
     // Category emojis mapping - UPDATED for your 4 categories
     static let categoryEmojis: [String: String] = [
-        "creative": "🎨",
-        "social_planner": "🎉",
-        "cultural_explorer": "📚",
-        "chill": "😌"
+        "creative": "🎨", // "theatermask.and.paintbrush.fill"
+        "social_planner": "🎉", //"party.popper.fill"
+        "cultural_explorer": "📚", // "books.vertical.fill"
+        "chill": "😌", // "leaf.fill"
     ]
     
     // Category display names

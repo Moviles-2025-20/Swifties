@@ -12,6 +12,7 @@ struct EventListView: View {
     
     @State private var showOfflineAlert = false
     @State private var offlineAlertMessage = ""
+    @State private var showNews: Bool = false
 
     // Filter events by search
     var filteredEvents: [Event] {
@@ -51,7 +52,7 @@ struct EventListView: View {
                 Color("appPrimary").ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    CustomTopBar(title: "Events", showNotificationButton: true, onBackTap:  {
+                    CustomTopBar(title: "Events", showNotificationButton: true, onNotificationTap: { showNews = true }, onBackTap:  {
                         print("Notification tapped")
                     })
                     
@@ -302,6 +303,9 @@ struct EventListView: View {
                     AnalyticsService.shared.logDiscoveryMethod(.manualBrowse)
                 }
             }
+            .navigationDestination(isPresented: $showNews) {
+                NewsView()
+            }
         }
     }
 
@@ -417,3 +421,4 @@ private struct EventListView_PreviewContainer: View {
 #Preview {
     EventListView_PreviewContainer()
 }
+

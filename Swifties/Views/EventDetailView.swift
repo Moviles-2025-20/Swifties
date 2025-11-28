@@ -13,6 +13,7 @@ struct EventDetailView: View {
     @State private var showAuthAlert: Bool = false
     @StateObject private var networkMonitor = NetworkMonitorService.shared
     private let offlineMessage = "No network connection  - Cannot fetch details"
+    @State private var showNews: Bool = false
 
     private let db = Firestore.firestore(database: "default")
     
@@ -31,9 +32,7 @@ struct EventDetailView: View {
                     title: "Event Details",
                     showNotificationButton: true,
                     showBackButton: true,
-                    onNotificationTap: {
-                        // Handle notification tap
-                    },
+                    onNotificationTap: { showNews = true },
                     onBackTap: {
                         dismiss()
                     }
@@ -278,6 +277,9 @@ struct EventDetailView: View {
         }
         .onDisappear {
             viewModel.stopListeningForComments()
+        }
+        .navigationDestination(isPresented: $showNews) {
+            NewsView()
         }
     }
     

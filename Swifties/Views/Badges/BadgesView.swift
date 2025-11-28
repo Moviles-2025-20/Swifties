@@ -264,6 +264,7 @@ struct BadgesView: View {
                 }
             }
         }
+        .navigationBarHidden(true)
         .alert("Connection Required", isPresented: $showOfflineAlert) {
             Button("OK", role: .cancel) {}
         } message: {

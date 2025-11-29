@@ -7,6 +7,7 @@
 
 import Foundation
 import FirebaseFirestore
+import SwiftUI
 
 // MARK: - Quiz Question Model
 struct QuizQuestion: Identifiable, Codable {
@@ -49,15 +50,29 @@ struct QuizResult {
     let description: String
     let totalScore: Int
     
-    // Category emojis mapping - UPDATED for your 4 categories
+    // FIXED: Simple dictionary declarations (no complex type inference)
+    
     static let categoryEmojis: [String: String] = [
-        "creative": "🎨", // "theatermask.and.paintbrush.fill"
-        "social_planner": "🎉", //"party.popper.fill"
-        "cultural_explorer": "📚", // "books.vertical.fill"
-        "chill": "😌", // "leaf.fill"
+        "creative": "🎨",
+        "social_planner": "🎉",
+        "cultural_explorer": "📚",
+        "chill": "😌"
     ]
     
-    // Category display names
+    static let categoryIcons: [String: String] = [
+        "creative": "paintbrush.fill",
+        "social_planner": "person.3.fill",
+        "cultural_explorer": "book.fill",
+        "chill": "leaf.fill"
+    ]
+    
+    static let categoryColors: [String: Color] = [
+        "creative": Color.purple,
+        "social_planner": Color.orange,
+        "cultural_explorer": Color.blue,
+        "chill": Color.green
+    ]
+    
     static let categoryDisplayNames: [String: String] = [
         "creative": "Creative",
         "social_planner": "Social Planner",
@@ -65,7 +80,6 @@ struct QuizResult {
         "chill": "Chill"
     ]
     
-    // Category descriptions - For the 4 categories
     static let categoryDescriptions: [String: String] = [
         "creative": "You're a creative soul! You see beauty in aesthetics and love expressing yourself through art and design.",
         "social_planner": "You're the life of the party! You thrive in social settings and love bringing people together.",
@@ -73,7 +87,6 @@ struct QuizResult {
         "chill": "You're zen and peaceful! You value tranquility, nature, and taking time to relax and recharge."
     ]
     
-    // Priority order for 3+ way ties
     static let categoryPriority: [String] = [
         "social_planner",
         "creative",

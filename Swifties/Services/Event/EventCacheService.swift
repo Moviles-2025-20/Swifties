@@ -88,7 +88,7 @@ class EventCacheService {
         return timeElapsed <= cacheExpirationMinutes * 60 && hasData
     }
     
-    /// Obtiene la edad del caché
+    /// Gets cache age
     func getCacheAge() -> TimeInterval? {
         lock.lock()
         defer { lock.unlock() }

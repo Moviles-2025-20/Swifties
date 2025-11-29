@@ -157,7 +157,9 @@ class RecommendationDatabaseManager {
             print("✅ \(recommendations.count) recommendations upserted to SQLite for user \(userId)")
             #endif
         } catch {
+            #if DEBUG
             print("❌ Error saving recommendations: \(error)")
+            #endif
         }
     }
     

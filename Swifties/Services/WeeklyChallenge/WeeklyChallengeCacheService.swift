@@ -10,16 +10,25 @@ import Foundation
 class WeeklyChallengeCacheService {
     static let shared = WeeklyChallengeCacheService()
     
-    private var cache: [String: WeeklyChallengeCache] = [:]
-    private let cacheExpirationSeconds: TimeInterval = 3600
+    private let cache = NSCache<NSString, CachedWeeklyChallengeWrapper>()
+    private let cacheExpirationMinutes = 60.0 // 1 hour
     
     // Cache the current weekId (updates only when the week changes)
     private var cachedWeekId: String?
     private var weekIdTimestamp: Date?
     
-    private init() {}
+    private init() {
+        // Calculate cache size dynamically based on available memory
+        let maxMemory = ProcessInfo.processInfo.physicalMemory
+        let cacheSize = Int(maxMemory / 1024 / 8) // Use 1/8th of available memory for cache
+        
+        cache.countLimit = 10 // Limit to 10 items (puede ajustarse según necesidad)
+        cache.totalCostLimit = cacheSize
+        
+        print("Weekly Challenge cache initialized with limit: \(cacheSize) bytes, max items: \(cache.countLimit)")
+    }
     
-    // MARK: - Helper Methods (Avoid recreation)
+    // MARK: - Helper Methods
     
     private var currentWeekId: String {
         let now = Date()
@@ -40,31 +49,32 @@ class WeeklyChallengeCacheService {
         "\(userId)_\(currentWeekId)"
     }
     
-    // MARK: - Cache Operations (Refactored)
+    // MARK: - Cache Operations
     
     func getCachedChallenge(userId: String) -> WeeklyChallengeCache? {
-        let key = cacheKey(for: userId)  // Reutiliza método
+        let key = cacheKey(for: userId)
         
-        guard let cached = cache[key] else {
+        guard let wrapper = cache.object(forKey: key as NSString) else {
             print("❌ No cache found for key: \(key)")
             return nil
         }
         
-        let age = Date().timeIntervalSince(cached.timestamp)
-        if age > cacheExpirationSeconds {
+        // Check if cache has expired
+        let age = Date().timeIntervalSince(wrapper.timestamp)
+        if age > cacheExpirationMinutes * 60 {
             print("⏰ Cache expired (age: \(String(format: "%.1f", age/60)) minutes)")
-            cache.removeValue(forKey: key)
+            cache.removeObject(forKey: key as NSString)
             return nil
         }
         
         print("✅ Cache hit for key: \(key) (age: \(String(format: "%.1f", age/60)) minutes)")
-        return cached
+        return wrapper.challenge
     }
     
     func cacheChallenge(userId: String, event: Event?, hasAttended: Bool, totalChallenges: Int, chartData: [WeeklyChallengeChartData]) {
-        let key = cacheKey(for: userId)  // Reuses method
+        let key = cacheKey(for: userId)
         
-        let cache = WeeklyChallengeCache(
+        let challenge = WeeklyChallengeCache(
             event: event,
             hasAttended: hasAttended,
             totalChallenges: totalChallenges,
@@ -72,35 +82,67 @@ class WeeklyChallengeCacheService {
             timestamp: Date()
         )
         
-        self.cache[key] = cache
+        let wrapper = CachedWeeklyChallengeWrapper(challenge: challenge, timestamp: Date())
+        cache.setObject(wrapper, forKey: key as NSString)
+        
         print("💾 Cached challenge for key: \(key)")
     }
     
-    func clearCache(userId: String) {
-        let key = cacheKey(for: userId)  // Reuses method
-        cache.removeValue(forKey: key)
-        print("🗑️ Cache cleared for key: \(key)")
+    func clearCache(userId: String? = nil) {
+        if let userId = userId {
+            let key = cacheKey(for: userId)
+            cache.removeObject(forKey: key as NSString)
+            print("🗑️ Cache cleared for key: \(key)")
+        } else {
+            cache.removeAllObjects()
+            cachedWeekId = nil
+            weekIdTimestamp = nil
+            print("🗑️ All cache cleared")
+        }
+    }
+    
+    func getCacheAge(userId: String) -> TimeInterval? {
+        let key = cacheKey(for: userId)
+        guard let wrapper = cache.object(forKey: key as NSString) else {
+            return nil
+        }
+        return Date().timeIntervalSince(wrapper.timestamp)
     }
     
     func debugCache(userId: String) {
-        let key = cacheKey(for: userId)  // Reuses method
+        let key = cacheKey(for: userId)
         
         print("\n=== DEBUG WEEKLY CHALLENGE CACHE ===")
         print("Key: \(key)")
         
-        if let cached = cache[key] {
-            let age = Date().timeIntervalSince(cached.timestamp)
+        if let wrapper = cache.object(forKey: key as NSString) {
+            let age = Date().timeIntervalSince(wrapper.timestamp)
+            let cached = wrapper.challenge
             print("Found: YES")
             print("Age: \(String(format: "%.1f", age/60)) minutes")
             print("Event: \(cached.event?.name ?? "nil")")
             print("Has Attended: \(cached.hasAttended)")
             print("Total Challenges: \(cached.totalChallenges)")
             print("Valid: \(cached.isValid)")
+            print("Expired: \(age > cacheExpirationMinutes * 60)")
         } else {
             print("Found: NO")
         }
         
-        print("Total cached items: \(cache.count)")
+        print("Cache memory limit: \(cache.totalCostLimit) bytes")
+        print("Cache item limit: \(cache.countLimit)")
         print("=====================================\n")
+    }
+}
+
+// MARK: - Wrapper Class
+
+class CachedWeeklyChallengeWrapper {
+    let challenge: WeeklyChallengeCache
+    let timestamp: Date
+    
+    init(challenge: WeeklyChallengeCache, timestamp: Date) {
+        self.challenge = challenge
+        self.timestamp = timestamp
     }
 }

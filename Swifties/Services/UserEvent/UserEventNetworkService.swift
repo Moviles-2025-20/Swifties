@@ -14,6 +14,12 @@ class UserEventNetworkService {
     
     private let db = Firestore.firestore(database: "default")
     
+    private lazy var timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter
+    }()
+    
     private init() {}
     
     func fetchUserEvents(completion: @escaping (Result<(events: [Event], slots: [FreeTimeSlot]), Error>) -> Void) {
@@ -135,12 +141,10 @@ class UserEventNetworkService {
     }
     
     private func isTimeInRange(eventTime: String, slotStart: String, slotEnd: String) -> Bool {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        
-        guard let event = formatter.date(from: eventTime),
-              let start = formatter.date(from: slotStart),
-              let end = formatter.date(from: slotEnd) else {
+
+        guard let event = timeFormatter.date(from: eventTime),
+              let start = timeFormatter.date(from: slotStart),
+              let end = timeFormatter.date(from: slotEnd) else {
             return false
         }
         

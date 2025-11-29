@@ -24,6 +24,15 @@ class UserEventDatabaseManager {
     private let slotUserId = Expression<String>("user_id")
     private let slotTimestamp = Expression<Date>("timestamp")
     
+    // ----->>>>>> OPTIMIZACION: Lazy properties for encoder/decoder
+    private lazy var jsonEncoder: JSONEncoder = {
+        JSONEncoder()
+    }()
+    
+    private lazy var jsonDecoder: JSONDecoder = {
+        JSONDecoder()
+    }()
+    
     private init() {
         setupDatabase()
     }
@@ -102,15 +111,15 @@ class UserEventDatabaseManager {
                 try db.run(userEventsTable.filter(self.userId == userId).delete())
                 try db.run(freeTimeSlotsTable.filter(self.slotUserId == userId).delete())
                 
-                // Insert events - CONVERT TO CODABLE
-                let encoder = JSONEncoder()
-                for event in events {
+                // ----->>>>>> OPTIMIZACION: Indexed loop + reuse encoder
+                for i in 0..<events.count {
+                    let event = events[i]
                     guard let eventIdValue = event.id else { continue }
                     
                     // Convertir Event a CodableEvent
                     let codableEvent = event.toCodable()
                     let eventJSON = String(
-                        data: try encoder.encode(codableEvent),
+                        data: try jsonEncoder.encode(codableEvent),
                         encoding: .utf8
                     )!
                     
@@ -124,8 +133,9 @@ class UserEventDatabaseManager {
                     try db.run(insert)
                 }
                 
-                // Insert free time slots
-                for slot in freeTimeSlots {
+                // ----->>>>>> OPTIMIZACION: Indexed loop for free time slots
+                for i in 0..<freeTimeSlots.count {
+                    let slot = freeTimeSlots[i]
                     let insert = freeTimeSlotsTable.insert(
                         slotId <- slot.id,
                         day <- slot.day,
@@ -151,7 +161,7 @@ class UserEventDatabaseManager {
         }
         
         do {
-            let decoder = JSONDecoder()
+            // ----->>>>>> OPTIMIZACION
             var events: [Event] = []
             var slots: [FreeTimeSlot] = []
             
@@ -160,12 +170,12 @@ class UserEventDatabaseManager {
             for row in try db.prepare(eventsQuery) {
                 guard let data = row[eventData].data(using: .utf8) else { continue }
                 // Decodificar como CodableEvent y convertir a Event
-                let codableEvent = try decoder.decode(CodableEvent.self, from: data)
+                let codableEvent = try jsonDecoder.decode(CodableEvent.self, from: data)
                 let event = Event.from(codable: codableEvent)
                 events.append(event)
             }
             
-            // Load free time slots - FIXED: SINGLE LOOP
+            // Load free time slots
             let slotsQuery = freeTimeSlotsTable.filter(slotUserId == userId)
             for row in try db.prepare(slotsQuery) {
                 let slot = FreeTimeSlot(

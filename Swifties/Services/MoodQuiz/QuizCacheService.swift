@@ -2,8 +2,9 @@
 //  QuizCacheService.swift
 //  Swifties
 //
-//  NSCache layer for quiz result screen (fast in-session access)
+//  Created by Natalia Villegas Calderón on 28/11/25.
 //
+
 
 import Foundation
 
@@ -37,7 +38,7 @@ class QuizCacheService {
         cache.setObject(wrapper, forKey: key)
         cacheTimestamps[userId] = Date()
         
-        print("💾 Cached quiz result for user: \(userId) - Category: \(result.moodCategory)")
+        print("[SAVEED]] Cached quiz result for user: \(userId) - Category: \(result.moodCategory)")
     }
     
     // MARK: - Get Cached Result
@@ -67,13 +68,13 @@ class QuizCacheService {
         let key = userId as NSString
         cache.removeObject(forKey: key)
         cacheTimestamps.removeValue(forKey: userId)
-        print("🗑️ Cleared quiz result cache for user: \(userId)")
+        print("XXXXXX Cleared quiz result cache for user: \(userId)")
     }
     
     func clearAllCache() {
         cache.removeAllObjects()
         cacheTimestamps.removeAll()
-        print("🗑️ All quiz result caches cleared")
+        print("XXXXX All quiz result caches cleared")
     }
     
     // MARK: - Cache Age

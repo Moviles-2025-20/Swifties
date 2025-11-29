@@ -2,7 +2,7 @@
 //  QuizStorageService.swift
 //  Swifties
 //
-//  Manages SQLite (questions) + Realm (results) + UserDefaults (pending uploads)
+//  Created by Natalia Villegas Calderón on 28/11/25.
 //
 
 import Foundation
@@ -179,7 +179,7 @@ class QuizStorageService {
                 schemaVersion: 2,
                 migrationBlock: { migration, oldSchemaVersion in
                     if oldSchemaVersion < 2 {
-                        // Handle migrations if needed
+                        // Handle migrations if needed -FUTURE IMPLEMENTATION
                     }
                 }
             )
@@ -213,7 +213,7 @@ class QuizStorageService {
                 try realm.write {
                     realm.add(realmResult, update: .modified)
                 }
-                print("💾 Saved quiz result to Realm: \(userId) - \(result.moodCategory)")
+                print("[SAVEDDD] Saved quiz result to Realm: \(userId) - \(result.moodCategory)")
             } catch {
                 print("❌ Error saving to Realm: \(error)")
             }
@@ -259,7 +259,7 @@ class QuizStorageService {
                     try realm.write {
                         realm.delete(object)
                     }
-                    print("🗑️ Deleted quiz result from Realm: \(userId)")
+                    print("XXXXX Deleted quiz result from Realm: \(userId)")
                 } catch {
                     print("❌ Error deleting from Realm: \(error)")
                 }
@@ -283,7 +283,7 @@ class QuizStorageService {
         
         if let data = try? encoder.encode(pending) {
             UserDefaults.standard.set(data, forKey: pendingResultsKey)
-            print("💾 Saved pending UserQuizResult to UserDefaults for upload")
+            print("[SAVEDDDD] Saved pending UserQuizResult to UserDefaults for upload")
             print("   User: \(result.userId)")
             print("   Categories: \(result.resultCategory)")
             print("   Type: \(result.resultType)")
@@ -307,7 +307,7 @@ class QuizStorageService {
     
     func clearPendingResults() {
         UserDefaults.standard.removeObject(forKey: pendingResultsKey)
-        print("🗑️ Cleared pending UserQuizResult uploads from UserDefaults")
+        print("XXXXXXXX Cleared pending UserQuizResult uploads from UserDefaults")
     }
     
     func hasPendingResults() -> Bool {
@@ -323,7 +323,7 @@ class QuizStorageService {
         
         if let data = try? encoder.encode(pending) {
             UserDefaults.standard.set(data, forKey: pendingResultsKey)
-            print("🗑️ Removed pending result for user: \(userId)")
+            print("XXXXXXXX Removed pending result for user: \(userId)")
         } else if pending.isEmpty {
             // If no pending results left, clear the key
             clearPendingResults()
@@ -342,7 +342,7 @@ class QuizStorageService {
     
     func setWantsRetake(userId: String, value: Bool) {
         UserDefaults.standard.set(value, forKey: wantsRetakeKey + userId)
-        print("📝 Set wants retake: \(value) for user: \(userId)")
+        print(" Set wants retake: \(value) for user: \(userId)")
     }
     
     func wantsRetake(userId: String) -> Bool {
@@ -352,22 +352,37 @@ class QuizStorageService {
     func clearQuizState(userId: String) {
         UserDefaults.standard.removeObject(forKey: hasResultKey + userId)
         UserDefaults.standard.removeObject(forKey: wantsRetakeKey + userId)
-        print("🗑️ Cleared quiz state for user: \(userId)")
+        print("XXXXXXXX Cleared quiz state for user: \(userId)")
     }
 }
 
 // MARK: - Realm Model for Quiz Result
 
+/// Stores UI-friendly quiz result data for displaying the result screen
+///
+/// **Purpose**: Allow user to see their quiz result (emoji, description, etc.)
+/// even when offline or when UserQuizResult upload is pending.
+///
+/// **Separation of Concerns**:
+/// - This model = "What does the user SEE?" (emoji, description, display name)
+/// - UserQuizResult in UserDefaults pending = "What does Firebase NEED?" (scores, question IDs, etc.)
+///
+/// Both are created from the same quiz completion, but serve different purposes.
 class RealmQuizResult: Object {
     @Persisted(primaryKey: true) var userId: String
-    @Persisted var moodCategory: String
-    @Persisted var rawCategory: String
-    @Persisted var isTied: Bool
-    @Persisted var tiedCategoriesJson: String
-    @Persisted var emoji: String
-    @Persisted var resultDescription: String
+    
+    // UI display fields
+    @Persisted var moodCategory: String        // Display name: "Creative"
+    @Persisted var rawCategory: String         // Key: "creative"
+    @Persisted var isTied: Bool               // Multiple categories tied?
+    @Persisted var tiedCategoriesJson: String // JSON array of tied keys
+    @Persisted var emoji: String              // "🎨"
+    @Persisted var resultDescription: String  // User-facing description
     @Persisted var totalScore: Int
-    @Persisted var userQuizResultJson: String
+    
+    // Full UserQuizResult encoded for reconstruction
+    @Persisted var userQuizResultJson: String // Complete Firebase upload data
+    
     @Persisted var lastUpdated: Date = Date()
     
     convenience init(userId: String, result: QuizResult, userQuizResult: UserQuizResult) {
@@ -387,7 +402,7 @@ class RealmQuizResult: Object {
             self.tiedCategoriesJson = json
         }
         
-        // Encode UserQuizResult
+        // Encode UserQuizResult for later reconstruction (if needed)
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         if let data = try? encoder.encode(userQuizResult),
@@ -396,6 +411,7 @@ class RealmQuizResult: Object {
         }
     }
     
+    /// Converts to QuizResult for UI display
     func toQuizResult() -> QuizResult {
         let tiedCategories = (try? JSONDecoder().decode([String].self, from: tiedCategoriesJson.data(using: .utf8)!)) ?? []
         
@@ -410,6 +426,7 @@ class RealmQuizResult: Object {
         )
     }
     
+    /// Reconstructs UserQuizResult from stored JSON (if needed for re-upload)
     func toUserQuizResult() -> UserQuizResult {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

@@ -6,30 +6,44 @@
 //
 
 import Foundation
-import SwiftUI
-import FirebaseFirestore
 import FirebaseAuth
 import Combine
 
 @MainActor
 class MoodQuizViewModel: ObservableObject {
     // MARK: - Published Properties
+    
     @Published var questions: [QuizQuestion] = []
-    @Published var currentQuestionIndex: Int = 0
-    @Published var selectedAnswers: [String: UserAnswer] = [:] // questionId: answer
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
+    @Published var currentQuestionIndex = 0
+    @Published var userAnswers: [UserAnswer] = []
     @Published var quizResult: QuizResult?
-    @Published var showResult: Bool = false
-    @Published var hasSavedResult: Bool = false
-
-    // MARK: - Private Properties
-    private let db = Firestore.firestore(database: "default")
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    @Published var showResult = false
+    @Published var dataSource: DataSource = .none
+    @Published var isRefreshing = false
+    @Published var hasPendingUpload = false
+    
+    enum DataSource {
+        case none
+        case memoryCache      // NSCache (result screen only)
+        case localStorage     // SQLite (questions) or Realm (results)
+        case network          // Firebase/Firestore
+    }
+    
+    // MARK: - Services
+    
+    private let cacheService = QuizCacheService.shared
+    private let storageService = QuizStorageService.shared
+    private let networkService = QuizNetworkService.shared
+    private let syncService = QuizSyncService.shared
+    private let networkMonitor = NetworkMonitorService.shared
+    
+    private let numberOfQuestions = 5
     private var cancellables = Set<AnyCancellable>()
-    private let quizBankDocumentId = "lOhEPYC8ci9lBEo08G47"
-    private let quizBankId = "personality_v1"
     
     // MARK: - Computed Properties
+    
     var currentQuestion: QuizQuestion? {
         guard currentQuestionIndex < questions.count else { return nil }
         return questions[currentQuestionIndex]
@@ -37,295 +51,463 @@ class MoodQuizViewModel: ObservableObject {
     
     var progress: Double {
         guard !questions.isEmpty else { return 0 }
-        return Double(currentQuestionIndex + 1) / Double(questions.count)
-    }
-    
-    var canGoNext: Bool {
-        guard let currentQuestionId = currentQuestion?.id else { return false }
-        return selectedAnswers[currentQuestionId] != nil
+        return Double(currentQuestionIndex) / Double(questions.count)
     }
     
     var isLastQuestion: Bool {
         return currentQuestionIndex == questions.count - 1
     }
     
-    // MARK: - Fetch Questions from Firebase
-    func fetchQuestions() async {
-        isLoading = true
-        errorMessage = nil
+    // MARK: - Initialization
+    
+    init() {
+        // Observe network changes for sync
+        networkMonitor.$isConnected
+            .removeDuplicates()
+            .sink { [weak self] isConnected in
+                if isConnected {
+                    Task { [weak self] in
+                        await self?.handleConnectivityRestored()
+                    }
+                }
+            }
+            .store(in: &cancellables)
         
-        do {
-            print("------->>>>> Fetching quiz questions from Firebase...")
-            
-            // Fetch from the document that contains the questions array
-            let docRef = db.collection("quiz_questions").document(quizBankDocumentId)
-            let document = try await docRef.getDocument()
-            
-            guard let data = document.data(),
-                  let questionsArray = data["questions"] as? [[String: Any]] else {
-                print("!!!!!!! No questions found in document")
-                errorMessage = "No quiz questions available at the moment"
-                isLoading = false
-                return
-            }
-            
-            // Parse questions manually since they're in a nested array
-            var fetchedQuestions: [QuizQuestion] = []
-            
-            for questionData in questionsArray {
-                guard let id = questionData["id"] as? String,
-                      let text = questionData["text"] as? String,
-                      let optionsArray = questionData["options"] as? [[String: Any]] else {
-                    continue
-                }
-                
-                let imageUrl = questionData["imageUrl"] as? String
-                
-                var options: [QuizOption] = []
-                for optionData in optionsArray {
-                    guard let optionText = optionData["text"] as? String,
-                          let category = optionData["category"] as? String,
-                          let points = optionData["points"] as? Int else {
-                        continue
-                    }
-                    
-                    // Validate points range
-                    guard points >= 0 && points <= 100 else {
-                        print("⚠️ Invalid points value: \(points) for option '\(optionText)' in question '\(id)'")
-                        continue
-                    }
-                    
-                    // Validate category
-                    let validCategories = Set(QuizResult.categoryDisplayNames.keys)
-                    guard validCategories.contains(category) else {
-                        print("⚠️ Invalid category: \(category) for option '\(optionText)' in question '\(id)'")
-                        continue
-                    }
-                    
-                    options.append(QuizOption(text: optionText, category: category, points: points))
-                }
-                
-                // Only add question if it has valid options
-                guard !options.isEmpty else {
-                    print("⚠️ Question '\(id)' has no valid options, skipping")
-                    continue
-                }
-                
-                fetchedQuestions.append(QuizQuestion(id: id, text: text, imageUrl: imageUrl, options: options))
-            }
-            
-            if fetchedQuestions.isEmpty {
-                print("!!!!!!! No valid questions parsed")
-                errorMessage = "Failed to parse quiz questions"
-            } else {
-                // Randomly select 5 questions from the pool
-                questions = Array(fetchedQuestions.shuffled().prefix(5))
-                print("✅ Loaded \(questions.count) random questions from \(fetchedQuestions.count) total")
-            }
-            
-            isLoading = false
-        } catch {
-            print("❌ Error fetching questions: \(error.localizedDescription)")
-            errorMessage = "Failed to load quiz questions: \(error.localizedDescription)"
-            isLoading = false
+        // CRITICAL FIX: Listen for sync completion notifications
+        NotificationCenter.default.addObserver(
+            forName: .quizSyncCompleted,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            print("✅ Quiz sync completed notification received")
+            self?.hasPendingUpload = false
+        }
+        
+        // CRITICAL FIX: Check for pending uploads on init
+        checkForPendingUploads()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    // MARK: - Check for Pending Uploads
+    
+    private func checkForPendingUploads() {
+        hasPendingUpload = storageService.hasPendingResults()
+        if hasPendingUpload {
+            print("⚠️ Found pending quiz results to upload")
         }
     }
     
-    // MARK: - Answer Selection
-    func selectAnswer(option: QuizOption) {
+    // MARK: - Load Quiz (Startup Logic)
+    
+    func loadQuiz() async {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        
+        print("🎯 Loading quiz for user: \(userId)")
+        
+        // CRITICAL FIX: Check if we have pending uploads and try to sync first
+        if storageService.hasPendingResults() && networkMonitor.isConnected {
+            print("🔄 Found pending uploads, attempting sync before loading quiz...")
+            await syncService.syncPendingResults()
+            // Update the flag after sync attempt
+            hasPendingUpload = storageService.hasPendingResults()
+        }
+        
+        // Check if user wants to retake
+        let wantsRetake = storageService.wantsRetake(userId: userId)
+        
+        if wantsRetake {
+            print("🔄 User wants to retake quiz - loading questions")
+            await loadQuestions()
+            return
+        }
+        
+        // Layer 1: Check NSCache for result
+        if let cached = cacheService.getCachedResult(userId: userId) {
+            print("✅ Loaded result from NSCache")
+            quizResult = cached.quizResult
+            showResult = true
+            dataSource = .memoryCache
+            return
+        }
+        
+        // Layer 2: Check Realm for stored result
+        if let stored = await storageService.loadQuizResult(userId: userId) {
+            print("✅ Loaded result from Realm")
+            quizResult = stored.result
+            showResult = true
+            dataSource = .localStorage
+            
+            // Cache in NSCache for next time
+            cacheService.cacheQuizResult(
+                userId: userId,
+                result: stored.result,
+                userQuizResult: stored.userQuizResult
+            )
+            
+            return
+        }
+        
+        // No result found - load questions for new quiz
+        print("📝 No existing result - loading questions for new quiz")
+        await loadQuestions()
+    }
+    
+    // MARK: - Load Questions (Three-Layer Strategy)
+    
+    private func loadQuestions() async {
+        isLoading = true
+        errorMessage = nil
+        
+        // Layer 1: Try SQLite
+        if let stored = storageService.loadQuestions(), !stored.isEmpty {
+            print("✅ Loaded questions from SQLite")
+            questions = selectRandomQuestions(from: stored)
+            dataSource = .localStorage
+            isLoading = false
+            
+            // Refresh in background if connected
+            if networkMonitor.isConnected {
+                Task {
+                    await refreshQuestionsInBackground()
+                }
+            }
+            
+            return
+        }
+        
+        // Layer 2: Try Firebase (with its own cache)
+        if networkMonitor.isConnected {
+            await fetchQuestionsFromNetwork()
+        } else {
+            // No questions anywhere and offline - block quiz
+            isLoading = false
+            errorMessage = "No quiz questions available. Please connect to the internet to download the quiz."
+            dataSource = .none
+            print("❌ BLOCKED: No questions in storage and no connectivity")
+        }
+    }
+    
+    private func fetchQuestionsFromNetwork() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            networkService.fetchQuizQuestions { [weak self] result in
+                Task { @MainActor in
+                    guard let self = self else {
+                        continuation.resume()
+                        return
+                    }
+                    
+                    self.isLoading = false
+                    
+                    switch result {
+                    case .success(let allQuestions):
+                        if allQuestions.isEmpty {
+                            self.errorMessage = "No quiz questions available"
+                            self.dataSource = .none
+                        } else {
+                            // Save to SQLite for offline use
+                            self.storageService.saveQuestions(allQuestions)
+                            
+                            // Select random subset
+                            self.questions = self.selectRandomQuestions(from: allQuestions)
+                            self.dataSource = .network
+                            
+                            print("✅ Loaded \(self.questions.count) questions from network")
+                        }
+                        
+                    case .failure(let error):
+                        self.errorMessage = "Failed to load quiz: \(error.localizedDescription)"
+                        self.dataSource = .none
+                        print("❌ Network error: \(error.localizedDescription)")
+                    }
+                    
+                    continuation.resume()
+                }
+            }
+        }
+    }
+    
+    private func refreshQuestionsInBackground() async {
+        guard networkMonitor.isConnected else { return }
+        
+        isRefreshing = true
+        
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            networkService.fetchQuizQuestions { [weak self] result in
+                Task { @MainActor in
+                    defer {
+                        self?.isRefreshing = false
+                        continuation.resume()
+                    }
+                    
+                    guard let self = self else { return }
+                    
+                    if case .success(let allQuestions) = result, !allQuestions.isEmpty {
+                        // Update SQLite with fresh questions
+                        self.storageService.saveQuestions(allQuestions)
+                        print("✅ Refreshed questions in background")
+                    }
+                }
+            }
+        }
+    }
+    
+    private func selectRandomQuestions(from all: [QuizQuestion]) -> [QuizQuestion] {
+        let count = min(numberOfQuestions, all.count)
+        return Array(all.shuffled().prefix(count))
+    }
+    
+    // MARK: - Answer Question
+    
+    func selectAnswer(_ option: QuizOption) {
         guard let questionId = currentQuestion?.id else { return }
         
         let answer = UserAnswer(
             questionId: questionId,
-            selectedOptionId: option.text, // Using text as ID since options don't have separate IDs
+            selectedOptionId: option.id,
             category: option.category,
             points: option.points,
             timestamp: Date()
         )
         
-        selectedAnswers[questionId] = answer
-        print("✅ Answer selected: \(option.text) (\(option.category): +\(option.points))")
-    }
-    
-    func isOptionSelected(_ optionText: String) -> Bool {
-        guard let questionId = currentQuestion?.id else { return false }
-        return selectedAnswers[questionId]?.selectedOptionId == optionText
-    }
-    
-    // MARK: - Navigation
-    func goToNextQuestion() {
-        guard canGoNext else { return }
+        userAnswers.append(answer)
+        print("✅ Answered question \(currentQuestionIndex + 1): \(option.category) (+\(option.points))")
         
         if isLastQuestion {
-            // Calculate result
             calculateResult()
         } else {
             currentQuestionIndex += 1
         }
     }
     
-    func goToPreviousQuestion() {
-        guard currentQuestionIndex > 0 else { return }
-        currentQuestionIndex -= 1
-    }
-    
     // MARK: - Calculate Result
+    
     private func calculateResult() {
-        print("\n ----->>>> Calculating quiz result...")
+        var scores: [String: Int] = [:]
         
-        // Count points per category
-        var categoryScores: [String: Int] = [:]
-        var totalScore = 0
-        
-        for answer in selectedAnswers.values {
-            categoryScores[answer.category, default: 0] += answer.points
-            totalScore += answer.points
+        for answer in userAnswers {
+            scores[answer.category, default: 0] += answer.points
         }
         
-        print("Category scores: \(categoryScores)")
+        let totalScore = scores.values.reduce(0, +)
+        let maxScore = scores.values.max() ?? 0
+        let topCategories = scores.filter { $0.value == maxScore }.map { $0.key }.sorted()
         
-        // Find max score
-        guard let maxScore = categoryScores.values.max() else {
-            print("❌ No scores found")
+        let isTied = topCategories.count > 1
+        let resultCategory: String
+        
+        if isTied {
+            // Use priority for 3+ way ties
+            if topCategories.count >= 3 {
+                resultCategory = QuizResult.categoryPriority.first { topCategories.contains($0) } ?? topCategories[0]
+            } else {
+                resultCategory = topCategories[0]
+            }
+        } else {
+            resultCategory = topCategories[0]
+        }
+        
+        let displayName = QuizResult.categoryDisplayNames[resultCategory] ?? resultCategory
+        let emoji = QuizResult.categoryEmojis[resultCategory] ?? "❓"
+        let description = QuizResult.categoryDescriptions[resultCategory] ?? ""
+        
+        quizResult = QuizResult(
+            moodCategory: displayName,
+            rawCategory: resultCategory,
+            isTied: isTied,
+            tiedCategories: topCategories,
+            emoji: emoji,
+            description: description,
+            totalScore: totalScore
+        )
+        
+        showResult = true
+        print("🎉 Quiz result: \(displayName) (tied: \(isTied))")
+    }
+    
+    // MARK: - Handle Result Actions
+    
+    func handleDoneAction() async {
+        guard let userId = Auth.auth().currentUser?.uid,
+              let result = quizResult else {
             return
         }
         
-        // Find all categories with max score (ties)
-        let topCategories = categoryScores.filter { $0.value == maxScore }.map { $0.key }
+        let selectedQuestionIds = questions.compactMap { $0.id }
+        var scores: [String: Int] = [:]
         
-        print("Top categories: \(topCategories) with score: \(maxScore)")
-        
-        // Determine result based on tie rules
-        let result: QuizResult
-        
-        if topCategories.count == 1 {
-            let category = topCategories[0]
-            let displayName = QuizResult.categoryDisplayNames[category] ?? category
-            
-            result = QuizResult(
-                moodCategory: displayName,
-                rawCategory: category,  // Add this
-                isTied: false,
-                tiedCategories: [],
-                emoji: QuizResult.categoryEmojis[category] ?? "😊",
-                description: QuizResult.categoryDescriptions[category] ?? "¡Resultado único!",
-                totalScore: totalScore
-            )
-        } else if topCategories.count == 2 {
-            let sortedCategories = topCategories.sorted()
-            let displayNames = sortedCategories.compactMap { QuizResult.categoryDisplayNames[$0] }
-            let mixedCategory = displayNames.joined(separator: " & ")
-            
-            result = QuizResult(
-                moodCategory: mixedCategory,
-                rawCategory: sortedCategories.joined(separator: "_"),  // e.g., "creative_social_planner"
-                isTied: true,
-                tiedCategories: topCategories,
-                emoji: sortedCategories.compactMap { QuizResult.categoryEmojis[$0] }.joined(separator: " "),
-                description: "You are a perfect blend of \(displayNames[0]) and \(displayNames[1]).",
-                totalScore: totalScore
-            )
-        } // In the 3+ way tie case
-        else {
-            let winner = QuizResult.categoryPriority.first { topCategories.contains($0) } ?? topCategories[0]
-            let displayName = QuizResult.categoryDisplayNames[winner] ?? winner
-            
-            result = QuizResult(
-                moodCategory: displayName,
-                rawCategory: winner,
-                isTied: true,
-                tiedCategories: topCategories,
-                emoji: QuizResult.categoryEmojis[winner] ?? "😊",
-                description: (QuizResult.categoryDescriptions[winner] ?? "Your unique personality blend!") + " (Multiple affinities detected)",
-                totalScore: totalScore
-            )
+        for answer in userAnswers {
+            scores[answer.category, default: 0] += answer.points
         }
         
-        quizResult = result
-        showResult = true
+        let userQuizResult = UserQuizResult.from(
+            userId: userId,
+            quizBankId: "quiz_bank_v1",
+            selectedQuestionIds: selectedQuestionIds,
+            scores: scores,
+            result: result
+        )
+        
+        // STEP 1: Always save UI-friendly result to Realm (for showing result screen later)
+        storageService.saveQuizResult(userId: userId, result: result, userQuizResult: userQuizResult)
+        print("💾 Saved UI result to Realm (emoji, description, etc.)")
+        
+        // STEP 2: Cache in NSCache for fast in-session access
+        cacheService.cacheQuizResult(userId: userId, result: result, userQuizResult: userQuizResult)
+        print("💾 Cached result in NSCache")
+        
+        // STEP 3: Set state flags
+        storageService.setHasResult(userId: userId, value: true)
+        storageService.setWantsRetake(userId: userId, value: false)
+        
+        // STEP 4: Handle UserQuizResult upload (the Firebase data model)
+        if networkMonitor.isConnected {
+            // Online: Upload UserQuizResult to Firebase
+            isLoading = true
+            
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                networkService.uploadQuizResult(userQuizResult) { [weak self] uploadResult in
+                    Task { @MainActor in
+                        defer {
+                            self?.isLoading = false
+                            continuation.resume()
+                        }
+                        
+                        switch uploadResult {
+                        case .success:
+                            print("✅ UserQuizResult uploaded to Firebase")
+                            // Remove any pending upload for this user (in case of retry)
+                            self?.storageService.removePendingResult(userId: userId)
+                            self?.hasPendingUpload = false
+                            
+                        case .failure(let error):
+                            print("❌ Upload failed: \(error.localizedDescription)")
+                            // Save UserQuizResult to UserDefaults for later upload
+                            self?.storageService.savePendingResult(userQuizResult)
+                            self?.hasPendingUpload = true
+                        }
+                    }
+                }
+            }
+        } else {
+            // Offline: Save UserQuizResult to UserDefaults for later upload
+            storageService.savePendingResult(userQuizResult)
+            hasPendingUpload = true
+            print("📴 Offline: UserQuizResult saved to UserDefaults, will upload when online")
+        }
     }
     
-    // MARK: - Save Result
-    func saveResultToFirebase() async {
-        guard let uid = Auth.auth().currentUser?.uid,
-                  let result = quizResult,
-                  !hasSavedResult else {  // Prevent duplicate saves
-                if hasSavedResult {
-                    print("⚠️ Result already saved")
-                } else {
-                    print("❌ Cannot save: No user or result")
-                    errorMessage = "Unable to save result. Please try again."
-                }
-                return
-            }
+    func handleTakeAgainAction() async {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
         
-        isLoading = true
-        errorMessage = nil  // Clear any previous errors
+        // Clear result from caches
+        cacheService.clearCache(userId: userId)
+        storageService.deleteQuizResult(userId: userId)
+        storageService.setWantsRetake(userId: userId, value: true)
+        storageService.setHasResult(userId: userId, value: false)
         
-        do {
-            // Calculate category scores
-            var categoryScores: [String: Int] = [:]
-            for answer in selectedAnswers.values {
-                categoryScores[answer.category, default: 0] += answer.points
-            }
+        // Reset state
+        quizResult = nil
+        showResult = false
+        currentQuestionIndex = 0
+        userAnswers = []
+        
+        print("🔄 Retake initiated - loading new questions")
+        
+        // Load questions for new quiz
+        await loadQuestions()
+    }
+    
+    // MARK: - Connectivity Restored
+    
+    private func handleConnectivityRestored() async {
+        // CRITICAL FIX: Always check storage, not just the local flag
+        if storageService.hasPendingResults() {
+            print("🌐 Connectivity restored - syncing pending results")
+            await syncService.syncPendingResults()
             
-            // Get selected question IDs in order
-            let selectedQuestionIds = questions.compactMap { $0.id }
-
-            // Validate that we have question IDs
-            guard selectedQuestionIds.count == questions.count else {
-                print("⚠️ Some questions missing IDs")
-                errorMessage = "Unable to save result due to missing question data."
-                isLoading = false
-                return
-            }
-            
-            // Create UserQuizResult
-            let userQuizResult = UserQuizResult.from(
-                userId: uid,
-                quizBankId: quizBankId,  // Now using the constant
-                selectedQuestionIds: selectedQuestionIds,
-                scores: categoryScores,
-                result: result
-            )
-            
-            // Save to quiz_answers collection
-            let resultData = userQuizResult.toFirestoreData()
-            try await db.collection("quiz_answers").addDocument(data: resultData)
-            
-            print("✅ Quiz result saved successfully")
-            print("   User: \(uid)")
-            print("   Quiz ID: \(quizBankId)")
-            print("   Selected Questions: \(selectedQuestionIds)")
-            print("   Scores: \(categoryScores)")
-            print("   Result Category: \(userQuizResult.resultCategory)")
-            print("   Result Type: \(userQuizResult.resultType)")
-            
-            // Update user stats
-            try await db.collection("users").document(uid).updateData([
-                "stats.last_quiz_date": FieldValue.serverTimestamp(),
-                "stats.total_quizzes": FieldValue.increment(Int64(1))
-            ])
-            hasSavedResult = true
-            isLoading = false
-            
-        } catch {
-            print("❌ Error saving result: \(error.localizedDescription)")
-            errorMessage = "Failed to save result. Please try again."
-            isLoading = false
+            // Update flag after sync attempt
+            hasPendingUpload = storageService.hasPendingResults()
         }
     }
     
     // MARK: - Reset Quiz
+    
     func resetQuiz() async {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        cacheService.clearCache(userId: userId)
+        storageService.deleteQuizResult(userId: userId)
+        storageService.clearQuizState(userId: userId)
+        
+        questions = []
         currentQuestionIndex = 0
-        selectedAnswers.removeAll()
+        userAnswers = []
         quizResult = nil
         showResult = false
         errorMessage = nil
-        hasSavedResult = false
+        dataSource = .none
+        hasPendingUpload = false
         
-        // Reshuffle questions for variety
-        await fetchQuestions()
+        print("🔄 Quiz reset complete")
+    }
+    
+    
+    // MARK: - Get Category Scores (for displaying in results)
+
+    func getCategoryScores() -> [String: Int] {
+        var scores: [String: Int] = [:]
+        
+        for answer in userAnswers {
+            scores[answer.category, default: 0] += answer.points
+        }
+        
+        return scores
+    }
+    
+    // MARK: - Debug
+    
+    func debugCache() {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("❌ No authenticated user for cache debug")
+            return
+        }
+        
+        print("\n" + String(repeating: "=", count: 50))
+        print("MOOD QUIZ CACHE DEBUG")
+        print(String(repeating: "=", count: 50))
+        
+        // Memory cache
+        cacheService.debugCache(userId: userId)
+        
+        // Storage info
+        let hasResult = storageService.hasResult(userId: userId)
+        let wantsRetake = storageService.wantsRetake(userId: userId)
+        let hasPending = storageService.hasPendingResults()
+        
+        print("💾 Storage State:")
+        print("   Has Result: \(hasResult)")
+        print("   Wants Retake: \(wantsRetake)")
+        print("   Has Pending: \(hasPending)")
+        
+        // Current state
+        print("📊 Current State:")
+        print("   Questions loaded: \(questions.count)")
+        print("   Current index: \(currentQuestionIndex)")
+        print("   Showing result: \(showResult)")
+        print("   Data source: \(dataSource)")
+        print("   Network: \(networkMonitor.isConnected ? "Connected" : "Offline")")
+        print("   Pending upload flag: \(hasPendingUpload)")
+        
+        if let error = errorMessage {
+            print("   Error: \(error)")
+        }
+        
+        print(String(repeating: "=", count: 50) + "\n")
     }
 }

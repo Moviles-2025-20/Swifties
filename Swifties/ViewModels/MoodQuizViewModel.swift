@@ -287,7 +287,7 @@ class MoodQuizViewModel: ObservableObject {
     
     // MARK: - Calculate Result
     
-    private func calculateResult() {
+    func calculateResult() {
         var scores: [String: Int] = [:]
         
         for answer in userAnswers {

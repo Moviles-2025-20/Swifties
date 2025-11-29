@@ -42,10 +42,7 @@ class RecommendationNetworkService {
             "SdmE00SDRbcclnQ0lvlf"
         ]
         
-        var components = URLComponents(string: "https://us-central1-parchandes-7e096.cloudfunctions.net/get_recommendations")
-        components?.queryItems = [URLQueryItem(name: "user_id", value: userId)]
-        
-        guard let url = components?.url else {
+        guard let url = URL(string: "https://us-central1-parchandes-7e096.cloudfunctions.net/get_recommendations?user_id=\(userId)") else {
             #if DEBUG
             print("⚠️ Invalid URL — using default recommendations.")
             #endif
@@ -68,10 +65,17 @@ class RecommendationNetworkService {
                 return
             }
             
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            guard let httpResponse = response as? HTTPURLResponse else {
                 #if DEBUG
-                let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-                print("⚠️ Server responded with \(code) — using defaults")
+                print("❌ Invalid response — using defaults")
+                #endif
+                self.loadEvents(from: defaultResults, completion: completion)
+                return
+            }
+
+            guard httpResponse.statusCode == 200 else {
+                #if DEBUG
+                print("⚠️ Server responded with \(httpResponse.statusCode) — using defaults")
                 #endif
                 self.loadEvents(from: defaultResults, completion: completion)
                 return
@@ -116,30 +120,25 @@ class RecommendationNetworkService {
         var events: [Event] = []
         var fetchError: Error?
         
-        for chunk in chunks {
+        for eventID in eventIDs {
             group.enter()
-            db.collection("events")
-                .whereField(FieldPath.documentID(), in: chunk)
-                .getDocuments { snapshot, error in
-                    defer { group.leave() }
-                    
-                    if let error = error {
-                        #if DEBUG
-                        print("Failed to fetch chunk \(chunk): \(error.localizedDescription)")
-                        #endif
-                        if fetchError == nil {
-                            fetchError = error
-                        }
-                        return
+
+            db.collection("events").document(eventID).getDocument { document, error in
+                defer { group.leave() }
+                
+                if let error = error {
+                    print("Failed to fetch document \(eventID): \(error.localizedDescription)")
+                    if fetchError == nil {
+                        fetchError = error
                     }
-                    
-                    guard let snapshot = snapshot else { return }
-                    for doc in snapshot.documents {
-                        if let event = EventFactory.createEvent(from: doc) {
-                            events.append(event)
-                        }
-                    }
+                    return
                 }
+                if let document = document, let event = EventFactory.createEvent(from: document) {
+                    events.append(event)
+                } else {
+                    print("No valid data for document \(eventID)")
+                }
+            }
         }
         
         group.notify(queue: .main) {
@@ -149,13 +148,7 @@ class RecommendationNetworkService {
                 #if DEBUG
                 print("\(events.count) recommendations fetched from Firestore (batched)")
                 #endif
-                // Preserve original order if needed
-                let mapByID = Dictionary(uniqueKeysWithValues: events.compactMap { event in
-                    guard let id = event.id else { return nil }
-                    return (id, event)
-                })
-                let ordered = eventIDs.compactMap { mapByID[$0] }
-                completion(.success(ordered))
+                completion(.success(events))
             }
         }
     }

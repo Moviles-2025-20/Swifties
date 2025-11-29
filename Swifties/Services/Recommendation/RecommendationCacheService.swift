@@ -16,9 +16,14 @@ class RecommendationCacheService {
     private let cacheExpirationMinutes = 60.0 // 1 hour for recommendations
     
     private init() {
-        cache.countLimit = 1 // Keep a single list
+        // Calculate cache size dynamically based on available memory
+        let maxMemory = ProcessInfo.processInfo.physicalMemory
+        let cacheSize = Int(maxMemory / 1024 / 8) // Use 1/8th of available memory for cache
+
+        cache.countLimit = 5 // Limit to 5 items
+        cache.totalCostLimit = cacheSize
         #if DEBUG
-        print("Recommendation cache initialized")
+        print("Recommendation cache initialized with limit: \(cacheSize) bytes")
         #endif
     }
     

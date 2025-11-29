@@ -22,6 +22,7 @@ class RecommendationDatabaseManager {
     private let eventData = Expression<String>("event_data")
     private let score = Expression<Double?>("score")
     private let position = Expression<Int>("position")
+    // Store timestamp as Int64 (Unix seconds) to be compatible with SQLite.Binding
     private let timestamp = Expression<Date>("timestamp")
     
     private init() {
@@ -57,7 +58,6 @@ class RecommendationDatabaseManager {
                 table.column(id)
                 table.column(userId)
                 table.column(eventData)
-                table.column(score)
                 table.column(position)
                 table.column(timestamp)
                 
@@ -97,11 +97,14 @@ class RecommendationDatabaseManager {
         }
         
         do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            
             try db.transaction {
-                // Upsert each recommendation; preserve order via 'position'
+                // Clear existing recommendations for this user
+                try db.run(recommendationsTable.filter(self.userId == userId).delete())
+
+                // Insert new recommendations with position tracking
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                
                 for (index, event) in recommendations.enumerated() {
                     guard let eventId = event.id else {
                         #if DEBUG
@@ -111,27 +114,22 @@ class RecommendationDatabaseManager {
                     }
                     
                     let codableEvent = event.toCodable()
-                    guard let eventJSON = String(data: try encoder.encode(codableEvent), encoding: .utf8) else {
-                        #if DEBUG
-                        print("⚠️ Failed to encode event \(eventId)")
-                        #endif
-                        continue
-                    }
-                    
-                    // INSERT OR REPLACE to upsert by composite primary key (user_id, id)
-                    // SQLite.swift lacks direct conflict API for composite PK; use raw SQL for upsert.
-                    let sql = """
-                    INSERT OR REPLACE INTO recommendations (id, user_id, event_data, score, position, timestamp)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """
-                    let stmt = try db.prepare(sql)
-                    try stmt.run(eventId, userId, eventJSON, nil as Double?, index, Date())
+                    let eventJSON = String(
+                        data: try encoder.encode(codableEvent),
+                        encoding: .utf8
+                    )!
+
+                    let insert = recommendationsTable.insert(
+                        id <- eventId,
+                        self.userId <- userId,
+                        eventData <- eventJSON,
+                        score <- nil, // Can be populated if you track recommendation scores
+                        position <- index,
+                        timestamp <- Date()
+                     )
+
+                    try db.run(insert)
                 }
-                
-                // Optional: delete any rows for this user that are beyond the new list size (cleanup old positions)
-                let cleanup = recommendationsTable
-                    .filter(self.userId == userId && position >= recommendations.count)
-                _ = try? db.run(cleanup.delete())
             }
             
             #if DEBUG

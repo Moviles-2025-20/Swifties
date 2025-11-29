@@ -311,6 +311,156 @@ struct WeeklyChallengeView: View {
                                 Text("Your Progress")
                                     .font(.title3)
                                     .fontWeight(.bold)
+                                
+                                HStack(spacing: 12) {
+                                    // Total Challenges
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        HStack {
+                                            Image(systemName: "trophy.fill")
+                                                .foregroundColor(.yellow)
+                                                .font(.title2)
+                                            Spacer()
+                                        }
+                                        Text("\(viewModel.totalChallenges)")
+                                            .font(.system(size: 32, weight: .bold))
+                                            .foregroundColor(.orange)
+                                        Text("Total Challenges")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color(.systemBackground))
+                                    .cornerRadius(12)
+
+                                    // This Week
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        HStack {
+                                            Image(systemName: "calendar")
+                                                .foregroundColor(.blue)
+                                                .font(.title2)
+                                            Spacer()
+                                        }
+                                        Text("\(viewModel.hasAttended ? 1 : 0)")
+                                            .font(.system(size: 32, weight: .bold))
+                                            .foregroundColor(viewModel.hasAttended ? .green : .blue)
+                                        Text("This Week")
+                                            .font(.caption)
+                                            .foregroundColor(viewModel.hasAttended ? .green : .secondary)
+
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color(.systemBackground))
+                                    .cornerRadius(12)
+                                }
+
+                                // Last 4 Weeks Chart
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack {
+                                        Text("Weekly Challenge Streak")
+                                            .font(.headline)
+                                        Spacer()
+                                        Text("Last 4 Weeks")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+
+                                    if viewModel.last30DaysData.isEmpty {
+                                        VStack(spacing: 12) {
+                                            Image(systemName: "chart.bar.xaxis")
+                                                .font(.system(size: 40))
+                                                .foregroundColor(.secondary.opacity(0.5))
+                                            Text("No activity yet")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            Text("Complete your first weekly challenge!")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 40)
+                                    } else {
+                                        VStack(spacing: 16) {
+                                            // Weekly Challenge Indicators
+                                            HStack(alignment: .center, spacing: 12) {
+                                                ForEach(viewModel.last30DaysData) { data in
+                                                    let isCompleted = data.count > 0
+
+                                                    VStack(spacing: 12) {
+                                                        // Week Label on top
+                                                        Text(data.label)
+                                                            .font(.caption)
+                                                            .foregroundColor(.secondary)
+                                                            .multilineTextAlignment(.center)
+                                                            .lineLimit(2)
+                                                            .frame(height: 30)
+
+                                                        // Challenge Status Indicator
+                                                        ZStack {
+                                                            Circle()
+                                                                .fill(isCompleted ?
+                                                                      LinearGradient(
+                                                                        colors: [Color.green, Color.green.opacity(0.7)],
+                                                                        startPoint: .top,
+                                                                        endPoint: .bottom
+                                                                      ) :
+                                                                      LinearGradient(
+                                                                        colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.2)],
+                                                                        startPoint: .top,
+                                                                        endPoint: .bottom
+                                                                      )
+                                                                )
+                                                                .frame(width: 60, height: 60)
+
+                                                            if isCompleted {
+                                                                Image(systemName: "checkmark.circle.fill")
+                                                                    .font(.system(size: 30))
+                                                                    .foregroundColor(.white)
+                                                            } else {
+                                                                Image(systemName: "xmark.circle")
+                                                                    .font(.system(size: 30))
+                                                                    .foregroundColor(.gray.opacity(0.5))
+                                                            }
+                                                        }
+
+                                                        // Status Text
+                                                        Text(isCompleted ? "Completed" : "Missed")
+                                                            .font(.caption2)
+                                                            .fontWeight(isCompleted ? .semibold : .regular)
+                                                            .foregroundColor(isCompleted ? .green : .secondary)
+                                                    }
+                                                    .frame(maxWidth: .infinity)
+                                                }
+                                            }
+                                            .padding(.vertical, 20)
+
+                                            // Summary
+                                            HStack(spacing: 20) {
+                                                HStack(spacing: 8) {
+                                                    Circle()
+                                                        .fill(Color.green)
+                                                        .frame(width: 12, height: 12)
+                                                    Text("Completed: \(viewModel.last30DaysData.filter { $0.count > 0 }.count)")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+
+                                                HStack(spacing: 8) {
+                                                    Circle()
+                                                        .fill(Color.gray.opacity(0.3))
+                                                        .frame(width: 12, height: 12)
+                                                    Text("Missed: \(viewModel.last30DaysData.filter { $0.count == 0 }.count)")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding()
+                                .background(Color(.systemBackground))
+                                 .cornerRadius(12)
                             }
                             
                             Spacer(minLength: 80)

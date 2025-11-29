@@ -21,11 +21,10 @@ class RecommendationStorageService {
         databaseManager.saveRecommendations(recommendations, userId: userId)
         
         let key = "\(timestampKey)_\(userId)"
-        let now = Date()
-        userDefaults.set(now, forKey: key)
+        userDefaults.set(Date(), forKey: key)
         
         #if DEBUG
-        print("\(recommendations.count) recommendations saved to storage at \(now)")
+        print("\(recommendations.count) recommendations saved to storage")
         #endif
     }
     

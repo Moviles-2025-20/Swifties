@@ -25,9 +25,13 @@ class MoodQuizViewModel: ObservableObject {
     @Published var hasPendingUpload: Bool = false
     @Published var isSavingResult: Bool = false
     
-    // CRITICAL FIX: Store category scores separately for proper reconstruction
+    // FIX: Store category scores separately for proper reconstruction
     @Published private(set) var categoryScores: [String: Int] = [:]
     
+    
+    // Track if user has started answering questions
+    private var hasLoggedQuizStart = false
+
     // MARK: - Services
     
     private let networkService = QuizNetworkService.shared
@@ -260,7 +264,7 @@ class MoodQuizViewModel: ObservableObject {
     }
     
     // MARK: - Select Answer
-    
+
     func selectAnswer(_ option: QuizOption) {
         guard let questionId = questions[currentQuestionIndex].id else {
             print("⚠️ Cannot select answer - question has no ID")
@@ -282,11 +286,18 @@ class MoodQuizViewModel: ObservableObject {
             userAnswers.append(answer)
         }
         
+        // !!!! LOG FIRST QUESTION ANSWERED (quiz actually started)
+        if !hasLoggedQuizStart {
+            AnalyticsService.shared.logMoodQuizStarted()
+            hasLoggedQuizStart = true
+            print("[ANALYTICS] Quiz started - first question answered")
+        }
+        
         print("✅ Selected answer: \(option.text) → \(option.category) (\(option.points) pts)")
     }
     
     // MARK: - Calculate Result
-    
+
     func calculateResult() {
         guard let userId = Auth.auth().currentUser?.uid else {
             errorMessage = "User not authenticated"
@@ -353,11 +364,19 @@ class MoodQuizViewModel: ObservableObject {
             totalScore: totalScore
         )
         
-        print("\n📊 RESULT:")
+        print("\n RESULT:")
         print("  Category: \(result.moodCategory) (raw: \(result.rawCategory))")
         print("  Is Tied: \(result.isTied)")
         print("  Tied Categories: \(result.tiedCategories)")
         print("  Total Score: \(result.totalScore)")
+        
+        // !!!! LOG QUIZ COMPLETION (user clicked Finish)
+        AnalyticsService.shared.logMoodQuizCompleted(
+            resultCategory: result.rawCategory,
+            totalScore: result.totalScore,
+            isTied: result.isTied
+        )
+        print(" [ANALYTICS] Quiz completed")
         
         // Create UserQuizResult
         let selectedQuestionIds = userAnswers.compactMap { $0.questionId }
@@ -385,7 +404,7 @@ class MoodQuizViewModel: ObservableObject {
         guard let userId = Auth.auth().currentUser?.uid else { return }
         
         isSavingResult = true
-        print("\n💾 [SAVING] Auto-saving quiz result...")
+        print("\n [SAVING] Auto-saving quiz result...")
         
         // 1. Save to memory cache
         cacheService.cacheQuizResult(
@@ -406,7 +425,7 @@ class MoodQuizViewModel: ObservableObject {
         
         // 4. Try to upload to Firestore if online
         if networkMonitor.isConnected {
-            print("🌐 [ONLINE] Uploading to Firestore...")
+            print("[ONLINE] Uploading to Firestore...")
             
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 networkService.uploadQuizResult(userQuizResult) { [weak self] result in
@@ -422,7 +441,7 @@ class MoodQuizViewModel: ObservableObject {
                             
                         case .failure(let error):
                             print("❌ [FIRESTORE] Upload failed: \(error.localizedDescription)")
-                            print("💾 Saving to pending uploads for later sync...")
+                            print("Saving to pending uploads for later sync...")
                             self?.storageService.savePendingResult(userQuizResult)
                             self?.hasPendingUpload = true
                         }
@@ -430,7 +449,7 @@ class MoodQuizViewModel: ObservableObject {
                 }
             }
         } else {
-            print("📴 [OFFLINE] Saving to pending uploads...")
+            print(" [OFFLINE] Saving to pending uploads...")
             storageService.savePendingResult(userQuizResult)
             hasPendingUpload = true
             isSavingResult = false
@@ -484,20 +503,20 @@ class MoodQuizViewModel: ObservableObject {
         storageService.setWantsRetake(userId: userId, value: true)
         
         // STEP 2: Clear all cached/stored results
-        print("🗑️ [RETAKE] Clearing cache and storage...")
+        print("XXXX [RETAKE] Clearing cache and storage...")
         cacheService.clearCache(userId: userId)
         storageService.deleteQuizResult(userId: userId)
         storageService.setHasResult(userId: userId, value: false)
         
         // STEP 3: Clear local state
-        print("🗑️ [RETAKE] Clearing local state...")
+        print("XXXXX [RETAKE] Clearing local state...")
         clearQuizState()
         
         // STEP 4: Reload quiz (will detect wantsRetake flag and load questions)
-        print("📥 [RETAKE] Reloading quiz...")
+        print(" [RETAKE] Reloading quiz...")
         await loadQuiz()
         
-        print("✅ [RETAKE] Quiz ready for retake!")
+        print(" [RETAKE] Quiz ready for retake!")
     }
     
     private func clearQuizState() {
@@ -507,6 +526,7 @@ class MoodQuizViewModel: ObservableObject {
         quizResult = nil
         categoryScores.removeAll()
         errorMessage = nil
+        hasLoggedQuizStart = false
     }
 }
 

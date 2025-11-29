@@ -70,6 +70,10 @@ struct MoodQuizView: View {
             .task {
                 await viewModel.loadQuiz()
             }
+            .onAppear {
+                        // !!!! LOG WHEN USER OPENS THE QUIZ SCREEN
+                        AnalyticsService.shared.logMoodQuizOpened(source: "home")
+                    }
             .navigationDestination(isPresented: $showNews) {
                 NewsView()
             }

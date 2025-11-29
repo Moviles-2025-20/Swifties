@@ -460,7 +460,7 @@ struct WeeklyChallengeView: View {
                                 }
                                 .padding()
                                 .background(Color(.systemBackground))
-                                 .cornerRadius(12)
+                                .cornerRadius(12)
                             }
                             
                             Spacer(minLength: 80)

@@ -4,7 +4,6 @@
 //
 //  Created by Natalia Villegas Calderón on 26/11/25.
 //
-
 import SwiftUI
 
 struct MoodQuizView: View {
@@ -13,6 +12,9 @@ struct MoodQuizView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var showOfflineSaveNotice = false
+    @State private var showOfflineAlert = false
+    @State private var offlineAlertMessage = ""
+    @State private var showNews: Bool = false
     
     // MARK: - Computed Properties for Data Source Indicator
     
@@ -47,7 +49,9 @@ struct MoodQuizView: View {
                 VStack(spacing: 0) {
                     CustomTopBar(
                         title: "Mood Quiz",
-                        showNotificationButton: false,
+                        showNotificationButton: true,
+                        showBackButton: true,
+                        onNotificationTap: { showNews = true },
                         onBackTap: { dismiss() }
                     )
                     
@@ -59,21 +63,31 @@ struct MoodQuizView: View {
                 }
             }
             .navigationBarHidden(true)
+            .alert("Connection Required", isPresented: $showOfflineAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(offlineAlertMessage)
+            }
             .task {
                 await viewModel.loadQuiz()
+            }
+            .navigationDestination(isPresented: $showNews) {
+                NewsView()
             }
         }
     }
     
-    // MARK: - Banner Views (Broken Up)
+    // MARK: - Banner Views
     
     @ViewBuilder
     private func buildBanners() -> some View {
         VStack(spacing: 4) {
+            // Connection status banner (only when there IS data)
             if shouldShowOfflineBanner {
                 buildOfflineBanner()
             }
             
+            // Pending upload banner
             if viewModel.hasPendingUpload {
                 buildPendingUploadBanner()
             }
@@ -147,6 +161,9 @@ struct MoodQuizView: View {
     private func buildMainContent() -> some View {
         if viewModel.isLoading {
             loadingView
+        } else if !networkMonitor.isConnected && viewModel.questions.isEmpty && !viewModel.showResult {
+            // ADDED: Offline state with no cached data (like UserInfoView)
+            offlineNoCacheView
         } else if let error = viewModel.errorMessage {
             errorView(error: error)
         } else if viewModel.showResult, let result = viewModel.quizResult {
@@ -170,6 +187,57 @@ struct MoodQuizView: View {
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    // MARK: - Offline No Cache View (NEW - LIKE USERINFOVIEW!)
+    
+    private var offlineNoCacheView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 60))
+                .foregroundColor(.gray.opacity(0.6))
+            
+            Text("No Internet Connection")
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+            
+            Text("No cached or stored data available")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            
+            Text("Please connect to the internet and try again to load the mood quiz")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            
+            Button(action: {
+                if !networkMonitor.isConnected {
+                    offlineAlertMessage = "Still no internet connection - Please check your network settings"
+                    showOfflineAlert = true
+                } else {
+                    Task {
+                        await viewModel.loadQuiz()
+                    }
+                }
+            }) {
+                HStack {
+                    Image(systemName: "arrow.clockwise")
+                    Text("Retry")
+                }
+                .padding(.horizontal, 32)
+                .padding(.vertical, 12)
+                .background(Color.gray.opacity(0.6))
+                .foregroundColor(.white)
+                .cornerRadius(10)
+            }
+            .padding(.top, 8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 24)
     }
     
     // MARK: - Error View
@@ -198,9 +266,22 @@ struct MoodQuizView: View {
     
     @ViewBuilder
     private func buildErrorButton() -> some View {
-        if networkMonitor.isConnected {
+        VStack(spacing: 12) {
+            if !networkMonitor.isConnected {
+                Text("Please connect to the internet and try again")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+            
             Button {
-                Task { await viewModel.loadQuiz() }
+                if !networkMonitor.isConnected {
+                    offlineAlertMessage = "Cannot retry - No internet connection available"
+                    showOfflineAlert = true
+                } else {
+                    Task { await viewModel.loadQuiz() }
+                }
             } label: {
                 HStack {
                     Image(systemName: "arrow.clockwise")
@@ -208,31 +289,11 @@ struct MoodQuizView: View {
                 }
                 .padding(.horizontal, 32)
                 .padding(.vertical, 12)
-                .background(Color.blue)
+                .background(networkMonitor.isConnected ? Color.blue : Color.gray.opacity(0.6))
                 .foregroundColor(.white)
                 .cornerRadius(10)
             }
-        } else {
-            VStack(spacing: 8) {
-                Text("Please connect to the internet and try again")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 8)
-                
-                Button {
-                    Task { await viewModel.loadQuiz() }
-                } label: {
-                    HStack {
-                        Image(systemName: "arrow.clockwise")
-                        Text("Retry")
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 10)
-                    .background(Color.gray.opacity(0.2))
-                    .foregroundColor(.primary)
-                    .cornerRadius(10)
-                }
-            }
+            .padding(.top, 8)
         }
     }
     

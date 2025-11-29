@@ -4,7 +4,6 @@
 //
 //  Created by Juan Esteban Vasquez Parra on 29/09/25.
 //
-
 import SwiftUI
 
 struct HomeView: View {
@@ -16,7 +15,7 @@ struct HomeView: View {
     
     @State private var showOfflineAlert = false
     @State private var offlineAlertMessage = ""
-    @State private var showMoodQuiz = false
+    @State private var showMoodQuiz = false  // Changed to navigation state
     @State private var showNews: Bool = false
     
     // MARK: - Computed Properties for Data Source Indicator
@@ -132,9 +131,8 @@ struct HomeView: View {
                             .padding(.bottom, 10)
                             
                             HStack(spacing: 15) {
-                                Button(action: {
-                                    showMoodQuiz = true
-                                }) {
+                                // FIXED: Use NavigationLink instead of Button + sheet
+                                NavigationLink(destination: MoodQuizView().navigationBarHidden(true)) {
                                     Text("Mood Quiz")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
@@ -143,7 +141,6 @@ struct HomeView: View {
                                 .buttonStyle(.borderedProminent)
                                 .tint(Color("appRed"))
 
-                                
                                 Button {
                                     print("Future feature")
                                 } label: {
@@ -351,9 +348,7 @@ struct HomeView: View {
                 NewsView()
             }
         }
-        .sheet(isPresented: $showMoodQuiz) {
-            MoodQuizView()
-        }
+        // REMOVED: .sheet modifier - no longer needed
         .task {
             // Load profile data when view appears
             profileViewModel.loadProfile()
@@ -418,4 +413,3 @@ private func formatEventTime(event: Event) -> String {
     HomeView()
         .environmentObject(AuthViewModel())
 }
-

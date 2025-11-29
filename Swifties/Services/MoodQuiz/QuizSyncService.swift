@@ -4,7 +4,6 @@
 //
 //  Created by Natalia Villegas Calderón on 28/11/25.
 //
-
 import Foundation
 import Combine
 
@@ -27,7 +26,7 @@ class QuizSyncService: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] isConnected in
                 if isConnected {
-                    print("[BACK ONLINE BABYYY) Network connection restored - checking for pending quiz results...")
+                    print("🌐 [BACK ONLINE] Network connection restored - checking for pending quiz results...")
                     Task { [weak self] in
                         await self?.syncPendingResults()
                     }
@@ -39,25 +38,28 @@ class QuizSyncService: ObservableObject {
     // MARK: - Sync Pending Results
     
     func syncPendingResults() async {
+        // CRITICAL FIX: Always check storage, not just local state
         guard storageService.hasPendingResults() else {
-            print("!!!!! No pending quiz results to sync")
+            print("ℹ️ No pending quiz results to sync")
             return
         }
         
         guard networkMonitor.isConnected else {
-            print("[NOT CONNECTECT:(] Still no connection - will retry later")
+            print("⚠️ [NOT CONNECTED] Still no connection - will retry later")
             return
         }
         
         let pendingResults = storageService.loadPendingResults()
         
         guard !pendingResults.isEmpty else {
+            print("⚠️ Storage reports pending results but load returned empty array")
             return
         }
         
-        print("[SYNC] Syncing \(pendingResults.count) pending quiz result(s) to Firestore...")
+        print("🔄 [SYNC START] Syncing \(pendingResults.count) pending quiz result(s) to Firestore...")
         isSyncing = true
         
+        // Use continuation for proper async/await with callback-based API
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             networkService.syncPendingResults(results: pendingResults) { [weak self] result in
                 Task { @MainActor in
@@ -68,7 +70,7 @@ class QuizSyncService: ObservableObject {
                     
                     switch result {
                     case .success:
-                        print("✅ Successfully synced pending quiz results!")
+                        print("✅ [SYNC SUCCESS] Successfully synced \(pendingResults.count) quiz result(s)!")
                         
                         // CRITICAL: Clear pending data AFTER successful Firestore upload
                         self?.storageService.clearPendingResults()
@@ -76,10 +78,14 @@ class QuizSyncService: ObservableObject {
                         
                         // Notify that sync completed successfully
                         NotificationCenter.default.post(name: .quizSyncCompleted, object: nil)
+                        print("📢 [NOTIFICATION] Posted quizSyncCompleted notification")
                         
                     case .failure(let error):
-                        print("❌ Failed to sync pending quiz results: \(error.localizedDescription)")
+                        print("❌ [SYNC FAILED] Failed to sync pending quiz results: \(error.localizedDescription)")
                         self?.lastSyncError = error
+                        
+                        // Results remain in storage for retry
+                        print("💾 Results remain in storage for retry")
                     }
                 }
             }
@@ -89,7 +95,7 @@ class QuizSyncService: ObservableObject {
     // MARK: - Manual Sync Trigger
     
     func triggerManualSync() async {
-        print("[SYNC] Manual quiz sync triggered...")
+        print("🔄 [MANUAL] Manual quiz sync triggered...")
         await syncPendingResults()
     }
 }

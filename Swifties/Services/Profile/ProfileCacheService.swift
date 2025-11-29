@@ -6,7 +6,7 @@ final class ProfileCacheService {
     private let cache = NSCache<NSString, CachedProfileWrapper>()
     private let cacheKey: NSString = "profile_cache_key"
     private var lastCacheTime: Date?
-    private let cacheExpirationMinutes: Double = 30
+    private let cacheExpirationMinutes: Double = 5
 
     private init() {
         cache.countLimit = 1

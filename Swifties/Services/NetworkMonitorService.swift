@@ -20,11 +20,9 @@ class NetworkMonitorService: ObservableObject  {
                 guard let self = self else { return }
                 self.isConnected = path.status == .satisfied
                 self.connectionType = path.availableInterfaces.first?.type
-                if self.isConnected {
-                    print("Internet connection available")
-                } else {
-                    print("No Internet connection")
-                }
+                #if DEBUG
+                print(self.isConnected ? "Internet connection available" : "No Internet connection")
+                #endif
             }
         }
         monitor.start(queue: queue)
@@ -38,3 +36,4 @@ class NetworkMonitorService: ObservableObject  {
         stopMonitoring()
     }
 }
+

@@ -16,6 +16,20 @@ class UserEventStorageService {
     private let timestampKey = "user_events_timestamp"
     private let storageExpirationHours = 12.0 // Shorter because it depends on preferences
     
+    // MICROOPTIMIZACION create encoder/decoder with lazy properties
+    // STOP creating new objects JSONEncoder/JSONDecoder in each call
+    private lazy var jsonEncoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+    
+    private lazy var jsonDecoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+    
     private init() {}
     
     func saveUserEventsToStorage(_ events: [Event], freeTimeSlots: [FreeTimeSlot], userId: String) {
@@ -23,13 +37,10 @@ class UserEventStorageService {
         let codableEvents = events.map { $0.toCodable() }
         let codableSlots = freeTimeSlots.map { CodableFreeTimeSlot(from: $0) }
         
-        // Encode to JSON
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        
         do {
-            let eventsData = try encoder.encode(codableEvents)
-            let slotsData = try encoder.encode(codableSlots)
+            // Reutilizar encoder en lugar de crear uno nuevo
+            let eventsData = try jsonEncoder.encode(codableEvents)
+            let slotsData = try jsonEncoder.encode(codableSlots)
             
             // Save with userId prefix
             let eventsKey = "\(self.eventsKey)_\(userId)"
@@ -72,13 +83,10 @@ class UserEventStorageService {
             return nil
         }
         
-        // Decode from JSON
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
         do {
-            let codableEvents = try decoder.decode([CodableEvent].self, from: eventsData)
-            let codableSlots = try decoder.decode([CodableFreeTimeSlot].self, from: slotsData)
+            // Reutilizar decoder
+            let codableEvents = try jsonDecoder.decode([CodableEvent].self, from: eventsData)
+            let codableSlots = try jsonDecoder.decode([CodableFreeTimeSlot].self, from: slotsData)
             
             let events = codableEvents.map { Event.from(codable: $0) }
             let slots = codableSlots.map { $0.toFreeTimeSlot() }
@@ -124,9 +132,9 @@ class UserEventStorageService {
             print("Events data size: \(eventsData.count) bytes")
             print("Slots data size: \(slotsData.count) bytes")
             
-            let decoder = JSONDecoder()
-            if let events = try? decoder.decode([CodableEvent].self, from: eventsData),
-               let slots = try? decoder.decode([CodableFreeTimeSlot].self, from: slotsData) {
+            // Reutilizar decoder incluso en debug
+            if let events = try? jsonDecoder.decode([CodableEvent].self, from: eventsData),
+               let slots = try? jsonDecoder.decode([CodableFreeTimeSlot].self, from: slotsData) {
                 print("Events count: \(events.count)")
                 print("Slots count: \(slots.count)")
             }

@@ -137,7 +137,6 @@ class ThreadManager {
     }
     
     // MARK: - Group Operations
-    
     /// Ejecuta múltiples operaciones y notifica cuando todas terminan
     func executeGroup(
         operations: [() -> Void],
@@ -159,7 +158,6 @@ class ThreadManager {
     }
     
     // MARK: - Utility Methods
-    
     /// Espera específica en background (evitar bloqueos)
     func delay(_ seconds: Double, queue: DispatchQueue? = nil, operation: @escaping () -> Void) {
         let targetQueue = queue ?? networkQueue

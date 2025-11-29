@@ -8,8 +8,11 @@ struct WeeklyChallengeView: View {
     @StateObject private var viewModel = WeeklyChallengeViewModel()
     @Environment(\.dismiss) var dismiss
     @StateObject private var networkMonitor = NetworkMonitorService.shared
-    private let offlineMessage = "No network connection - Cannot load progress"
     
+    @State private var showOfflineAlert = false
+    @State private var offlineAlertMessage = ""
+    @State private var showNews: Bool = false
+
     // MARK: - Computed Properties for Data Source Indicator
     private var dataSourceIcon: String {
         switch viewModel.dataSource {
@@ -29,15 +32,6 @@ struct WeeklyChallengeView: View {
         }
     }
     
-    private var dataSourceColor: Color {
-        switch viewModel.dataSource {
-        case .memoryCache: return .purple
-        case .realmStorage: return .blue
-        case .network: return .green
-        case .none: return .secondary
-        }
-    }
-    
     var body: some View {
         ZStack {
             Color("appPrimary").ignoresSafeArea()
@@ -48,96 +42,163 @@ struct WeeklyChallengeView: View {
                              showNotificationButton: true,
                              showBackButton: true,
                              onNotificationTap: {
-                    print("Notification tapped")
-                    
+                    showNews = true
                 },
                              onBackTap: {
                     dismiss()
                 })
                 
-                // Data Source Indicator (NEW)
+                // Connection status banner (placed before data source indicator)
+                if !networkMonitor.isConnected {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.slash")
+                            .foregroundColor(.red)
+                        Text("No Internet Connection")
+                            .font(.callout)
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+                }
+                
+                // Data Source Indicator (minimalist gray style like HomeView)
                 if !viewModel.isLoading && viewModel.challengeEvent != nil {
                     HStack {
-                        Image(systemName: dataSourceIcon)
-                            .foregroundColor(dataSourceColor)
-                        Text(dataSourceText)
-                            .font(.caption)
-                            .foregroundColor(dataSourceColor)
+                        Spacer()
                         
-                        if viewModel.isRefreshing {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                            Text("Updating...")
-                                .font(.caption2)
+                        HStack(spacing: 6) {
+                            Image(systemName: dataSourceIcon)
                                 .foregroundColor(.secondary)
+                            Text(dataSourceText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            if viewModel.isRefreshing {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                Text("Updating...")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         
                         Spacer()
-                        
-                        // Debug button (optional, remove in production)
-                        Button(action: {
-                            viewModel.debugCache()
-                        }) {
-                            Image(systemName: "ladybug")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
                     }
                     .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemBackground).opacity(0.8))
+                    .padding(.top, 8)
                 }
                 
-                if !networkMonitor.isConnected && viewModel.challengeEvent == nil && !viewModel.isLoading {
-                    VStack(spacing: 8) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "wifi.exclamationmark")
-                                .foregroundColor(.orange)
-                            Text("No internet connection")
-                                .font(.subheadline)
-                                .foregroundColor(.orange)
-                                .multilineTextAlignment(.leading)
-                            Spacer()
-                        }
-                        HStack {
-                            Button("Retry") {
-                                viewModel.loadChallenge()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.orange)
-                            Spacer()
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemBackground))
-                    .cornerRadius(12)
-                    .padding([.horizontal, .top])
-                } else if viewModel.isLoading {
-                    Spacer()
-                    ProgressView("Loading challenge...")
-                        .foregroundColor(.primary)
-                    Spacer()
-                } else if let error = viewModel.errorMessage {
+                // MARK: - Main Content Area
+                if viewModel.isLoading {
+                    // Loading state
                     Spacer()
                     VStack(spacing: 16) {
-                        Text("⚠️")
-                            .font(.system(size: 50))
-                        Text(error)
-                            .foregroundColor(.red)
-                            .multilineTextAlignment(.center)
-                            .padding()
-                        
-                        // Retry button
-                        Button("Retry") {
-                            viewModel.loadChallenge()
-                        }
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text("Loading challenge...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
                     Spacer()
+                    
+                } else if !networkMonitor.isConnected && viewModel.challengeEvent == nil {
+                    // Offline state with no cached data
+                    Spacer()
+                    VStack(spacing: 20) {
+                        Image(systemName: "wifi.slash")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray.opacity(0.6))
+                        
+                        Text("No Internet Connection")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        Text("No cached or stored data available")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        
+                        Text("Please connect to the internet and try again to load the weekly challenge")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        
+                        Button(action: {
+                            if !networkMonitor.isConnected {
+                                offlineAlertMessage = "Still no internet connection - Please check your network settings"
+                                showOfflineAlert = true
+                            } else {
+                                viewModel.loadChallenge()
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.clockwise")
+                                Text("Retry")
+                            }
+                            .padding(.horizontal, 32)
+                            .padding(.vertical, 12)
+                            .background(Color.gray.opacity(0.6))
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        .padding(.top, 8)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
+                    Spacer()
+                    
+                } else if let error = viewModel.errorMessage {
+                    // Error state
+                    Spacer()
+                    VStack(spacing: 20) {
+                        Image(systemName: getErrorIcon(for: error))
+                            .font(.system(size: 60))
+                            .foregroundColor(.red.opacity(0.8))
+                        
+                        Text("Something Went Wrong")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        Text(error)
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        
+                        Button(action: {
+                            if !networkMonitor.isConnected {
+                                offlineAlertMessage = "Cannot retry - No internet connection available"
+                                showOfflineAlert = true
+                            } else {
+                                viewModel.loadChallenge()
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.clockwise")
+                                Text("Try Again")
+                            }
+                            .padding(.horizontal, 32)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        .padding(.top, 8)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
+                    Spacer()
+                    
                 } else {
+                    // Success state - show content
                     ScrollView {
                         VStack(spacing: 24) {
                             // Challenge Event Card
@@ -251,7 +312,6 @@ struct WeeklyChallengeView: View {
                                     .font(.title3)
                                     .fontWeight(.bold)
                                 
-                                // Stats Grid
                                 HStack(spacing: 12) {
                                     // Total Challenges
                                     VStack(alignment: .leading, spacing: 8) {
@@ -272,7 +332,7 @@ struct WeeklyChallengeView: View {
                                     .padding()
                                     .background(Color(.systemBackground))
                                     .cornerRadius(12)
-                                    
+
                                     // This Week
                                     VStack(alignment: .leading, spacing: 8) {
                                         HStack {
@@ -294,7 +354,7 @@ struct WeeklyChallengeView: View {
                                     .background(Color(.systemBackground))
                                     .cornerRadius(12)
                                 }
-                                
+
                                 // Last 4 Weeks Chart
                                 VStack(alignment: .leading, spacing: 12) {
                                     HStack {
@@ -305,7 +365,7 @@ struct WeeklyChallengeView: View {
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
-                                    
+
                                     if viewModel.last30DaysData.isEmpty {
                                         VStack(spacing: 12) {
                                             Image(systemName: "chart.bar.xaxis")
@@ -326,7 +386,7 @@ struct WeeklyChallengeView: View {
                                             HStack(alignment: .center, spacing: 12) {
                                                 ForEach(viewModel.last30DaysData) { data in
                                                     let isCompleted = data.count > 0
-                                                    
+
                                                     VStack(spacing: 12) {
                                                         // Week Label on top
                                                         Text(data.label)
@@ -335,7 +395,7 @@ struct WeeklyChallengeView: View {
                                                             .multilineTextAlignment(.center)
                                                             .lineLimit(2)
                                                             .frame(height: 30)
-                                                        
+
                                                         // Challenge Status Indicator
                                                         ZStack {
                                                             Circle()
@@ -352,7 +412,7 @@ struct WeeklyChallengeView: View {
                                                                       )
                                                                 )
                                                                 .frame(width: 60, height: 60)
-                                                            
+
                                                             if isCompleted {
                                                                 Image(systemName: "checkmark.circle.fill")
                                                                     .font(.system(size: 30))
@@ -363,7 +423,7 @@ struct WeeklyChallengeView: View {
                                                                     .foregroundColor(.gray.opacity(0.5))
                                                             }
                                                         }
-                                                        
+
                                                         // Status Text
                                                         Text(isCompleted ? "Completed" : "Missed")
                                                             .font(.caption2)
@@ -374,7 +434,7 @@ struct WeeklyChallengeView: View {
                                                 }
                                             }
                                             .padding(.vertical, 20)
-                                            
+
                                             // Summary
                                             HStack(spacing: 20) {
                                                 HStack(spacing: 8) {
@@ -385,7 +445,7 @@ struct WeeklyChallengeView: View {
                                                         .font(.caption)
                                                         .foregroundColor(.secondary)
                                                 }
-                                                
+
                                                 HStack(spacing: 8) {
                                                     Circle()
                                                         .fill(Color.gray.opacity(0.3))
@@ -410,13 +470,31 @@ struct WeeklyChallengeView: View {
                 }
             }
         }
+        .alert("Connection Required", isPresented: $showOfflineAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(offlineAlertMessage)
+        }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
                 viewModel.debugCache()
-                // Always try to load (uses cache if available)
                 viewModel.loadChallenge()
             }
+        }
+        .navigationDestination(isPresented: $showNews) {
+            NewsView()
+        }
+    }
+    
+    // MARK: - Helper Functions
+    private func getErrorIcon(for error: String) -> String {
+        if error.contains("network") || error.contains("connection") {
+            return "wifi.slash"
+        } else if error.contains("auth") || error.contains("user") {
+            return "person.crop.circle.badge.exclamationmark"
+        } else {
+            return "exclamationmark.triangle"
         }
     }
 }
@@ -428,3 +506,4 @@ extension Event: Equatable {
                lhs.description == rhs.description
     }
 }
+

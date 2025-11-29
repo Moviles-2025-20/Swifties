@@ -10,6 +10,7 @@ struct WishMeLuckView: View {
     @State private var animateBall = false
     @State private var isShaking = false
     @State private var showEventDetail = false
+    @State private var showNews = false
     @State private var fullEventForDetail: Event?
     @State private var isLoadingFullEvent = false
     @State private var showNoConnectionAlert = false
@@ -54,7 +55,7 @@ struct WishMeLuckView: View {
                     CustomTopBar(
                         title: "Wish Me Luck",
                         showNotificationButton: true,
-                        onBackTap: {}
+                        onBackTap: { showNews = true }
                     )
                     
                     // Connection status banner
@@ -275,6 +276,9 @@ struct WishMeLuckView: View {
                     }
                 }
             }
+            .navigationDestination(isPresented: $showNews) {
+                NewsView()
+            }
         }
     }
     
@@ -408,11 +412,15 @@ struct WishMeLuckView: View {
             )
         }
         
-        var stats = EventStats(popularity: 0, rating: 0, totalCompletions: 0)
+        var stats = EventStats(popularity: 0,
+                               rating: 0,
+                               ratingList: [],
+                               totalCompletions: 0)
         if let statsData = data["stats"] as? [String: Any] {
             stats = EventStats(
                 popularity: statsData["popularity"] as? Int ?? 0,
                 rating: statsData["rating"] as? Int ?? 0,
+                ratingList: statsData["rating_list"] as? [Int?] ?? [],
                 totalCompletions: statsData["total_completions"] as? Int ?? 0
             )
         }

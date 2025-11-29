@@ -19,15 +19,15 @@ class RecommendationCacheService {
         // Calculate cache size dynamically based on available memory
         let maxMemory = ProcessInfo.processInfo.physicalMemory
         let cacheSize = Int(maxMemory / 1024 / 8) // Use 1/8th of available memory for cache
-        
+
         cache.countLimit = 5 // Limit to 5 items
         cache.totalCostLimit = cacheSize
-        
+        #if DEBUG
         print("Recommendation cache initialized with limit: \(cacheSize) bytes")
+        #endif
     }
     
     func getCachedRecommendations() -> [Event]? {
-        // Check if cache has expired
         if let lastCache = lastCacheTime,
            Date().timeIntervalSince(lastCache) > cacheExpirationMinutes * 60 {
             clearCache()
@@ -38,7 +38,9 @@ class RecommendationCacheService {
             return nil
         }
         
+        #if DEBUG
         print("Recommendations retrieved from memory cache")
+        #endif
         return wrapper.recommendations
     }
     
@@ -46,13 +48,17 @@ class RecommendationCacheService {
         let wrapper = CachedRecommendationWrapper(recommendations: recommendations)
         cache.setObject(wrapper, forKey: cacheKey)
         lastCacheTime = Date()
+        #if DEBUG
         print("\(recommendations.count) recommendations saved to memory cache")
+        #endif
     }
     
     func clearCache() {
         cache.removeAllObjects()
         lastCacheTime = nil
+        #if DEBUG
         print("Recommendations memory cache cleared")
+        #endif
     }
     
     func getCacheAge() -> TimeInterval? {
@@ -64,8 +70,8 @@ class RecommendationCacheService {
 // Wrapper class to store recommendations in NSCache
 class CachedRecommendationWrapper {
     let recommendations: [Event]
-    
     init(recommendations: [Event]) {
         self.recommendations = recommendations
     }
 }
+

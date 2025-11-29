@@ -13,7 +13,6 @@ class EventFactory {
         return parseEventData(data, documentId: document.documentID)
     }
     
-    // FIXED: Now accepts documentId parameter
     private static func parseEventData(_ data: [String: Any], documentId: String) -> Event? {
         guard let name = data["name"] as? String,
               let description = data["description"] as? String,
@@ -90,10 +89,11 @@ class EventFactory {
     }
     
     private static func parseStats(from data: [String: Any]?) -> EventStats {
-        guard let data = data else { return EventStats(popularity: 0, rating: 0, totalCompletions: 0) }
+        guard let data = data else { return EventStats(popularity: 0, rating: 0, ratingList: [], totalCompletions: 0) }
         return EventStats(
             popularity: data["popularity"] as? Int ?? 0,
             rating: data["rating"] as? Int ?? 0,
+            ratingList: data["rating_list"] as? [Int?] ?? [],
             totalCompletions: data["total_completions"] as? Int ?? 0
         )
     }

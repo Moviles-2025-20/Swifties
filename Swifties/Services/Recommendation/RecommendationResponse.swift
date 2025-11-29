@@ -148,11 +148,6 @@ class RecommendationNetworkService {
                 #if DEBUG
                 print("\(events.count) recommendations fetched from Firestore (batched)")
                 #endif
-                // Preserve original order if needed
-                let mapByID = Dictionary(uniqueKeysWithValues: events.compactMap { event in
-                    guard let id = event.id else { return nil }
-                    return (id, event)
-                })
                 completion(.success(events))
             }
         }

@@ -105,7 +105,7 @@ class RecommendationNetworkService {
         }.resume()
     }
     
-    // Optimized: batch Firestore fetches using "in" queries (max 10 IDs per batch)
+    // Optimized: batch Firestore fetches using "in" queries (max 10 IDs per batch per Firestore settings)
     private func loadEvents(from eventIDs: [String], completion: @escaping (Result<[Event], Error>) -> Void) {
         guard !eventIDs.isEmpty else {
             completion(.success([]))
@@ -148,7 +148,23 @@ class RecommendationNetworkService {
                 #if DEBUG
                 print("\(events.count) recommendations fetched from Firestore (batched)")
                 #endif
+<<<<<<< refs/remotes/origin/fix/news_optimized
+                // Preserve original order if needed
+                let mapByID = Dictionary(uniqueKeysWithValues: events.compactMap { event in
+                    guard let id = event.id else { return nil }
+                    return (id, event)
+                })
+                let ordered = eventIDs.compactMap { mapByID[$0] }
+                #if DEBUG  
+                if ordered.count < eventIDs.count {  
+                    let missingIDs = eventIDs.filter { mapByID[$0] == nil }  
+                    print("DEBUG: \(eventIDs.count - ordered.count) event(s) missing from Firestore for IDs: \(missingIDs)")  
+                }  
+                #endif  
+                completion(.success(ordered))
+=======
                 completion(.success(events))
+>>>>>>> Fixes - downgrade for utility
             }
         }
     }

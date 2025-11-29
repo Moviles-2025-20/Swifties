@@ -130,6 +130,30 @@ class RecommendationDatabaseManager {
 
                     try db.run(insert)
                 }
+<<<<<<< refs/remotes/origin/fix/news_optimized
+                
+                // Cleanup: remove any rows for this user that are NOT present
+                // in the new recommendations list.
+                let newIDs = recommendations.compactMap { $0.id }
+
+                if newIDs.isEmpty {
+                    // If there are no recommendations, remove all entries for the user.
+                    let delSql = "DELETE FROM recommendations WHERE user_id = ?"
+                    let delStmt = try db.prepare(delSql)
+                    try delStmt.run(userId)
+                } else {
+                    // Build a parameterized NOT IN clause for safety.
+                    let placeholders = newIDs.map { _ in "?" }.joined(separator: ",")
+                    let delSql = "DELETE FROM recommendations WHERE user_id = ? AND id NOT IN (\(placeholders))"
+                    let delStmt = try db.prepare(delSql)
+
+                    // Combine parameters: first the userId, then the IDs to keep
+                    var params: [Binding?] = [userId]
+                    params.append(contentsOf: newIDs)
+                    try delStmt.run(params)
+                }
+=======
+>>>>>>> Fixes - downgrade for utility
             }
             
             #if DEBUG

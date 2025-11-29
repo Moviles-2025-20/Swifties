@@ -22,7 +22,7 @@ class WeeklyChallengeCacheService {
         let maxMemory = ProcessInfo.processInfo.physicalMemory
         let cacheSize = Int(maxMemory / 1024 / 8) // Use 1/8th of available memory for cache
         
-        cache.countLimit = 10 // Limit to 10 items (puede ajustarse según necesidad)
+        cache.countLimit = 10 // Limit to 10 items (can be adjusted as needed)
         cache.totalCostLimit = cacheSize
         
         print("Weekly Challenge cache initialized with limit: \(cacheSize) bytes, max items: \(cache.countLimit)")

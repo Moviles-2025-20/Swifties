@@ -2,8 +2,9 @@
 //  MoodQuizViewModel.swift
 //  Swifties
 //
-//  Created by Natalia Villegas Calderón on 27/11/25.
+//  Fixed version with proper "Take Again" functionality
 //
+
 import Foundation
 import FirebaseAuth
 import Combine
@@ -13,259 +14,258 @@ class MoodQuizViewModel: ObservableObject {
     // MARK: - Published Properties
     
     @Published var questions: [QuizQuestion] = []
-    @Published var currentQuestionIndex = 0
     @Published var userAnswers: [UserAnswer] = []
+    @Published var currentQuestionIndex: Int = 0
+    @Published var showResult: Bool = false
     @Published var quizResult: QuizResult?
-    @Published var isLoading = false
+    @Published var isLoading: Bool = false
     @Published var errorMessage: String?
-    @Published var showResult = false
     @Published var dataSource: DataSource = .none
-    @Published var isRefreshing = false
-    @Published var hasPendingUpload = false
-    @Published var isSavingResult = false  // NEW: Track auto-save operation
+    @Published var isRefreshing: Bool = false
+    @Published var hasPendingUpload: Bool = false
+    @Published var isSavingResult: Bool = false
     
-    enum DataSource {
-        case none
-        case memoryCache      // NSCache (result screen only)
-        case localStorage     // SQLite (questions) or Realm (results)
-        case network          // Firebase/Firestore
-    }
+    // CRITICAL FIX: Store category scores separately for proper reconstruction
+    @Published private(set) var categoryScores: [String: Int] = [:]
     
     // MARK: - Services
     
-    private let cacheService = QuizCacheService.shared
-    private let storageService = QuizStorageService.shared
     private let networkService = QuizNetworkService.shared
+    private let storageService = QuizStorageService.shared
+    private let cacheService = QuizCacheService.shared
     private let syncService = QuizSyncService.shared
     private let networkMonitor = NetworkMonitorService.shared
     
-    private let numberOfQuestions = 5
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Computed Properties
     
-    var currentQuestion: QuizQuestion? {
-        guard currentQuestionIndex < questions.count else { return nil }
-        return questions[currentQuestionIndex]
-    }
-    
     var progress: Double {
         guard !questions.isEmpty else { return 0 }
-        return Double(currentQuestionIndex + 1) / Double(questions.count)
+        return Double(userAnswers.count) / Double(questions.count)
     }
     
     var isLastQuestion: Bool {
         return currentQuestionIndex == questions.count - 1
     }
     
+    // MARK: - Data Source Enum
+    
+    enum DataSource {
+        case memoryCache
+        case localStorage
+        case network
+        case none
+    }
+    
     // MARK: - Initialization
     
     init() {
-        // Observe network changes for sync
-        networkMonitor.$isConnected
-            .removeDuplicates()
-            .sink { [weak self] isConnected in
-                if isConnected {
-                    Task { [weak self] in
-                        await self?.handleConnectivityRestored()
-                    }
-                }
+        setupObservers()
+    }
+    
+    private func setupObservers() {
+        // Check for pending uploads on init
+        hasPendingUpload = storageService.hasPendingResults()
+        
+        // Observe sync completion to update UI
+        NotificationCenter.default.publisher(for: .quizSyncCompleted)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                print("📢 [VIEWMODEL] Received sync completion notification")
+                self?.hasPendingUpload = false
             }
             .store(in: &cancellables)
-        
-        // Listen for sync completion notifications
-        NotificationCenter.default.addObserver(
-            forName: .quizSyncCompleted,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            print("✅ [NOTIFICATION] Quiz sync completed notification received")
-            self?.hasPendingUpload = false
-        }
-        
-        // Check for pending uploads on init
-        checkForPendingUploads()
     }
     
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
-    
-    // MARK: - Check for Pending Uploads
-    
-    private func checkForPendingUploads() {
-        hasPendingUpload = storageService.hasPendingResults()
-        if hasPendingUpload {
-            print("⚠️ Found pending quiz results to upload")
-        }
-    }
-    
-    // MARK: - Load Quiz (Startup Logic)
+    // MARK: - Load Quiz
     
     func loadQuiz() async {
         guard let userId = Auth.auth().currentUser?.uid else {
-            errorMessage = "No authenticated user"
+            errorMessage = "Please sign in to take the quiz"
             return
         }
         
-        print("🎯 Loading quiz for user: \(userId)")
+        isLoading = true
+        errorMessage = nil
         
-        // Check if we have pending uploads and try to sync first
-        if storageService.hasPendingResults() && networkMonitor.isConnected {
-            print("[PENDING] Found pending uploads, attempting sync before loading quiz...")
-            await syncService.syncPendingResults()
-            // Update the flag after sync attempt
-            hasPendingUpload = storageService.hasPendingResults()
-        }
+        print("\n=== LOADING QUIZ FOR USER: \(userId) ===")
         
-        // Check if user wants to retake
-        let wantsRetake = storageService.wantsRetake(userId: userId)
-        
-        if wantsRetake {
-            print("[RETAKE] User wants to retake quiz - loading questions")
-            await loadQuestions()
+        // STEP 1: Check if user wants to retake the quiz
+        if storageService.wantsRetake(userId: userId) {
+            print("🔄 User wants retake - clearing old result...")
+            clearQuizState()
+            storageService.clearQuizState(userId: userId)
+            // CRITICAL: Clear the retake flag so it doesn't loop
+            storageService.setWantsRetake(userId: userId, value: false)
+            
+            // Load questions and show quiz
+            await loadQuizQuestions()
+            isLoading = false
             return
         }
         
-        // Layer 1: Check NSCache for result
+        // STEP 2: Check memory cache for existing result
         if let cached = cacheService.getCachedResult(userId: userId) {
-            print("✅ Loaded result from NSCache")
+            print("✅ [MEMORY CACHE] Found cached result")
             quizResult = cached.quizResult
+            
+            // CRITICAL FIX: Load scores from cached UserQuizResult
+            categoryScores = cached.userQuizResult.scores
+            
             showResult = true
             dataSource = .memoryCache
+            isLoading = false
             return
         }
         
-        // Layer 2: Check Realm for stored result
+        // STEP 3: Check local storage (Realm) for existing result
         if let stored = await storageService.loadQuizResult(userId: userId) {
-            print("✅ Loaded result from Realm")
+            print("✅ [LOCAL STORAGE] Found stored result")
             quizResult = stored.result
+            
+            // CRITICAL FIX: Load scores from stored UserQuizResult
+            categoryScores = stored.userQuizResult.scores
+            
             showResult = true
             dataSource = .localStorage
             
-            // Cache in NSCache for next time
+            // Cache it in memory for next time
             cacheService.cacheQuizResult(
                 userId: userId,
                 result: stored.result,
                 userQuizResult: stored.userQuizResult
             )
             
-            return
-        }
-        
-        // No result found - load questions for new quiz
-        print("[NO RESULTS] No existing result - loading questions for new quiz")
-        await loadQuestions()
-    }
-    
-    // MARK: - Load Questions (Three-Layer Strategy)
-    
-    private func loadQuestions() async {
-        isLoading = true
-        errorMessage = nil
-        
-        // Layer 1: Try SQLite
-        if let stored = storageService.loadQuestions(), !stored.isEmpty {
-            print("✅ Loaded questions from SQLite")
-            questions = selectRandomQuestions(from: stored)
-            dataSource = .localStorage
-            isLoading = false
-            
-            // Refresh in background if connected
-            if networkMonitor.isConnected {
-                Task {
-                    await refreshQuestionsInBackground()
-                }
+            // Try to refresh from network in background
+            Task {
+                await refreshFromNetwork()
             }
             
+            isLoading = false
             return
         }
         
-        // Layer 2: Try Firebase (with its own cache)
-        if networkMonitor.isConnected {
-            await fetchQuestionsFromNetwork()
-        } else {
-            // No questions anywhere and offline - block quiz
-            isLoading = false
-            errorMessage = "No quiz questions available. Please connect to the internet to download the quiz."
-            dataSource = .none
-            print("❌ BLOCKED: No questions in storage and no connectivity")
+        // STEP 4: Load quiz questions (check cache → storage → network)
+        await loadQuizQuestions()
+        
+        isLoading = false
+    }
+    
+    // MARK: - Load Quiz Questions
+    
+    private func loadQuizQuestions() async {
+        print("\n--- LOADING QUIZ QUESTIONS ---")
+        
+        // ALWAYS select random questions, regardless of source
+        var allQuestions: [QuizQuestion]? = nil
+        
+        // Try memory cache first
+        if let cached = QuizQuestionsCache.shared.getCachedQuestions() {
+            print("✅ [MEMORY CACHE] Found \(cached.count) cached questions")
+            allQuestions = cached
+            dataSource = .memoryCache
         }
+        // Try SQLite local storage
+        else if let stored = storageService.loadQuestions() {
+            print("✅ [SQLITE STORAGE] Found \(stored.count) stored questions")
+            allQuestions = stored
+            dataSource = .localStorage
+            
+            // Cache in memory for next time
+            QuizQuestionsCache.shared.cacheQuestions(stored)
+            
+            // Try to refresh from network in background
+            if networkMonitor.isConnected {
+                Task {
+                    await refreshQuestionsFromNetwork()
+                }
+            }
+        }
+        // Must fetch from network
+        else {
+            guard networkMonitor.isConnected else {
+                errorMessage = "No internet connection and no cached quiz available"
+                return
+            }
+            
+            await fetchQuestionsFromNetwork()
+            return // fetchQuestionsFromNetwork() handles selection
+        }
+        
+        // Select 5 random questions from the pool
+        if let all = allQuestions {
+            questions = selectRandomQuestions(from: all)
+        }
+    }
+    
+    // MARK: - Select Random Questions
+    
+    private func selectRandomQuestions(from allQuestions: [QuizQuestion]) -> [QuizQuestion] {
+        let questionCount = 5
+        
+        guard allQuestions.count > questionCount else {
+            print("⚠️ Not enough questions available (\(allQuestions.count)). Using all questions.")
+            return allQuestions
+        }
+        
+        // Shuffle and take 5
+        let selected = Array(allQuestions.shuffled().prefix(questionCount))
+        print("✅ Selected \(selected.count) random questions from \(allQuestions.count) available")
+        
+        return selected
     }
     
     private func fetchQuestionsFromNetwork() async {
+        print("🌐 [NETWORK] Fetching questions from Firestore...")
+        
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             networkService.fetchQuizQuestions { [weak self] result in
                 Task { @MainActor in
-                    guard let self = self else {
-                        continuation.resume()
-                        return
-                    }
-                    
-                    self.isLoading = false
+                    defer { continuation.resume() }
                     
                     switch result {
-                    case .success(let allQuestions):
-                        if allQuestions.isEmpty {
-                            self.errorMessage = "No quiz questions available"
-                            self.dataSource = .none
-                        } else {
-                            // Save to SQLite for offline use
-                            self.storageService.saveQuestions(allQuestions)
-                            
-                            // Select random subset
-                            self.questions = self.selectRandomQuestions(from: allQuestions)
-                            self.dataSource = .network
-                            
-                            print("✅ Loaded \(self.questions.count) questions from network")
-                        }
+                    case .success(let fetchedQuestions):
+                        print("✅ [NETWORK] Fetched \(fetchedQuestions.count) questions")
+                        
+                        // Select random 5 questions for display
+                        self?.questions = self?.selectRandomQuestions(from: fetchedQuestions) ?? []
+                        self?.dataSource = .network
+                        
+                        // Save ALL questions to storage and cache (not just the random 5)
+                        self?.storageService.saveQuestions(fetchedQuestions)
+                        QuizQuestionsCache.shared.cacheQuestions(fetchedQuestions)
                         
                     case .failure(let error):
-                        self.errorMessage = "Failed to load quiz: \(error.localizedDescription)"
-                        self.dataSource = .none
-                        print("❌ Network error: \(error.localizedDescription)")
+                        print("❌ [NETWORK] Failed to fetch questions: \(error.localizedDescription)")
+                        self?.errorMessage = "Failed to load quiz: \(error.localizedDescription)"
                     }
-                    
-                    continuation.resume()
                 }
             }
         }
     }
     
-    private func refreshQuestionsInBackground() async {
+    private func refreshQuestionsFromNetwork() async {
+        isRefreshing = true
+        await fetchQuestionsFromNetwork()
+        isRefreshing = false
+    }
+    
+    private func refreshFromNetwork() async {
         guard networkMonitor.isConnected else { return }
         
         isRefreshing = true
-        
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            networkService.fetchQuizQuestions { [weak self] result in
-                Task { @MainActor in
-                    defer {
-                        self?.isRefreshing = false
-                        continuation.resume()
-                    }
-                    
-                    guard let self = self else { return }
-                    
-                    if case .success(let allQuestions) = result, !allQuestions.isEmpty {
-                        // Update SQLite with fresh questions
-                        self.storageService.saveQuestions(allQuestions)
-                        print("✅ Refreshed questions in background")
-                    }
-                }
-            }
-        }
+        // Could fetch updated result from Firestore here if needed
+        isRefreshing = false
     }
     
-    private func selectRandomQuestions(from all: [QuizQuestion]) -> [QuizQuestion] {
-        let count = min(numberOfQuestions, all.count)
-        return Array(all.shuffled().prefix(count))
-    }
-    
-    // MARK: - Answer Question
+    // MARK: - Select Answer
     
     func selectAnswer(_ option: QuizOption) {
-        guard let questionId = currentQuestion?.id else { return }
+        guard let questionId = questions[currentQuestionIndex].id else {
+            print("⚠️ Cannot select answer - question has no ID")
+            return
+        }
         
         let answer = UserAnswer(
             questionId: questionId,
@@ -275,135 +275,154 @@ class MoodQuizViewModel: ObservableObject {
             timestamp: Date()
         )
         
-        // Replace answer if user changes selection on same question
+        // Update or replace answer for current question
         if userAnswers.indices.contains(currentQuestionIndex) {
             userAnswers[currentQuestionIndex] = answer
         } else {
             userAnswers.append(answer)
         }
         
-        print("✅ Answered Q\(currentQuestionIndex + 1): \(option.category) (+\(option.points))")
+        print("✅ Selected answer: \(option.text) → \(option.category) (\(option.points) pts)")
     }
     
-    // MARK: - Calculate Result (WITH AUTO-SAVE!)
+    // MARK: - Calculate Result
     
     func calculateResult() {
-        print("\n🎯 Calculating quiz result...")
-        
-        var scores: [String: Int] = [:]
-        
-        for answer in userAnswers {
-            scores[answer.category, default: 0] += answer.points
-        }
-        
-        let totalScore = scores.values.reduce(0, +)
-        let maxScore = scores.values.max() ?? 0
-        let topCategories = scores.filter { $0.value == maxScore }.map { $0.key }.sorted()
-        
-        let isTied = topCategories.count > 1
-        let resultCategory: String
-        
-        if isTied {
-            // Use priority for 3+ way ties
-            if topCategories.count >= 3 {
-                resultCategory = QuizResult.categoryPriority.first { topCategories.contains($0) } ?? topCategories[0]
-            } else {
-                resultCategory = topCategories[0]
-            }
-        } else {
-            resultCategory = topCategories[0]
-        }
-        
-        let displayName = QuizResult.categoryDisplayNames[resultCategory] ?? resultCategory
-        let emoji = QuizResult.categoryEmojis[resultCategory] ?? "❓"
-        let description = QuizResult.categoryDescriptions[resultCategory] ?? "¡Resultado único!"
-        
-        quizResult = QuizResult(
-            moodCategory: displayName,
-            rawCategory: resultCategory,
-            isTied: isTied,
-            tiedCategories: topCategories,
-            emoji: emoji,
-            description: description,
-            totalScore: totalScore
-        )
-        
-        showResult = true
-        
-        print("🎉 Result: \(displayName) (tied: \(isTied))")
-        print("📊 Scores: \(scores)")
-        
-        // AUTO-SAVE IMMEDIATELY (REPLACES handleDoneAction)
-        Task {
-            await autoSaveResult()
-        }
-    }
-    
-    // MARK: - Auto-Save Result (NEW! - REPLACES handleDoneAction)
-    
-    private func autoSaveResult() async {
-        guard let userId = Auth.auth().currentUser?.uid,
-              let result = quizResult else {
-            print("❌ Cannot save: No user or result")
+        guard let userId = Auth.auth().currentUser?.uid else {
+            errorMessage = "User not authenticated"
             return
         }
         
-        print("\n💾 [AUTO-SAVE] Starting auto-save process...")
-        isSavingResult = true
+        print("\n=== CALCULATING QUIZ RESULT ===")
+        print("User Answers: \(userAnswers.count)")
         
-        // CRITICAL FIX: Ensure we capture ALL data
-        let selectedQuestionIds = questions.compactMap { $0.id }
-        var scores: [String: Int] = [:]
+        // Calculate category scores
+        var scores: [String: Int] = [
+            "creative": 0,
+            "social_planner": 0,
+            "cultural_explorer": 0,
+            "chill": 0
+        ]
         
         for answer in userAnswers {
             scores[answer.category, default: 0] += answer.points
+            print("  \(answer.category): +\(answer.points) pts")
         }
         
-        print("📋 [DATA] Selected Questions: \(selectedQuestionIds)")
-        print("📋 [DATA] Scores: \(scores)")
+        // CRITICAL FIX: Store scores in published property
+        categoryScores = scores
         
+        print("\nFinal Scores:")
+        scores.forEach { print("  \($0.key): \($0.value) pts") }
+        
+        // Determine result
+        let totalScore = scores.values.reduce(0, +)
+        let maxScore = scores.values.max() ?? 0
+        let topCategories = scores.filter { $0.value == maxScore }.map { $0.key }
+        
+        let isTied = topCategories.count > 1
+        let rawCategory: String
+        let displayCategory: String
+        
+        if isTied {
+            // Sort by priority
+            let sortedByPriority = topCategories.sorted { cat1, cat2 in
+                let idx1 = QuizResult.categoryPriority.firstIndex(of: cat1) ?? Int.max
+                let idx2 = QuizResult.categoryPriority.firstIndex(of: cat2) ?? Int.max
+                return idx1 < idx2
+            }
+            
+            rawCategory = sortedByPriority.first!
+            
+            let displayNames = sortedByPriority.compactMap {
+                QuizResult.categoryDisplayNames[$0]
+            }
+            displayCategory = displayNames.joined(separator: " & ")
+        } else {
+            rawCategory = topCategories.first!
+            displayCategory = QuizResult.categoryDisplayNames[rawCategory] ?? rawCategory
+        }
+        
+        let result = QuizResult(
+            moodCategory: displayCategory,
+            rawCategory: rawCategory,
+            isTied: isTied,
+            tiedCategories: topCategories.sorted(),
+            emoji: QuizResult.categoryEmojis[rawCategory] ?? "🎯",
+            description: QuizResult.categoryDescriptions[rawCategory] ?? "",
+            totalScore: totalScore
+        )
+        
+        print("\n📊 RESULT:")
+        print("  Category: \(result.moodCategory) (raw: \(result.rawCategory))")
+        print("  Is Tied: \(result.isTied)")
+        print("  Tied Categories: \(result.tiedCategories)")
+        print("  Total Score: \(result.totalScore)")
+        
+        // Create UserQuizResult
+        let selectedQuestionIds = userAnswers.compactMap { $0.questionId }
         let userQuizResult = UserQuizResult.from(
             userId: userId,
-            quizBankId: "quiz_bank_v1",
+            quizBankId: "lOhEPYC8ci9lBEo08G47",
             selectedQuestionIds: selectedQuestionIds,
             scores: scores,
             result: result
         )
         
-        // STEP 1: Save UI-friendly result to Realm
-        storageService.saveQuizResult(userId: userId, result: result, userQuizResult: userQuizResult)
-        print("✅ [REALM] Saved UI result to Realm")
+        // Auto-save result
+        Task {
+            await saveQuizResult(result: result, userQuizResult: userQuizResult)
+        }
         
-        // STEP 2: Cache in NSCache
-        cacheService.cacheQuizResult(userId: userId, result: result, userQuizResult: userQuizResult)
-        print("✅ [CACHE] Cached result in NSCache")
+        // Show result
+        quizResult = result
+        showResult = true
+    }
+    
+    // MARK: - Save Quiz Result
+    
+    private func saveQuizResult(result: QuizResult, userQuizResult: UserQuizResult) async {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
         
-        // STEP 3: Set state flags
+        isSavingResult = true
+        print("\n💾 [SAVING] Auto-saving quiz result...")
+        
+        // 1. Save to memory cache
+        cacheService.cacheQuizResult(
+            userId: userId,
+            result: result,
+            userQuizResult: userQuizResult
+        )
+        
+        // 2. Save to local storage (Realm)
+        storageService.saveQuizResult(
+            userId: userId,
+            result: result,
+            userQuizResult: userQuizResult
+        )
+        
+        // 3. Mark that user has a result
         storageService.setHasResult(userId: userId, value: true)
-        storageService.setWantsRetake(userId: userId, value: false)
         
-        // STEP 4: Upload to Firebase (or save for later)
+        // 4. Try to upload to Firestore if online
         if networkMonitor.isConnected {
-            print("🌐 [ONLINE] Uploading to Firebase...")
+            print("🌐 [ONLINE] Uploading to Firestore...")
             
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                networkService.uploadQuizResult(userQuizResult) { [weak self] uploadResult in
+                networkService.uploadQuizResult(userQuizResult) { [weak self] result in
                     Task { @MainActor in
                         defer {
                             self?.isSavingResult = false
                             continuation.resume()
                         }
                         
-                        switch uploadResult {
+                        switch result {
                         case .success:
-                            print("✅ [FIREBASE] Uploaded successfully")
-                            // Remove any pending upload for this user
-                            self?.storageService.removePendingResult(userId: userId)
-                            self?.hasPendingUpload = false
+                            print("✅ [FIRESTORE] Result uploaded successfully")
                             
                         case .failure(let error):
-                            print("❌ [FIREBASE] Upload failed: \(error.localizedDescription)")
-                            print("💾 [USERDEFAULTS] Saving for later upload...")
+                            print("❌ [FIRESTORE] Upload failed: \(error.localizedDescription)")
+                            print("💾 Saving to pending uploads for later sync...")
                             self?.storageService.savePendingResult(userQuizResult)
                             self?.hasPendingUpload = true
                         }
@@ -411,133 +430,126 @@ class MoodQuizViewModel: ObservableObject {
                 }
             }
         } else {
-            print("📴 [OFFLINE] Saving to UserDefaults for later upload...")
+            print("📴 [OFFLINE] Saving to pending uploads...")
             storageService.savePendingResult(userQuizResult)
             hasPendingUpload = true
             isSavingResult = false
         }
         
-        print("✅ [AUTO-SAVE] Complete\n")
-    }
-    
-    // MARK: - Handle Take Again Action
-    
-    func handleTakeAgainAction() async {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        
-        print("🔄 [RETAKE] Starting retake process...")
-        
-        // Clear result from caches
-        cacheService.clearCache(userId: userId)
-        storageService.deleteQuizResult(userId: userId)
-        storageService.setWantsRetake(userId: userId, value: true)
-        storageService.setHasResult(userId: userId, value: false)
-        
-        // Reset state
-        quizResult = nil
-        showResult = false
-        currentQuestionIndex = 0
-        userAnswers = []
-        
-        print("🔄 Retake initiated - loading new questions")
-        
-        // Load questions for new quiz
-        await loadQuestions()
-    }
-    
-    // MARK: - Connectivity Restored
-    
-    private func handleConnectivityRestored() async {
-        // Always check storage, not just the local flag
-        if storageService.hasPendingResults() {
-            print("🌐 [BACK ONLINE] Connectivity restored - syncing pending results")
-            await syncService.syncPendingResults()
-            
-            // Update flag after sync attempt
-            hasPendingUpload = storageService.hasPendingResults()
-        }
+        print("✅ [SAVED] Quiz result saved successfully")
     }
     
     // MARK: - Get Category Scores
     
     func getCategoryScores() -> [String: Int] {
-        var scores: [String: Int] = [:]
-        
-        for answer in userAnswers {
-            scores[answer.category, default: 0] += answer.points
+        // CRITICAL FIX: Return the stored scores, not recalculate
+        if !categoryScores.isEmpty {
+            return categoryScores
         }
         
-        return scores
+        // Fallback: calculate from answers if available
+        if !userAnswers.isEmpty {
+            var scores: [String: Int] = [
+                "creative": 0,
+                "social_planner": 0,
+                "cultural_explorer": 0,
+                "chill": 0
+            ]
+            
+            for answer in userAnswers {
+                scores[answer.category, default: 0] += answer.points
+            }
+            
+            categoryScores = scores
+            return scores
+        }
+        
+        // Last resort: return empty scores
+        return [
+            "creative": 0,
+            "social_planner": 0,
+            "cultural_explorer": 0,
+            "chill": 0
+        ]
     }
     
-    // MARK: - Reset Quiz
+    // MARK: - Retake Quiz - FIXED!
     
-    func resetQuiz() async {
+    func handleTakeAgainAction() async {
         guard let userId = Auth.auth().currentUser?.uid else { return }
         
+        print("\n🔄 [RETAKE] User wants to retake quiz")
+        
+        // STEP 1: Set the retake flag FIRST
+        storageService.setWantsRetake(userId: userId, value: true)
+        
+        // STEP 2: Clear all cached/stored results
+        print("🗑️ [RETAKE] Clearing cache and storage...")
         cacheService.clearCache(userId: userId)
         storageService.deleteQuizResult(userId: userId)
-        storageService.clearQuizState(userId: userId)
+        storageService.setHasResult(userId: userId, value: false)
         
-        questions = []
-        currentQuestionIndex = 0
-        userAnswers = []
-        quizResult = nil
-        showResult = false
-        errorMessage = nil
-        dataSource = .none
-        hasPendingUpload = false
+        // STEP 3: Clear local state
+        print("🗑️ [RETAKE] Clearing local state...")
+        clearQuizState()
         
-        print("🔄 Quiz reset complete")
+        // STEP 4: Reload quiz (will detect wantsRetake flag and load questions)
+        print("📥 [RETAKE] Reloading quiz...")
+        await loadQuiz()
+        
+        print("✅ [RETAKE] Quiz ready for retake!")
     }
     
-    // MARK: - Debug
+    private func clearQuizState() {
+        userAnswers.removeAll()
+        currentQuestionIndex = 0
+        showResult = false
+        quizResult = nil
+        categoryScores.removeAll()
+        errorMessage = nil
+    }
+}
+
+// MARK: - Quiz Questions Cache (Separate from Results)
+
+class QuizQuestionsCache {
+    static let shared = QuizQuestionsCache()
     
-    func debugCache() {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            print("❌ No authenticated user for cache debug")
-            return
+    private let cache = NSCache<NSString, CachedQuestionsWrapper>()
+    private var cacheTimestamp: Date?
+    private let cacheExpirationMinutes = 60.0
+    
+    private init() {
+        cache.countLimit = 1
+    }
+    
+    func cacheQuestions(_ questions: [QuizQuestion]) {
+        let wrapper = CachedQuestionsWrapper(questions: questions)
+        cache.setObject(wrapper, forKey: "quiz_questions" as NSString)
+        cacheTimestamp = Date()
+        print("✅ Cached \(questions.count) quiz questions")
+    }
+    
+    func getCachedQuestions() -> [QuizQuestion]? {
+        if let timestamp = cacheTimestamp,
+           Date().timeIntervalSince(timestamp) > cacheExpirationMinutes * 60 {
+            clearCache()
+            return nil
         }
         
-        print("\n" + String(repeating: "=", count: 50))
-        print("MOOD QUIZ CACHE DEBUG")
-        print(String(repeating: "=", count: 50))
-        
-        // Memory cache
-        cacheService.debugCache(userId: userId)
-        
-        // Storage info
-        let hasResult = storageService.hasResult(userId: userId)
-        let wantsRetake = storageService.wantsRetake(userId: userId)
-        let hasPending = storageService.hasPendingResults()
-        
-        print("Storage State:")
-        print("   Has Result: \(hasResult)")
-        print("   Wants Retake: \(wantsRetake)")
-        print("   Has Pending: \(hasPending)")
-        
-        // Current state
-        print("Current State:")
-        print("   Questions loaded: \(questions.count)")
-        print("   Current index: \(currentQuestionIndex)")
-        print("   User answers: \(userAnswers.count)")
-        print("   Showing result: \(showResult)")
-        print("   Data source: \(dataSource)")
-        print("   Network: \(networkMonitor.isConnected ? "Connected" : "Offline")")
-        print("   Pending upload flag: \(hasPendingUpload)")
-        print("   Is saving: \(isSavingResult)")
-        
-        if let error = errorMessage {
-            print("   Error: \(error)")
-        }
-        
-        if !userAnswers.isEmpty {
-            print("User Answers Details:")
-            for (index, answer) in userAnswers.enumerated() {
-                print("   Q\(index + 1): \(answer.category) - \(answer.points) pts")
-            }
-        }
-        
-        print(String(repeating: "=", count: 50) + "\n")
+        return cache.object(forKey: "quiz_questions" as NSString)?.questions
+    }
+    
+    func clearCache() {
+        cache.removeAllObjects()
+        cacheTimestamp = nil
+    }
+}
+
+class CachedQuestionsWrapper {
+    let questions: [QuizQuestion]
+    
+    init(questions: [QuizQuestion]) {
+        self.questions = questions
     }
 }

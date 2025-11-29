@@ -21,9 +21,6 @@ class QuizStorageService {
     private let optionsJson = Expression<String>("options_json")
     private let timestamp = Expression<Date>("timestamp")
     
-    // Realm queue for thread-safe operations
-    private let realmQueue = DispatchQueue(label: "com.swifties.quizRealmQueue", qos: .userInitiated)
-    
     // UserDefaults keys
     private let pendingResultsKey = "pending_quiz_results"
     private let hasResultKey = "quiz_has_result_"
@@ -179,7 +176,7 @@ class QuizStorageService {
                 schemaVersion: 2,
                 migrationBlock: { migration, oldSchemaVersion in
                     if oldSchemaVersion < 2 {
-                        // Handle migrations if needed -FUTURE IMPLEMENTATION
+                        // Handle migrations if needed
                     }
                 }
             )
@@ -192,16 +189,12 @@ class QuizStorageService {
         }
     }
     
-    // MARK: - Realm Operations (Results)
+    // MARK: - Realm Operations (Results) - FIXED!
     
     func saveQuizResult(userId: String, result: QuizResult, userQuizResult: UserQuizResult) {
-        realmQueue.async { [weak self] in
-            guard let _ = self else { return }
-            
-            guard let realm = try? Realm() else {
-                print("❌ Realm not initialized")
-                return
-            }
+        // CRITICAL FIX: Use main thread for Realm writes when already on main actor
+        do {
+            let realm = try Realm()
             
             let realmResult = RealmQuizResult(
                 userId: userId,
@@ -209,61 +202,62 @@ class QuizStorageService {
                 userQuizResult: userQuizResult
             )
             
-            do {
-                try realm.write {
-                    realm.add(realmResult, update: .modified)
-                }
-                print("[SAVEDDD] Saved quiz result to Realm: \(userId) - \(result.moodCategory)")
-            } catch {
-                print("❌ Error saving to Realm: \(error)")
+            try realm.write {
+                realm.add(realmResult, update: .modified)
             }
+            print("✅ [REALM WRITE] Saved quiz result: \(userId) - \(result.moodCategory)")
+            print("   Raw category: \(result.rawCategory)")
+            print("   Tied categories: \(result.tiedCategories)")
+            print("   Total score: \(result.totalScore)")
+        } catch {
+            print("❌ Error saving to Realm: \(error)")
         }
     }
     
     func loadQuizResult(userId: String) async -> (result: QuizResult, userQuizResult: UserQuizResult)? {
-        return await withCheckedContinuation { continuation in
-            realmQueue.async { [weak self] in
-                guard let _ = self else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                
-                guard let realm = try? Realm() else {
-                    print("❌ Realm not initialized")
-                    continuation.resume(returning: nil)
-                    return
-                }
-                
-                guard let realmResult = realm.object(ofType: RealmQuizResult.self, forPrimaryKey: userId) else {
-                    print("❌ No quiz result found in Realm for: \(userId)")
-                    continuation.resume(returning: nil)
-                    return
-                }
-                
-                let result = realmResult.toQuizResult()
-                let userQuizResult = realmResult.toUserQuizResult()
-                
-                print("✅ Loaded quiz result from Realm: \(userId)")
-                continuation.resume(returning: (result, userQuizResult))
+        // FIX: Simplified Realm read on main thread
+        do {
+            let realm = try await Realm()
+            
+            guard let realmResult = realm.object(ofType: RealmQuizResult.self, forPrimaryKey: userId) else {
+                print("❌ No quiz result found in Realm for: \(userId)")
+                return nil
             }
+            
+            // CRITICAL: Validate the stored data BEFORE converting
+            print("✅ [REALM READ] Found result for user: \(userId)")
+            print("   Category: \(realmResult.moodCategory)")
+            print("   Raw category: \(realmResult.rawCategory)")
+            print("   Is tied: \(realmResult.isTied)")
+            print("   Total score: \(realmResult.totalScore)")
+            print("   UserQuizResult JSON length: \(realmResult.userQuizResultJson.count)")
+            
+            let result = realmResult.toQuizResult()
+            let userQuizResult = realmResult.toUserQuizResult()
+            
+            // Validate UserQuizResult reconstruction
+            print("   Reconstructed scores: \(userQuizResult.scores)")
+            print("   Reconstructed categories: \(userQuizResult.resultCategory)")
+            
+            return (result, userQuizResult)
+        } catch {
+            print("❌ Error loading from Realm: \(error)")
+            return nil
         }
     }
     
     func deleteQuizResult(userId: String) {
-        realmQueue.async { [weak self] in
-            guard let _ = self else { return }
-            guard let realm = try? Realm() else { return }
+        do {
+            let realm = try Realm()
             
             if let object = realm.object(ofType: RealmQuizResult.self, forPrimaryKey: userId) {
-                do {
-                    try realm.write {
-                        realm.delete(object)
-                    }
-                    print("XXXXX Deleted quiz result from Realm: \(userId)")
-                } catch {
-                    print("❌ Error deleting from Realm: \(error)")
+                try realm.write {
+                    realm.delete(object)
                 }
+                print("✅ Deleted quiz result from Realm: \(userId)")
             }
+        } catch {
+            print("❌ Error deleting from Realm: \(error)")
         }
     }
     
@@ -283,10 +277,11 @@ class QuizStorageService {
         
         if let data = try? encoder.encode(pending) {
             UserDefaults.standard.set(data, forKey: pendingResultsKey)
-            print("[SAVEDDDD] Saved pending UserQuizResult to UserDefaults for upload")
+            print("✅ [USERDEFAULTS] Saved pending result")
             print("   User: \(result.userId)")
+            print("   Scores: \(result.scores)")
             print("   Categories: \(result.resultCategory)")
-            print("   Type: \(result.resultType)")
+            print("   Selected Questions: \(result.selectedQuestionIds)")
         }
     }
     
@@ -307,7 +302,7 @@ class QuizStorageService {
     
     func clearPendingResults() {
         UserDefaults.standard.removeObject(forKey: pendingResultsKey)
-        print("XXXXXXXX Cleared pending UserQuizResult uploads from UserDefaults")
+        print("✅ Cleared pending UserQuizResult uploads from UserDefaults")
     }
     
     func hasPendingResults() -> Bool {
@@ -316,17 +311,19 @@ class QuizStorageService {
     
     func removePendingResult(userId: String) {
         var pending = loadPendingResults()
+        let originalCount = pending.count
         pending.removeAll { $0.userId == userId }
         
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        
-        if let data = try? encoder.encode(pending) {
-            UserDefaults.standard.set(data, forKey: pendingResultsKey)
-            print("XXXXXXXX Removed pending result for user: \(userId)")
-        } else if pending.isEmpty {
-            // If no pending results left, clear the key
-            clearPendingResults()
+        if pending.count < originalCount {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            
+            if let data = try? encoder.encode(pending) {
+                UserDefaults.standard.set(data, forKey: pendingResultsKey)
+                print("✅ Removed pending result for user: \(userId)")
+            } else if pending.isEmpty {
+                clearPendingResults()
+            }
         }
     }
     
@@ -342,7 +339,7 @@ class QuizStorageService {
     
     func setWantsRetake(userId: String, value: Bool) {
         UserDefaults.standard.set(value, forKey: wantsRetakeKey + userId)
-        print(" Set wants retake: \(value) for user: \(userId)")
+        print("✅ Set wants retake: \(value) for user: \(userId)")
     }
     
     func wantsRetake(userId: String) -> Bool {
@@ -352,36 +349,26 @@ class QuizStorageService {
     func clearQuizState(userId: String) {
         UserDefaults.standard.removeObject(forKey: hasResultKey + userId)
         UserDefaults.standard.removeObject(forKey: wantsRetakeKey + userId)
-        print("XXXXXXXX Cleared quiz state for user: \(userId)")
+        print("✅ Cleared quiz state for user: \(userId)")
     }
 }
 
 // MARK: - Realm Model for Quiz Result
 
-/// Stores UI-friendly quiz result data for displaying the result screen
-///
-/// **Purpose**: Allow user to see their quiz result (emoji, description, etc.)
-/// even when offline or when UserQuizResult upload is pending.
-///
-/// **Separation of Concerns**:
-/// - This model = "What does the user SEE?" (emoji, description, display name)
-/// - UserQuizResult in UserDefaults pending = "What does Firebase NEED?" (scores, question IDs, etc.)
-///
-/// Both are created from the same quiz completion, but serve different purposes.
 class RealmQuizResult: Object {
     @Persisted(primaryKey: true) var userId: String
     
     // UI display fields
-    @Persisted var moodCategory: String        // Display name: "Creative"
-    @Persisted var rawCategory: String         // Key: "creative"
-    @Persisted var isTied: Bool               // Multiple categories tied?
-    @Persisted var tiedCategoriesJson: String // JSON array of tied keys
-    @Persisted var emoji: String              // "🎨"
-    @Persisted var resultDescription: String  // User-facing description
+    @Persisted var moodCategory: String
+    @Persisted var rawCategory: String
+    @Persisted var isTied: Bool
+    @Persisted var tiedCategoriesJson: String
+    @Persisted var emoji: String
+    @Persisted var resultDescription: String
     @Persisted var totalScore: Int
     
     // Full UserQuizResult encoded for reconstruction
-    @Persisted var userQuizResultJson: String // Complete Firebase upload data
+    @Persisted var userQuizResultJson: String
     
     @Persisted var lastUpdated: Date = Date()
     
@@ -400,20 +387,31 @@ class RealmQuizResult: Object {
         if let data = try? JSONEncoder().encode(result.tiedCategories),
            let json = String(data: data, encoding: .utf8) {
             self.tiedCategoriesJson = json
+        } else {
+            self.tiedCategoriesJson = "[]"
         }
         
-        // Encode UserQuizResult for later reconstruction (if needed)
+        // Encode UserQuizResult
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         if let data = try? encoder.encode(userQuizResult),
            let json = String(data: data, encoding: .utf8) {
             self.userQuizResultJson = json
+            print("✅ [REALM INIT] Encoded UserQuizResult successfully")
+        } else {
+            print("❌ [REALM INIT] Failed to encode UserQuizResult!")
+            self.userQuizResultJson = ""
         }
     }
     
-    /// Converts to QuizResult for UI display
     func toQuizResult() -> QuizResult {
-        let tiedCategories = (try? JSONDecoder().decode([String].self, from: tiedCategoriesJson.data(using: .utf8)!)) ?? []
+        let tiedCategories: [String]
+        if let data = tiedCategoriesJson.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode([String].self, from: data) {
+            tiedCategories = decoded
+        } else {
+            tiedCategories = []
+        }
         
         return QuizResult(
             moodCategory: moodCategory,
@@ -426,14 +424,19 @@ class RealmQuizResult: Object {
         )
     }
     
-    /// Reconstructs UserQuizResult from stored JSON (if needed for re-upload)
     func toUserQuizResult() -> UserQuizResult {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         
-        guard let data = userQuizResultJson.data(using: .utf8),
+        guard !userQuizResultJson.isEmpty,
+              let data = userQuizResultJson.data(using: .utf8),
               let result = try? decoder.decode(UserQuizResult.self, from: data) else {
-            fatalError("Failed to decode UserQuizResult from Realm")
+            print("❌ [REALM] Failed to decode UserQuizResult from stored JSON")
+            print("   JSON length: \(userQuizResultJson.count)")
+            print("   JSON preview: \(String(userQuizResultJson.prefix(100)))")
+            
+            // Fatal error with diagnostic info
+            fatalError("Failed to decode UserQuizResult from Realm for user: \(userId)")
         }
         
         return result

@@ -265,8 +265,8 @@ class RecommendationDatabaseManager {
                 try db.run("ALTER TABLE recommendations RENAME TO recommendations_old")
                 createTable()
                 try db.run("""
-                    INSERT INTO recommendations (id, user_id, event_data, score, position, timestamp)
-                    SELECT id, user_id, event_data, score, position, timestamp
+                    INSERT INTO recommendations (id, user_id, event_data, position, timestamp)
+                    SELECT id, user_id, event_data, position, timestamp
                     FROM recommendations_old
                 """)
                 try db.run("DROP TABLE recommendations_old")

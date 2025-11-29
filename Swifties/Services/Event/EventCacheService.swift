@@ -15,7 +15,7 @@ class EventCacheService {
     private var lastCacheTime: Date?
     private let cacheExpirationMinutes = 5.0 // 5 minutes (shorter for frequently changing data)
     
-    // Lock para thread-safety en operaciones críticas
+    // Lock for thread-safety in critical operations
     private let lock = NSLock()
     
     private init() {

@@ -31,7 +31,7 @@ class EventCacheService {
     
     // MARK: - Thread-Safe Operations
     
-    /// Guarda eventos en caché (thread-safe)
+    /// Saves events to cache (thread-safe)
     func cacheEvents(_ events: [Event]) {
         lock.lock()
         defer { lock.unlock() }

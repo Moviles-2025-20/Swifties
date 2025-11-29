@@ -287,5 +287,12 @@ final class HomeViewModel: ObservableObject {
             dataSource = newSource
         }
     }
+
+    // Ensure any pending background refresh task is cancelled when
+    // the view model is deallocated.
+    deinit {
+        backgroundRefreshTask?.cancel()
+        backgroundRefreshTask = nil
+    }
 }
 

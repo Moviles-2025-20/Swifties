@@ -84,7 +84,7 @@ final class NewsStorageService {
                     let ratingsStr = try String(data: JSONSerialization.data(withJSONObject: item.ratings, options: []), encoding: .utf8) ?? "[]"
                     let itemJSON = String(data: try encoder.encode(item), encoding: .utf8) ?? "{}"
 
-                    // Upsert behavior - insert
+                    // Insertion after clearing the table
                     let insert = table.insert(id <- key,
                                               eventId <- item.eventId,
                                               desc <- item.description,

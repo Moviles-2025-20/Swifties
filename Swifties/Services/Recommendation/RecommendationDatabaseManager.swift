@@ -130,7 +130,6 @@ class RecommendationDatabaseManager {
 
                     try db.run(insert)
                 }
-<<<<<<< refs/remotes/origin/fix/news_optimized
                 
                 // Cleanup: remove any rows for this user that are NOT present
                 // in the new recommendations list.
@@ -152,8 +151,6 @@ class RecommendationDatabaseManager {
                     params.append(contentsOf: newIDs)
                     try delStmt.run(params)
                 }
-=======
->>>>>>> Fixes - downgrade for utility
             }
             
             #if DEBUG

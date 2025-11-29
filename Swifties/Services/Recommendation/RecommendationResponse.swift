@@ -42,9 +42,10 @@ class RecommendationNetworkService {
             "SdmE00SDRbcclnQ0lvlf"
         ]
         
-        // Construct URL safely
         guard let url = URL(string: "https://us-central1-parchandes-7e096.cloudfunctions.net/get_recommendations?user_id=\(userId)") else {
+            #if DEBUG
             print("⚠️ Invalid URL — using default recommendations.")
+            #endif
             loadEvents(from: defaultResults, completion: completion)
             return
         }
@@ -56,29 +57,34 @@ class RecommendationNetworkService {
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
             
-            // Check for network error
             if let error = error {
+                #if DEBUG
                 print("❌ Network error: \(error.localizedDescription) — using defaults")
+                #endif
                 self.loadEvents(from: defaultResults, completion: completion)
                 return
             }
             
-            // Validate response
             guard let httpResponse = response as? HTTPURLResponse else {
+                #if DEBUG
                 print("❌ Invalid response — using defaults")
+                #endif
                 self.loadEvents(from: defaultResults, completion: completion)
                 return
             }
-            
+
             guard httpResponse.statusCode == 200 else {
+                #if DEBUG
                 print("⚠️ Server responded with \(httpResponse.statusCode) — using defaults")
+                #endif
                 self.loadEvents(from: defaultResults, completion: completion)
                 return
             }
             
-            // Parse response
             guard let data = data else {
+                #if DEBUG
                 print("❌ No data received — using defaults")
+                #endif
                 self.loadEvents(from: defaultResults, completion: completion)
                 return
             }
@@ -86,23 +92,37 @@ class RecommendationNetworkService {
             do {
                 let decoded = try JSONDecoder().decode(RecommendationResponse.self, from: data)
                 let eventIDs = decoded.recommendations.map { $0.id }
+                #if DEBUG
                 print("✅ Received \(eventIDs.count) recommendations from API")
+                #endif
                 self.loadEvents(from: eventIDs, completion: completion)
             } catch {
+                #if DEBUG
                 print("❌ Error decoding response: \(error.localizedDescription) — using defaults")
+                #endif
                 self.loadEvents(from: defaultResults, completion: completion)
             }
         }.resume()
     }
     
+    // Optimized: batch Firestore fetches using "in" queries (max 10 IDs per batch per Firestore settings)
     private func loadEvents(from eventIDs: [String], completion: @escaping (Result<[Event], Error>) -> Void) {
+        guard !eventIDs.isEmpty else {
+            completion(.success([]))
+            return
+        }
+        
+        let chunks = stride(from: 0, to: eventIDs.count, by: 10).map {
+            Array(eventIDs[$0..<min($0 + 10, eventIDs.count)])
+        }
+        
         let group = DispatchGroup()
         var events: [Event] = []
         var fetchError: Error?
         
         for eventID in eventIDs {
             group.enter()
-            
+
             db.collection("events").document(eventID).getDocument { document, error in
                 defer { group.leave() }
                 
@@ -113,7 +133,6 @@ class RecommendationNetworkService {
                     }
                     return
                 }
-                
                 if let document = document, let event = EventFactory.createEvent(from: document) {
                     events.append(event)
                 } else {
@@ -126,9 +145,12 @@ class RecommendationNetworkService {
             if let error = fetchError, events.isEmpty {
                 completion(.failure(error))
             } else {
-                print("\(events.count) recommendations fetched from Firestore")
+                #if DEBUG
+                print("\(events.count) recommendations fetched from Firestore (batched)")
+                #endif
                 completion(.success(events))
             }
         }
     }
 }
+

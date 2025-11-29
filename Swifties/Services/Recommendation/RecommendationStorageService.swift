@@ -18,39 +18,45 @@ class RecommendationStorageService {
     private init() {}
     
     func saveRecommendationsToStorage(_ recommendations: [Event], userId: String) {
-        // Save to SQLite
         databaseManager.saveRecommendations(recommendations, userId: userId)
         
-        // Save timestamp
         let key = "\(timestampKey)_\(userId)"
         userDefaults.set(Date(), forKey: key)
         
+        #if DEBUG
         print("\(recommendations.count) recommendations saved to storage")
+        #endif
     }
     
     func loadRecommendationsFromStorage(userId: String) -> [Event]? {
-        // Check if data has expired
         let key = "\(timestampKey)_\(userId)"
-        if let timestamp = userDefaults.object(forKey: key) as? Date {
-            let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
-            print("Recommendations storage age: \(String(format: "%.1f", hoursElapsed)) hours")
-            
-            if hoursElapsed > storageExpirationHours {
-                clearStorage(userId: userId)
-                return nil
-            }
-        } else {
+        guard let timestamp = userDefaults.object(forKey: key) as? Date else {
+            #if DEBUG
             print("No timestamp found for recommendations")
+            #endif
             return nil
         }
         
-        // Load from SQLite
+        let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
+        #if DEBUG
+        print("Recommendations storage age: \(String(format: "%.1f", hoursElapsed)) hours")
+        #endif
+        
+        if hoursElapsed > storageExpirationHours {
+            clearStorage(userId: userId)
+            return nil
+        }
+        
         guard let recommendations = databaseManager.loadRecommendations(userId: userId) else {
+            #if DEBUG
             print("No recommendations found in storage")
+            #endif
             return nil
         }
         
+        #if DEBUG
         print("\(recommendations.count) recommendations loaded from storage")
+        #endif
         return recommendations
     }
     
@@ -58,10 +64,13 @@ class RecommendationStorageService {
         databaseManager.deleteRecommendations(userId: userId)
         let key = "\(timestampKey)_\(userId)"
         userDefaults.removeObject(forKey: key)
+        #if DEBUG
         print("Recommendations storage cleared for user: \(userId)")
+        #endif
     }
     
     func debugStorage(userId: String) {
+        #if DEBUG
         print("\n=== DEBUG RECOMMENDATIONS STORAGE ===")
         
         let key = "\(timestampKey)_\(userId)"
@@ -82,8 +91,8 @@ class RecommendationStorageService {
         
         print("====================================\n")
         
-        // Detailed database debug
         databaseManager.debugDatabase(userId: userId)
+        #endif
     }
     
     func getStorageInfo(userId: String) -> RecommendationStorageInfo {
@@ -119,3 +128,4 @@ struct RecommendationStorageInfo {
         return Date().timeIntervalSince(lastUpdate) / 3600
     }
 }
+

@@ -84,8 +84,7 @@ final class NewsStorageService {
                     let ratingsStr = try String(data: JSONSerialization.data(withJSONObject: item.ratings, options: []), encoding: .utf8) ?? "[]"
                     let itemJSON = String(data: try encoder.encode(item), encoding: .utf8) ?? "{}"
 
-                    // Upsert behavior: INSERT OR REPLACE
-                    // Using SQLite.swift, we can emulate with conflict policy in raw SQL, or try replace:
+                    // Insertion after clearing the table
                     let insert = table.insert(id <- key,
                                               eventId <- item.eventId,
                                               desc <- item.description,
@@ -167,7 +166,7 @@ final class NewsStorageService {
         // Deterministic hash from salient fields
         let base = "\(news.eventId)|\(news.description)|\(news.photoUrl)|\(news.ratings.joined(separator: ","))"
         if let data = base.data(using: .utf8) {
-            let digest = Insecure.MD5.hash(data: data)
+            let digest = SHA256.hash(data: data)
             return digest.map { String(format: "%02hhx", $0) }.joined()
         }
         // Fallback (very unlikely)

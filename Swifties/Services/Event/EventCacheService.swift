@@ -13,7 +13,7 @@ class EventCacheService {
     private let cache = NSCache<NSString, CachedEventsWrapper>()
     private let cacheKey = "events_cache_key" as NSString
     private var lastCacheTime: Date?
-    private let cacheExpirationMinutes = 5.0 // 5 minutes (más corto para datos que cambian frecuentemente)
+    private let cacheExpirationMinutes = 5.0 // 5 minutes (shorter for frequently changing data)
     
     // Lock para thread-safety en operaciones críticas
     private let lock = NSLock()

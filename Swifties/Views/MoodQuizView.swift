@@ -488,19 +488,6 @@ struct MoodQuizView: View {
     
     private func buildResultCard(result: QuizResult) -> some View {
         VStack(spacing: 20) {
-            // Close button at top right
-            HStack {
-                Spacer()
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.gray.opacity(0.6))
-                }
-            }
-            .padding(.bottom, 8)
-            
             categoryIconsView(for: result)
             buildResultBadge(result: result)
             buildCategoryNames(result: result)

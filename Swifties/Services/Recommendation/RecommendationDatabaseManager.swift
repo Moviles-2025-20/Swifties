@@ -123,7 +123,6 @@ class RecommendationDatabaseManager {
                         id <- eventId,
                         self.userId <- userId,
                         eventData <- eventJSON,
-                        score <- nil, // Can be populated if you track recommendation scores
                         position <- index,
                         timestamp <- Date()
                      )

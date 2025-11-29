@@ -22,44 +22,44 @@ enum MapViewSource: String {
 class AnalyticsService {
     static let shared = AnalyticsService()
     private init() {}
-
+    
     func logDiscoveryMethod(_ method: DiscoveryMethod) {
         Analytics.logEvent("activity_discovery_method", parameters: [
             "method": method.rawValue,
             "timestamp": Date().timeIntervalSince1970
         ])
     }
-
+    
     func logActivitySelection(activityId: String, discoveryMethod: DiscoveryMethod) {
         Analytics.logEvent("activity_selected", parameters: [
             "activity_id": activityId,
             "discovery_method": discoveryMethod.rawValue
         ])
     }
-
+    
     func logWishMeLuckUsed() {
         Analytics.logEvent("wish_me_luck_used", parameters: [
             "timestamp": Date().timeIntervalSince1970
         ])
     }
-
+    
     func logOutdoorIndoorPreference(_ percentage: Int) {
         Analytics.logEvent("outdoor_indoor_preference", parameters: [
             "percentage": percentage
         ])
     }
-
+    
     func setUserId(_ userId: String) {
         Analytics.setUserID(userId)
     }
-
+    
     func logError(_ error: Error, platform: String) {
         Analytics.logEvent("app_exception", parameters: [
             "error_type": String(describing: type(of: error)),
             "platform": platform
         ])
     }
-
+    
     func logCheckIn(activityId: String, category: String) {
         Analytics.logEvent("activity_check_in", parameters: [
             "activity_id": activityId,
@@ -108,8 +108,36 @@ class AnalyticsService {
         }
         Analytics.logEvent("map_interaction", parameters: parameters)
     }
+    
+    
+    // MARK: - Mood Quiz Analytics
+    
+    /// Logs when the user opens/starts the Mood Quiz screen
+    func logMoodQuizOpened(source: String = "home") {
+        Analytics.logEvent("mood_quiz_opened", parameters: [
+            "source": source,
+            "timestamp": Date().timeIntervalSince1970
+        ])
+    }
+    
+    /// Logs when the user answers the first question (quiz started)
+    func logMoodQuizStarted() {
+        Analytics.logEvent("mood_quiz_started", parameters: [
+            "timestamp": Date().timeIntervalSince1970
+        ])
+    }
+    
+    /// Logs when the user completes all quiz questions and clicks Finish
+    func logMoodQuizCompleted(resultCategory: String, totalScore: Int, isTied: Bool) {
+        Analytics.logEvent("mood_quiz_completed", parameters: [
+            "result_category": resultCategory,
+            "total_score": totalScore,
+            "is_tied": isTied,
+            "timestamp": Date().timeIntervalSince1970
+        ])
+    }
+    
 }
-
 func activarFirebase() {
     Analytics.setAnalyticsCollectionEnabled(true)
 }

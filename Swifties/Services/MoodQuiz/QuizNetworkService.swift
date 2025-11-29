@@ -100,7 +100,7 @@ class QuizNetworkService {
                         }
                         
                         // Validate points
-                        guard points > 0 && points <= 100 else {
+                        guard points >= 0 && points <= 100 else {
                             parseErrors.append("Question '\(id)': Invalid points value \(points)")
                             hasValidOptions = false
                             break

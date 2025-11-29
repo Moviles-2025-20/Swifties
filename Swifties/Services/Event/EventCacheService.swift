@@ -66,7 +66,7 @@ class EventCacheService {
         return wrapper.events
     }
     
-    /// Limpia el caché
+    /// Clears the cache
     func clearCache() {
         lock.lock()
         defer { lock.unlock() }

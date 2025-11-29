@@ -11,7 +11,6 @@ struct MoodQuizView: View {
     @ObservedObject private var networkMonitor = NetworkMonitorService.shared
     @Environment(\.dismiss) private var dismiss
     
-    @State private var showOfflineSaveNotice = false
     @State private var showOfflineAlert = false
     @State private var offlineAlertMessage = ""
     @State private var showNews: Bool = false
@@ -91,6 +90,11 @@ struct MoodQuizView: View {
             if viewModel.hasPendingUpload {
                 buildPendingUploadBanner()
             }
+            
+            // Saving indicator banner (NEW!)
+            if viewModel.isSavingResult {
+                buildSavingBanner()
+            }
         }
     }
     
@@ -121,6 +125,22 @@ struct MoodQuizView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
         .background(Color.blue.opacity(0.1))
+        .cornerRadius(8)
+        .padding(.horizontal)
+        .padding(.top, 4)
+    }
+    
+    private func buildSavingBanner() -> some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .scaleEffect(0.8)
+            Text(networkMonitor.isConnected ? "Saving result..." : "Saving locally...")
+                .font(.caption)
+                .foregroundColor(.green)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(Color.green.opacity(0.1))
         .cornerRadius(8)
         .padding(.horizontal)
         .padding(.top, 4)
@@ -162,7 +182,6 @@ struct MoodQuizView: View {
         if viewModel.isLoading {
             loadingView
         } else if !networkMonitor.isConnected && viewModel.questions.isEmpty && !viewModel.showResult {
-            // ADDED: Offline state with no cached data (like UserInfoView)
             offlineNoCacheView
         } else if let error = viewModel.errorMessage {
             errorView(error: error)
@@ -189,7 +208,7 @@ struct MoodQuizView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    // MARK: - Offline No Cache View (NEW - LIKE USERINFOVIEW!)
+    // MARK: - Offline No Cache View
     
     private var offlineNoCacheView: some View {
         VStack(spacing: 20) {
@@ -328,7 +347,7 @@ struct MoodQuizView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    // MARK: - Question View (WITH PAGINATION!)
+    // MARK: - Question View
     
     private var questionView: some View {
         VStack(spacing: 0) {
@@ -432,6 +451,7 @@ struct MoodQuizView: View {
     private func buildNextButton() -> some View {
         Button {
             if viewModel.isLastQuestion {
+                // Auto-save happens in calculateResult()
                 viewModel.calculateResult()
             } else {
                 withAnimation {
@@ -453,7 +473,7 @@ struct MoodQuizView: View {
         .disabled(!viewModel.userAnswers.indices.contains(viewModel.currentQuestionIndex))
     }
     
-    // MARK: - Result View (WITH SCORE BARS LIKE FLUTTER!)
+    // MARK: - Result View
     
     private func resultView(result: QuizResult) -> some View {
         ScrollView {
@@ -464,17 +484,23 @@ struct MoodQuizView: View {
             }
             .padding(.bottom, 32)
         }
-        .alert("Saved Locally", isPresented: $showOfflineSaveNotice) {
-            Button("OK", role: .cancel) {
-                dismiss()
-            }
-        } message: {
-            Text("You're offline. Your result has been saved locally and will be uploaded when you reconnect.")
-        }
     }
     
     private func buildResultCard(result: QuizResult) -> some View {
         VStack(spacing: 20) {
+            // Close button at top right
+            HStack {
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.gray.opacity(0.6))
+                }
+            }
+            .padding(.bottom, 8)
+            
             categoryIconsView(for: result)
             buildResultBadge(result: result)
             buildCategoryNames(result: result)
@@ -554,7 +580,7 @@ struct MoodQuizView: View {
     private func buildActionButtons() -> some View {
         VStack(spacing: 12) {
             buildRetakeButton()
-            buildDoneButton()
+            // REMOVED: buildDoneButton() - auto-save handles everything!
         }
     }
     
@@ -566,7 +592,7 @@ struct MoodQuizView: View {
         } label: {
             HStack {
                 Image(systemName: "arrow.clockwise")
-                Text("Retake Quiz")
+                Text("Take Quiz Again")
             }
             .fontWeight(.semibold)
             .frame(maxWidth: .infinity)
@@ -579,36 +605,7 @@ struct MoodQuizView: View {
                     .stroke(Color("appRed"), lineWidth: 2)
             )
         }
-        .disabled(viewModel.isLoading)
-    }
-    
-    private func buildDoneButton() -> some View {
-        Button {
-            Task {
-                await viewModel.handleDoneAction()
-                if !networkMonitor.isConnected {
-                    showOfflineSaveNotice = true
-                } else {
-                    dismiss()
-                }
-            }
-        } label: {
-            HStack {
-                if viewModel.isLoading {
-                    ProgressView()
-                        .tint(.white)
-                }
-                Image(systemName: "checkmark.circle")
-                Text(viewModel.isLoading ? "Saving..." : "Done")
-            }
-            .fontWeight(.semibold)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color("appRed"))
-            .foregroundColor(.white)
-            .cornerRadius(12)
-        }
-        .disabled(viewModel.isLoading)
+        .disabled(viewModel.isLoading || viewModel.isSavingResult)
     }
     
     // MARK: - Category Icons View
@@ -701,7 +698,7 @@ struct OptionCard: View {
     }
 }
 
-// MARK: - Score Bar Component (LIKE FLUTTER!)
+// MARK: - Score Bar Component
 
 struct ScoreBar: View {
     let category: String

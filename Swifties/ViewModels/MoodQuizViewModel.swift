@@ -22,6 +22,7 @@ class MoodQuizViewModel: ObservableObject {
     @Published var dataSource: DataSource = .none
     @Published var isRefreshing = false
     @Published var hasPendingUpload = false
+    @Published var isSavingResult = false  // NEW: Track auto-save operation
     
     enum DataSource {
         case none
@@ -50,7 +51,7 @@ class MoodQuizViewModel: ObservableObject {
     
     var progress: Double {
         guard !questions.isEmpty else { return 0 }
-        return Double(currentQuestionIndex) / Double(questions.count)
+        return Double(currentQuestionIndex + 1) / Double(questions.count)
     }
     
     var isLastQuestion: Bool {
@@ -111,7 +112,7 @@ class MoodQuizViewModel: ObservableObject {
         
         // Check if we have pending uploads and try to sync first
         if storageService.hasPendingResults() && networkMonitor.isConnected {
-            print("[PENDINGGG] Found pending uploads, attempting sync before loading quiz...")
+            print("[PENDING] Found pending uploads, attempting sync before loading quiz...")
             await syncService.syncPendingResults()
             // Update the flag after sync attempt
             hasPendingUpload = storageService.hasPendingResults()
@@ -121,7 +122,7 @@ class MoodQuizViewModel: ObservableObject {
         let wantsRetake = storageService.wantsRetake(userId: userId)
         
         if wantsRetake {
-            print("[RETAKEEE] User wants to retake quiz - loading questions")
+            print("[RETAKE] User wants to retake quiz - loading questions")
             await loadQuestions()
             return
         }
@@ -274,20 +275,20 @@ class MoodQuizViewModel: ObservableObject {
             timestamp: Date()
         )
         
-        userAnswers.append(answer)
-        print("✅ Answered question \(currentQuestionIndex + 1): \(option.category) (+\(option.points))")
-        
-        if isLastQuestion {
-            calculateResult()
+        // Replace answer if user changes selection on same question
+        if userAnswers.indices.contains(currentQuestionIndex) {
+            userAnswers[currentQuestionIndex] = answer
         } else {
-            currentQuestionIndex += 1
+            userAnswers.append(answer)
         }
+        
+        print("✅ Answered Q\(currentQuestionIndex + 1): \(option.category) (+\(option.points))")
     }
     
-    // MARK: - Calculate Result
+    // MARK: - Calculate Result (WITH AUTO-SAVE!)
     
     func calculateResult() {
-        print("\n----->>>>>> Calculating quiz result...")
+        print("\n🎯 Calculating quiz result...")
         
         var scores: [String: Int] = [:]
         
@@ -328,26 +329,38 @@ class MoodQuizViewModel: ObservableObject {
         )
         
         showResult = true
-        print("!!!!!! [CHICKEN WINNER] Quiz result: \(displayName) (tied: \(isTied))")
+        
+        print("🎉 Result: \(displayName) (tied: \(isTied))")
+        print("📊 Scores: \(scores)")
+        
+        // AUTO-SAVE IMMEDIATELY (REPLACES handleDoneAction)
+        Task {
+            await autoSaveResult()
+        }
     }
     
-    // MARK: - Handle Result Actions
+    // MARK: - Auto-Save Result (NEW! - REPLACES handleDoneAction)
     
-    func handleDoneAction() async {
+    private func autoSaveResult() async {
         guard let userId = Auth.auth().currentUser?.uid,
               let result = quizResult else {
             print("❌ Cannot save: No user or result")
             return
         }
         
-        print("\n[SAVE] Starting save process...")
+        print("\n💾 [AUTO-SAVE] Starting auto-save process...")
+        isSavingResult = true
         
+        // CRITICAL FIX: Ensure we capture ALL data
         let selectedQuestionIds = questions.compactMap { $0.id }
         var scores: [String: Int] = [:]
         
         for answer in userAnswers {
             scores[answer.category, default: 0] += answer.points
         }
+        
+        print("📋 [DATA] Selected Questions: \(selectedQuestionIds)")
+        print("📋 [DATA] Scores: \(scores)")
         
         let userQuizResult = UserQuizResult.from(
             userId: userId,
@@ -357,42 +370,40 @@ class MoodQuizViewModel: ObservableObject {
             result: result
         )
         
-        // STEP 1: Always save UI-friendly result to Realm
+        // STEP 1: Save UI-friendly result to Realm
         storageService.saveQuizResult(userId: userId, result: result, userQuizResult: userQuizResult)
-        print("[REALM] Saved UI result to Realm")
+        print("✅ [REALM] Saved UI result to Realm")
         
         // STEP 2: Cache in NSCache
         cacheService.cacheQuizResult(userId: userId, result: result, userQuizResult: userQuizResult)
-        print("[CACHE] Cached result in NSCache")
+        print("✅ [CACHE] Cached result in NSCache")
         
         // STEP 3: Set state flags
         storageService.setHasResult(userId: userId, value: true)
         storageService.setWantsRetake(userId: userId, value: false)
         
-        // STEP 4: Handle UserQuizResult upload (the Firebase data model)
+        // STEP 4: Upload to Firebase (or save for later)
         if networkMonitor.isConnected {
-            print("[ONLINE] Attempting immediate upload to Firebase...")
-            isLoading = true
+            print("🌐 [ONLINE] Uploading to Firebase...")
             
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 networkService.uploadQuizResult(userQuizResult) { [weak self] uploadResult in
                     Task { @MainActor in
                         defer {
-                            self?.isLoading = false
+                            self?.isSavingResult = false
                             continuation.resume()
                         }
                         
                         switch uploadResult {
                         case .success:
-                            print("✅ [UPLOAD] UserQuizResult uploaded to Firebase")
+                            print("✅ [FIREBASE] Uploaded successfully")
                             // Remove any pending upload for this user
                             self?.storageService.removePendingResult(userId: userId)
                             self?.hasPendingUpload = false
                             
                         case .failure(let error):
-                            print("[UPLOAD FAILED] \(error.localizedDescription)")
-                            // Save to UserDefaults for later upload
-                            print("[USERDEFAULTS] Saving to pending uploads...")
+                            print("❌ [FIREBASE] Upload failed: \(error.localizedDescription)")
+                            print("💾 [USERDEFAULTS] Saving for later upload...")
                             self?.storageService.savePendingResult(userQuizResult)
                             self?.hasPendingUpload = true
                         }
@@ -400,16 +411,21 @@ class MoodQuizViewModel: ObservableObject {
                 }
             }
         } else {
-            print("[OFFLINE] Saving to UserDefaults for later upload...")
+            print("📴 [OFFLINE] Saving to UserDefaults for later upload...")
             storageService.savePendingResult(userQuizResult)
             hasPendingUpload = true
+            isSavingResult = false
         }
         
-        print("✅ [SAVE] Save process complete\n")
+        print("✅ [AUTO-SAVE] Complete\n")
     }
+    
+    // MARK: - Handle Take Again Action
     
     func handleTakeAgainAction() async {
         guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        print("🔄 [RETAKE] Starting retake process...")
         
         // Clear result from caches
         cacheService.clearCache(userId: userId)
@@ -434,12 +450,24 @@ class MoodQuizViewModel: ObservableObject {
     private func handleConnectivityRestored() async {
         // Always check storage, not just the local flag
         if storageService.hasPendingResults() {
-            print("[BACK ONLINE] Connectivity restored - syncing pending results")
+            print("🌐 [BACK ONLINE] Connectivity restored - syncing pending results")
             await syncService.syncPendingResults()
             
             // Update flag after sync attempt
             hasPendingUpload = storageService.hasPendingResults()
         }
+    }
+    
+    // MARK: - Get Category Scores
+    
+    func getCategoryScores() -> [String: Int] {
+        var scores: [String: Int] = [:]
+        
+        for answer in userAnswers {
+            scores[answer.category, default: 0] += answer.points
+        }
+        
+        return scores
     }
     
     // MARK: - Reset Quiz
@@ -463,18 +491,6 @@ class MoodQuizViewModel: ObservableObject {
         print("🔄 Quiz reset complete")
     }
     
-    // MARK: - Get Category Scores
-    
-    func getCategoryScores() -> [String: Int] {
-        var scores: [String: Int] = [:]
-        
-        for answer in userAnswers {
-            scores[answer.category, default: 0] += answer.points
-        }
-        
-        return scores
-    }
-    
     // MARK: - Debug
     
     func debugCache() {
@@ -495,22 +511,31 @@ class MoodQuizViewModel: ObservableObject {
         let wantsRetake = storageService.wantsRetake(userId: userId)
         let hasPending = storageService.hasPendingResults()
         
-        print("!!! Storage State:")
+        print("Storage State:")
         print("   Has Result: \(hasResult)")
         print("   Wants Retake: \(wantsRetake)")
         print("   Has Pending: \(hasPending)")
         
         // Current state
-        print("!!! Current State:")
+        print("Current State:")
         print("   Questions loaded: \(questions.count)")
         print("   Current index: \(currentQuestionIndex)")
+        print("   User answers: \(userAnswers.count)")
         print("   Showing result: \(showResult)")
         print("   Data source: \(dataSource)")
         print("   Network: \(networkMonitor.isConnected ? "Connected" : "Offline")")
         print("   Pending upload flag: \(hasPendingUpload)")
+        print("   Is saving: \(isSavingResult)")
         
         if let error = errorMessage {
             print("   Error: \(error)")
+        }
+        
+        if !userAnswers.isEmpty {
+            print("User Answers Details:")
+            for (index, answer) in userAnswers.enumerated() {
+                print("   Q\(index + 1): \(answer.category) - \(answer.points) pts")
+            }
         }
         
         print(String(repeating: "=", count: 50) + "\n")

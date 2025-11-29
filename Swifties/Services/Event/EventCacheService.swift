@@ -23,7 +23,7 @@ class EventCacheService {
         let maxMemory = ProcessInfo.processInfo.physicalMemory
         let cacheSize = Int(maxMemory / 1024 / 8) // Use 1/8th of available memory
         
-        cache.countLimit = 15 // Limit to 15 items (más que otros porque son eventos generales)
+        cache.countLimit = 15 // Limit to 15 items (more than others because these are general events)
         cache.totalCostLimit = cacheSize
         
         print("Event cache initialized with limit: \(cacheSize) bytes, max items: \(cache.countLimit)")

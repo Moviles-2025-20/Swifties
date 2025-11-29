@@ -97,7 +97,7 @@ class EventCacheService {
         return Date().timeIntervalSince(lastCache)
     }
     
-    /// Obtiene información del caché
+    /// Gets cache information
     func getCacheInfo() -> (count: Int, age: TimeInterval, isValid: Bool) {
         lock.lock()
         defer { lock.unlock() }

@@ -55,7 +55,6 @@ class BadgeDetailStorageService {
             // NIVEL 3: Validar datos antes de escribir
             let isValid = await Task.detached(priority: .utility) { () -> Bool in
                 print("🧵 [NIVEL 3 - BACKGROUND] Validating data...")
-                try? await Task.sleep(nanoseconds: 50_000_000)
                 return true
             }.value
             

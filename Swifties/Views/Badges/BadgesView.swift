@@ -279,3 +279,7 @@ struct BadgesView: View {
         }
     }
 }
+
+#Preview {
+    BadgesView()
+}

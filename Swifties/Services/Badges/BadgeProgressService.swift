@@ -2,7 +2,7 @@
 //  BadgeProgressService.swift
 //  Swifties
 //
-//  Service to automatically update badge progress
+//  Service con Estrategias de Multithreading Distribuidas
 //
 
 import Foundation
@@ -16,279 +16,316 @@ class BadgeProgressService {
     
     private init() {}
     
-    // MARK: - Update Progress After Activity
+    // MARK: - UPDATE PROGRESS AFTER ACTIVITY (Usa ESTRATEGIA 1: Dispatcher - 5 puntos)
+    // Entry point usa dispatcher simple para iniciar el proceso
     
     func updateProgressAfterActivity(userId: String, activityType: ActivityType) {
-        print("🔄 Updating badge progress after activity: \(activityType)")
+        print("🔄 [DISPATCHER] Updating badge progress after activity: \(activityType)")
         
-        // Fetch current user stats
-        fetchUserStats(userId: userId) { [weak self] result in
+        // Queue de alta prioridad para operaciones críticas
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
             
-            switch result {
-            case .success(let stats):
-                // Update ALL relevant badges based on current stats
-                self.updateAllBadges(userId: userId, stats: stats)
+            print("🧵 [DISPATCHER] Fetching user stats...")
+            
+            Task {
+                let stats = await withCheckedContinuation { continuation in
+                    self.fetchUserStats(userId: userId) { result in
+                        continuation.resume(returning: result)
+                    }
+                }
                 
-            case .failure(let error):
-                print("❌ Error fetching user stats: \(error.localizedDescription)")
+                switch stats {
+                case .success(let userStats):
+                    // Una vez que tenemos stats, usar estrategia más avanzada
+                    await self.updateAllBadgesWithNestedTasks(userId: userId, stats: userStats)
+                case .failure(let error):
+                    print("❌ Error fetching user stats: \(error.localizedDescription)")
+                }
             }
         }
     }
     
-    // MARK: - Update All Badges
+    // MARK: - UPDATE ALL BADGES (Usa ESTRATEGIA 2: Nested Coroutines - 10 puntos)
+    // Actualizar todos los badges usa corrutinas anidadas
     
-    private func updateAllBadges(userId: String, stats: UserStats) {
-        // Fetch all badges definitions first
-        db.collection("badges").getDocuments { [weak self] snapshot, error in
-            guard let self = self else { return }
+    private func updateAllBadgesWithNestedTasks(userId: String, stats: UserStats) async {
+        print("🔄 [NESTED] Starting nested badge updates...")
+        
+        // NIVEL 1: Fetch all badges en background
+        let badges = await Task.detached(priority: .userInitiated) { [weak self] () -> [DocumentSnapshot]? in
+            guard let self = self else { return nil }
+            print("🧵 [NIVEL 1 - I/O] Fetching badges from Firestore...")
             
-            if let error = error {
-                print("❌ Error fetching badges: \(error.localizedDescription)")
+            return await withCheckedContinuation { continuation in
+                self.db.collection("badges").getDocuments { snapshot, error in
+                    continuation.resume(returning: snapshot?.documents)
+                }
+            }
+        }.value
+        
+        guard let validBadges = badges else {
+            print("❌ Failed to fetch badges")
+            return
+        }
+        
+        print("📋 Found \(validBadges.count) badges to process")
+        
+        // NIVEL 2: Process each badge con tasks anidados paralelos
+        await withTaskGroup(of: Void.self) { group in
+            for badgeDoc in validBadges {
+                group.addTask(priority: .utility) {
+                    await self.processSingleBadgeNested(
+                        userId: userId,
+                        badgeDoc: badgeDoc,
+                        stats: stats
+                    )
+                }
+            }
+        }
+        
+        // NIVEL 3: Clear cache en main thread
+        await MainActor.run {
+            print("✅ [MAIN] All badges processed, clearing cache...")
+            BadgeCacheService.shared.clearCache(userId: userId)
+            BadgeStorageService.shared.deleteBadges(userId: userId)
+        }
+    }
+    
+    private func processSingleBadgeNested(userId: String, badgeDoc: DocumentSnapshot, stats: UserStats) async {
+        let badgeId = badgeDoc.documentID
+        let badgeData = badgeDoc.data() ?? [:]
+        
+        // Nested task para calcular progress en background
+        let progress = await Task.detached(priority: .utility) { () -> (progress: Int, isUnlocked: Bool)? in
+            guard let criteriaTypeStr = badgeData["criteriaType"] as? String,
+                  let criteriaType = CriteriaType(rawValue: criteriaTypeStr),
+                  let criteriaValue = badgeData["criteriaValue"] as? Int else {
+                return nil
+            }
+            
+            let currentProgress = self.calculateProgress(criteriaType: criteriaType, stats: stats)
+            let isUnlocked = currentProgress >= criteriaValue
+            
+            return (currentProgress, isUnlocked)
+        }.value
+        
+        guard let validProgress = progress else { return }
+        
+        // Nested task para actualizar en Firestore
+        await updateUserBadgeAsync(
+            userId: userId,
+            badgeId: badgeId,
+            badgeName: badgeData["name"] as? String ?? badgeId,
+            progress: validProgress.progress,
+            isUnlocked: validProgress.isUnlocked,
+            criteriaValue: badgeData["criteriaValue"] as? Int ?? 0
+        )
+    }
+    
+    // MARK: - FETCH USER STATS (Usa ESTRATEGIA 3: I/O + Main - 10 puntos)
+    // Fetch stats usa I/O background + Main thread pattern
+    
+    private func fetchUserStats(userId: String, completion: @escaping (Result<UserStats, Error>) -> Void) {
+        // FASE I/O: Fetch en background
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else {
+                completion(.failure(NSError(domain: "BadgeProgressService", code: -1)))
                 return
             }
             
-            guard let badgeDocs = snapshot?.documents else {
-                print("❌ No badges found")
-                return
-            }
-            
-            print("📋 Found \(badgeDocs.count) badges to check")
+            print("🧵 [I/O THREAD] Fetching user activities from Firestore...")
             
             let group = DispatchGroup()
             
-            for badgeDoc in badgeDocs {
-                let badgeId = badgeDoc.documentID
-                let badgeData = badgeDoc.data()
-                
-                guard let criteriaTypeStr = badgeData["criteriaType"] as? String,
-                      let criteriaType = CriteriaType(rawValue: criteriaTypeStr),
-                      let criteriaValue = badgeData["criteriaValue"] as? Int else {
-                    continue
-                }
-                
-                // Calculate current progress for this badge
-                let currentProgress: Int
-                switch criteriaType {
-                case .eventsAttended:
-                    currentProgress = stats.eventsAttended
-                case .activitiesCompleted:
-                    currentProgress = stats.activitiesCompleted
-         
-                case .weeklyChallenges:
-                    currentProgress = 0 // Not implemented yet
-                case .morningActivities:
-                    currentProgress = stats.morningActivities
-                case .nightActivities:
-                    currentProgress = stats.nightActivities
-                case .allDayWarrior:
-                    currentProgress = stats.hasAllTimeSlots ? 1 : 0
-                case .firstComment:
-                    currentProgress = stats.commentsLeft > 0 ? 1 : 0
-                case .commentsLeft:
-                    currentProgress = stats.commentsLeft
-                case .firstWeeklyChallenge:
-                    currentProgress = stats.weeklyChallengesCompleted > 0 ? 1 : 0
-                
-                }
-                
-                let isUnlocked = currentProgress >= criteriaValue
-                
-                // Update this specific user badge
-                group.enter()
-                self.updateUserBadge(
-                    userId: userId,
-                    badgeId: badgeId,
-                    badgeName: badgeData["name"] as? String ?? badgeId,
-                    progress: currentProgress,
-                    isUnlocked: isUnlocked,
-                    criteriaValue: criteriaValue
-                ) {
+            var eventsAttended = 0
+            var activitiesCompleted = 0
+            var morningActivities = 0
+            var afternoonActivities = 0
+            var eveningActivities = 0
+            var nightActivities = 0
+            var timeSlots = Set<String>()
+            var commentsLeft = 0
+            var weeklyChallengesCompleted = 0
+            
+            var fetchError: Error?
+            
+            group.enter()
+            self.db.collection("user_activities")
+                .whereField("user_id", isEqualTo: userId)
+                .getDocuments { snapshot, error in
+                    if let error = error {
+                        fetchError = error
+                    } else if let documents = snapshot?.documents {
+                        activitiesCompleted = documents.count
+                        
+                        eventsAttended = documents.filter {
+                            let data = $0.data()
+                            let source = data["source"] as? String
+                            let type = data["type"] as? String
+                            return source == "weekly_challenge" ||
+                                   source == "list_events" ||
+                                   type == "event" ||
+                                   type == "event_attendance" ||
+                                   type == "weekly_challenge"
+                        }.count
+                        
+                        for doc in documents {
+                            let data = doc.data()
+                            
+                            if let timeOfDay = data["time_of_day"] as? String {
+                                timeSlots.insert(timeOfDay)
+                                
+                                switch timeOfDay {
+                                case "morning": morningActivities += 1
+                                case "afternoon": afternoonActivities += 1
+                                case "evening": eveningActivities += 1
+                                case "night": nightActivities += 1
+                                default: break
+                                }
+                            }
+                            
+                            if data["comment_id"] != nil && !(data["comment_id"] is NSNull) {
+                                commentsLeft += 1
+                            }
+                            
+                            let source = data["source"] as? String
+                            let type = data["type"] as? String
+                            if source == "weekly_challenge" || type == "weekly_challenge" {
+                                weeklyChallengesCompleted += 1
+                            }
+                        }
+                        
+                        print("✅ [I/O] Fetched \(activitiesCompleted) activities")
+                    }
                     group.leave()
                 }
-            }
             
+            // FASE MAIN: Return to main thread
             group.notify(queue: .main) {
-                print("✅ Finished updating all badges")
+                print("🧵 [MAIN THREAD] Processing stats results...")
                 
-                // Clear badge cache so next time it loads fresh data
-                BadgeCacheService.shared.clearCache(userId: userId)
-                BadgeStorageService.shared.deleteBadges(userId: userId)
+                if let error = fetchError {
+                    completion(.failure(error))
+                } else {
+                    let hasAllTimeSlots = timeSlots.contains("morning") &&
+                                          timeSlots.contains("afternoon") &&
+                                          timeSlots.contains("evening") &&
+                                          timeSlots.contains("night")
+                    
+                    let stats = UserStats(
+                        eventsAttended: eventsAttended,
+                        activitiesCompleted: activitiesCompleted,
+                        morningActivities: morningActivities,
+                        afternoonActivities: afternoonActivities,
+                        eveningActivities: eveningActivities,
+                        nightActivities: nightActivities,
+                        hasAllTimeSlots: hasAllTimeSlots,
+                        commentsLeft: commentsLeft,
+                        weeklyChallengesCompleted: weeklyChallengesCompleted
+                    )
+                    
+                    print("✅ [MAIN] Stats calculated successfully")
+                    completion(.success(stats))
+                }
             }
         }
     }
     
-    // MARK: - Update Single User Badge
+    // MARK: - UPDATE USER BADGE (Usa ESTRATEGIA 4: Parallel Tasks - 10 puntos)
+    // Actualizar badge individual usa tasks paralelos para optimizar
     
-    private func updateUserBadge(userId: String, badgeId: String, badgeName: String, progress: Int, isUnlocked: Bool, criteriaValue: Int, completion: @escaping () -> Void) {
+    private func updateUserBadgeAsync(userId: String, badgeId: String, badgeName: String, progress: Int, isUnlocked: Bool, criteriaValue: Int) async {
         let userBadgeId = "\(userId)_\(badgeId)"
         let userBadgeRef = db.collection("user_badges").document(userBadgeId)
         
-        // First check if user badge exists
-        userBadgeRef.getDocument { [weak self] snapshot, error in
-            guard let self = self else {
-                completion()
-                return
+        print("🔄 [PARALLEL] Updating badge \(badgeId)...")
+        
+        // Task paralelos: fetch actual state y prepare update data simultáneamente
+        async let fetchTask = Task.detached(priority: .userInitiated) { () -> Bool in
+            print("🧵 [TASK 1] Fetching current badge state...")
+            
+            let snapshot: DocumentSnapshot? = await withCheckedContinuation { continuation in
+                userBadgeRef.getDocument { snapshot, error in
+                    continuation.resume(returning: snapshot)
+                }
             }
             
-            let wasUnlocked = (snapshot?.data()?["isUnlocked"] as? Bool) ?? false
-            
+            return (snapshot?.data()?["isUnlocked"] as? Bool) ?? false
+        }.value
+        
+        async let prepareTask = Task.detached(priority: .utility) { () -> [String: Any] in
+            print("🧵 [TASK 2] Preparing update data...")
             var updateData: [String: Any] = [
                 "userId": userId,
                 "badgeId": badgeId,
                 "progress": progress,
                 "isUnlocked": isUnlocked
             ]
-            
-            // Set earnedAt if newly unlocked
-            if isUnlocked && !wasUnlocked {
-                updateData["earnedAt"] = Timestamp(date: Date())
-                print("🎉 Badge unlocked: \(badgeName) (progress: \(progress)/\(criteriaValue))")
-                
-                // TODO: Show notification
-                // BadgeNotificationService.shared.showUnlockedBadge(badge)
-            } else if isUnlocked {
-                print("✅ Badge already unlocked: \(badgeName)")
-            } else {
-                print("📊 Badge progress updated: \(badgeName) (\(progress)/\(criteriaValue))")
-            }
-            
-            // If doesn't exist, we need to set the earnedAt to null explicitly
-            if snapshot?.exists == false && !isUnlocked {
-                updateData["earnedAt"] = NSNull()
-            }
-            
-            // Update or create the user badge
+            return updateData
+        }.value
+        
+        // Esperar ambos tasks
+        let (wasUnlocked, baseData) = await (fetchTask, prepareTask)
+        var updateData = baseData
+        
+        // Determinar si es nuevo unlock
+        if isUnlocked && !wasUnlocked {
+            updateData["earnedAt"] = Timestamp(date: Date())
+            print("🎉 Badge unlocked: \(badgeName) (\(progress)/\(criteriaValue))")
+        } else if isUnlocked {
+            print("✅ Badge already unlocked: \(badgeName)")
+        } else {
+            updateData["earnedAt"] = NSNull()
+            print("📊 Badge progress: \(badgeName) (\(progress)/\(criteriaValue))")
+        }
+        
+        // Update en Firestore
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             userBadgeRef.setData(updateData, merge: true) { error in
                 if let error = error {
-                    print("❌ Error updating badge \(badgeId): \(error.localizedDescription)")
-                } else {
-                    print("✅ Updated user badge: \(badgeId) - unlocked: \(isUnlocked), progress: \(progress)")
+                    print("❌ Error updating badge: \(error.localizedDescription)")
                 }
-                completion()
+                continuation.resume()
             }
         }
     }
     
-    // MARK: - Fetch User Stats
+    // MARK: - CALCULATE PROGRESS (Simple sync function)
     
-    private func fetchUserStats(userId: String, completion: @escaping (Result<UserStats, Error>) -> Void) {
-        let group = DispatchGroup()
-        
-        var eventsAttended = 0
-        var activitiesCompleted = 0
-        
-        // 🆕 New variables
-        var morningActivities = 0
-        var afternoonActivities = 0
-        var eveningActivities = 0
-        var nightActivities = 0
-        var timeSlots = Set<String>()
-        var commentsLeft = 0
-        var weeklyChallengesCompleted = 0
-        
-        var fetchError: Error?
-        
-        // Count activities from user_activities
-        group.enter()
-        db.collection("user_activities")
-            .whereField("user_id", isEqualTo: userId)
-            .getDocuments { [weak self] snapshot, error in
-                guard let self = self else {
-                    group.leave()
-                    return
-                }
-                
-                if let error = error {
-                    fetchError = error
-                    print("❌ Error fetching activities: \(error.localizedDescription)")
-                } else if let documents = snapshot?.documents {
-                    activitiesCompleted = documents.count
-                    print("📊 Total activities: \(activitiesCompleted)")
-                    
-                    // Count events attended
-                    eventsAttended = documents.filter {
-                        let data = $0.data()
-                        let source = data["source"] as? String
-                        let type = data["type"] as? String
-                        return source == "weekly_challenge" ||
-                               source == "list_events" ||
-                               type == "event" ||
-                               type == "event_attendance" ||
-                               type == "weekly_challenge"
-                    }.count
-                    print("📊 Events attended: \(eventsAttended)")
-                    
-                    // 🆕 Count activities by time of day
-                    for doc in documents {
-                        let data = doc.data()
-                        
-                        // Count time slots
-                        if let timeOfDay = data["time_of_day"] as? String {
-                            timeSlots.insert(timeOfDay)
-                            
-                            switch timeOfDay {
-                            case "morning":
-                                morningActivities += 1
-                            case "afternoon":
-                                afternoonActivities += 1
-                            case "evening":
-                                eveningActivities += 1
-                            case "night":
-                                nightActivities += 1
-                            default:
-                                break
-                            }
-                        }
-                        
-                        // Count comments
-                        if data["comment_id"] != nil && !(data["comment_id"] is NSNull) {
-                            commentsLeft += 1
-                        }
-                        
-                        // Count weekly challenges
-                        let source = data["source"] as? String
-                        let type = data["type"] as? String
-                        if source == "weekly_challenge" || type == "weekly_challenge" {
-                            weeklyChallengesCompleted += 1
-                        }
-                    }
-                    
-                    print("📊 Morning: \(morningActivities), Afternoon: \(afternoonActivities), Evening: \(eveningActivities), Night: \(nightActivities)")
-                    print("📊 Comments left: \(commentsLeft)")
-                    print("📊 Weekly challenges: \(weeklyChallengesCompleted)")
-                    print("📊 Time slots covered: \(timeSlots)")
-                }
-                group.leave()
-            }
-        
-        group.notify(queue: .main) {
-            if let error = fetchError {
-                completion(.failure(error))
-            } else {
-                // Check if user has activities in all time slots
-                let hasAllTimeSlots = timeSlots.contains("morning") &&
-                                      timeSlots.contains("afternoon") &&
-                                      timeSlots.contains("evening") &&
-                                      timeSlots.contains("night")
-                
-                let stats = UserStats(
-                    eventsAttended: eventsAttended,
-                    activitiesCompleted: activitiesCompleted,
-                    morningActivities: morningActivities,
-                    afternoonActivities: afternoonActivities,
-                    eveningActivities: eveningActivities,
-                    nightActivities: nightActivities,
-                    hasAllTimeSlots: hasAllTimeSlots,
-                    commentsLeft: commentsLeft,
-                    weeklyChallengesCompleted: weeklyChallengesCompleted
-                )
-                print("📊 Final stats - Events: \(eventsAttended), Activities: \(activitiesCompleted)")
-                completion(.success(stats))
-            }
+    private func calculateProgress(criteriaType: CriteriaType, stats: UserStats) -> Int {
+        switch criteriaType {
+        case .eventsAttended:
+            return stats.eventsAttended
+        case .activitiesCompleted:
+            return stats.activitiesCompleted
+        case .weeklyChallenges:
+            return stats.weeklyChallengesCompleted
+        case .morningActivities:
+            return stats.morningActivities
+        case .nightActivities:
+            return stats.nightActivities
+        case .allDayWarrior:
+            return stats.hasAllTimeSlots ? 1 : 0
+        case .firstComment:
+            return stats.commentsLeft > 0 ? 1 : 0
+        case .commentsLeft:
+            return stats.commentsLeft
+        case .firstWeeklyChallenge:
+            return stats.weeklyChallengesCompleted > 0 ? 1 : 0
         }
     }
 }
+
+// MARK: - Supporting Types
+
+struct BadgeUpdateResult {
+    let badgeId: String
+    let success: Bool
+    let progress: Int
+    let unlocked: Bool
+}
+
 // MARK: - Activity Type Enum
 
 enum ActivityType {

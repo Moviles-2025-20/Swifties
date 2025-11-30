@@ -46,54 +46,45 @@ class BadgeDetailViewModel: ObservableObject {
         print("🚀 [NESTED] Loading badge detail: \(badgeId) for user: \(userId)")
         
         Task {
-            // NIVEL 1: Task en background para cache
-            let cacheResult = await Task.detached(priority: .userInitiated) { [weak self] () -> BadgeDetail? in
-                guard let self = self else { return nil }
-                print("🧵 [NIVEL 1 - BACKGROUND] Checking memory cache...")
+            // NIVEL 1: Verificar memory cache primero (más rápido)
+            if let cached = cacheService.getCachedDetail(badgeId: badgeId, userId: userId) {
+                print("✅ [NIVEL 1] Found in memory cache")
+                self.badgeDetail = cached
+                self.dataSource = .memoryCache
+                self.isLoading = false
                 
-                // NIVEL 2: Task anidado para validación
-                let isValid = await Task.detached(priority: .utility) { () -> Bool in
-                    print("🧵 [NIVEL 2 - BACKGROUND] Validating cache...")
-                    try? await Task.sleep(nanoseconds: 50_000_000)
-                    return true
-                }.value
-                
-                if isValid, let cached = self.cacheService.getCachedDetail(badgeId: self.badgeId, userId: self.userId) {
-                    print("✅ [NIVEL 1] Valid cache found")
-                    return cached
+                // Refresh en background
+                Task {
+                    await refreshInBackgroundWithParallelTasks()
                 }
-                
-                // NIVEL 3: Si no hay cache, buscar en storage (nested)
-                let storageResult = await Task.detached(priority: .utility) { [weak self] () -> BadgeDetail? in
-                    guard let self = self else { return nil }
-                    print("🧵 [NIVEL 3 - BACKGROUND] Checking Realm storage...")
-                    return await self.storageService.loadDetail(badgeId: self.badgeId, userId: self.userId)
-                }.value
-                
-                return storageResult
-            }.value
+                return
+            }
             
-            // NIVEL 4: Actualizar UI en main thread
-            await MainActor.run {
-                if let result = cacheResult {
-                    self.badgeDetail = result
-                    // Determinar source basado en si estaba en cache
-                    let wasCached = self.cacheService.getCachedDetail(badgeId: self.badgeId, userId: self.userId) != nil
-                    self.dataSource = wasCached ? .memoryCache : .localStorage
+            // NIVEL 2: Buscar en storage (Realm) usando async
+            print("🧵 [NIVEL 2] Checking Realm storage...")
+            if let stored = await storageService.loadDetail(badgeId: badgeId, userId: userId) {
+                print("✅ [NIVEL 2] Found in Realm storage")
+                await MainActor.run {
+                    self.badgeDetail = stored
+                    self.dataSource = .localStorage
                     self.isLoading = false
-                    print("✅ [MAIN] UI updated with cached data")
-                    
-                    // Refresh en background después de mostrar datos
-                    Task {
-                        await self.refreshInBackgroundWithParallelTasks()
-                    }
-                    return
                 }
                 
+                // Cache en memoria para próxima vez
+                cacheService.cacheDetail(badgeId: badgeId, userId: userId, detail: stored)
+                
+                // Refresh en background
+                Task {
+                    await refreshInBackgroundWithParallelTasks()
+                }
+                return
+            }
+            
+            // NIVEL 3: No hay datos locales, ir a network
+            await MainActor.run {
                 self.isLoading = false
             }
             
-            // Layer 3: Network si no hay datos locales
             if networkMonitor.isConnected {
                 await fetchFromNetwork()
             } else {

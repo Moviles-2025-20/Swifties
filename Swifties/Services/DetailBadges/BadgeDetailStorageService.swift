@@ -13,6 +13,9 @@ class BadgeDetailStorageService {
     
     private var realm: Realm?
     
+    // Serial queue for Realm operations to ensure thread safety
+    private let realmQueue = DispatchQueue(label: "com.swifties.badgedetail.realm", qos: .userInitiated)
+    
     private init() {
         setupRealm()
     }
@@ -81,70 +84,78 @@ class BadgeDetailStorageService {
     }
     
     // MARK: - Load Detail (Usa ESTRATEGIA 3: I/O + Main - 10 puntos)
-    // Cargar usa I/O background + Main thread pattern
+    // Cargar usa I/O background + Main thread pattern con DispatchQueue serial
     
     func loadDetail(badgeId: String, userId: String) async -> BadgeDetail? {
         print("🔄 [I/O+MAIN] Loading detail with async pattern...")
         
-        // FASE I/O: Read en background con instancia de Realm específica del thread
-        let realmData: (detail: BadgeDetail?, age: TimeInterval)? = await Task.detached(priority: .userInitiated) { () -> (BadgeDetail?, TimeInterval)? in
-            do {
-                // Crear instancia de Realm específica para este thread
-                let config = Realm.Configuration(
-                    schemaVersion: 2,
-                    migrationBlock: { migration, oldSchemaVersion in
-                        if oldSchemaVersion < 2 {
-                            // Handle migration if needed
+        // FASE I/O: Read usando DispatchQueue serial para garantizar thread safety
+        return await withCheckedContinuation { continuation in
+            realmQueue.async {
+                do {
+                    // Crear instancia de Realm específica para este queue/thread
+                    let config = Realm.Configuration(
+                        schemaVersion: 2,
+                        migrationBlock: { migration, oldSchemaVersion in
+                            if oldSchemaVersion < 2 {
+                                // Handle migration if needed
+                            }
                         }
+                    )
+                    
+                    let threadRealm = try Realm(configuration: config)
+                    let key = "\(userId)_\(badgeId)"
+                    
+                    print("🧵 [I/O THREAD] Reading from Realm...")
+                    
+                    guard let realmDetail = threadRealm.object(ofType: RealmBadgeDetail.self, forPrimaryKey: key) else {
+                        print("❌ No stored detail for: \(key)")
+                        continuation.resume(returning: nil)
+                        return
                     }
-                )
-                
-                // Crear Realm dentro del contexto detached
-                let threadRealm = try await Task {
-                    try Realm(configuration: config)
-                }.value
-                
-                let key = "\(userId)_\(badgeId)"
-                
-                print("🧵 [I/O THREAD] Reading from Realm...")
-                
-                guard let realmDetail = threadRealm.object(ofType: RealmBadgeDetail.self, forPrimaryKey: key) else {
-                    print("❌ No stored detail for: \(key)")
-                    return nil
+                    
+                    // CRITICAL: Extraer TODOS los datos en el MISMO dispatch queue
+                    let cachedAt = realmDetail.cachedAt
+                    let age = Date().timeIntervalSince(cachedAt)
+                    
+                    // Check expiration (7 days)
+                    if age > 604800 {
+                        print("⏰ [I/O THREAD] Stored detail expired")
+                        // Delete on same queue
+                        do {
+                            try threadRealm.write {
+                                threadRealm.delete(realmDetail)
+                            }
+                        } catch {
+                            print("❌ Error deleting expired detail: \(error)")
+                        }
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    
+                    // Convert to BadgeDetail (thread-safe struct)
+                    guard let badgeDetail = realmDetail.toBadgeDetail() else {
+                        print("❌ Failed to convert Realm object to BadgeDetail")
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    
+                    print("✅ [I/O THREAD] Extracted data, age: \(age)s")
+                    
+                    continuation.resume(returning: badgeDetail)
+                    
+                } catch {
+                    print("❌ Error accessing Realm: \(error.localizedDescription)")
+                    continuation.resume(returning: nil)
                 }
-                
-                let age = Date().timeIntervalSince(realmDetail.cachedAt)
-                
-                // Convert to BadgeDetail (thread-safe struct) antes de salir del thread
-                let badgeDetail = realmDetail.toBadgeDetail()
-                
-                return (badgeDetail, age)
-            } catch {
-                print("❌ Error accessing Realm: \(error.localizedDescription)")
-                return nil
             }
-        }.value
-        
-        guard let data = realmData else { return nil }
-        
-        // FASE MAIN: Validate and process en main thread
-        return await MainActor.run { [weak self] () -> BadgeDetail? in
-            guard let detail = data.detail else { return nil }
-            
-            // Check expiration (7 days)
-            if data.age > 604800 {
-                print("⏰ [MAIN] Stored detail expired")
-                self?.deleteDetail(badgeId: badgeId, userId: userId)
-                return nil
-            }
-            
-            print("✅ [MAIN] Loaded badge detail from Realm, age: \(data.age)s")
-            return detail
         }
     }
     
-    // Versión sync para mantener compatibilidad
-    func loadDetail(badgeId: String, userId: String) -> BadgeDetail? {
+    // Versión sync para mantener compatibilidad (DEPRECATED - use async version)
+    // Esta versión solo debe usarse desde el main thread
+    @available(*, deprecated, message: "Use async loadDetail(badgeId:userId:) instead")
+    func loadDetailSync(badgeId: String, userId: String) -> BadgeDetail? {
         guard let realm = realm else {
             print("❌ Realm not available")
             return nil
@@ -157,7 +168,10 @@ class BadgeDetailStorageService {
             return nil
         }
         
-        let age = Date().timeIntervalSince(realmDetail.cachedAt)
+        // Extract cachedAt IMMEDIATELY within the same thread
+        let cachedAt = realmDetail.cachedAt
+        let age = Date().timeIntervalSince(cachedAt)
+        
         if age > 604800 { // 7 days
             print("⏰ Stored detail expired for: \(key)")
             deleteDetail(badgeId: badgeId, userId: userId)
@@ -165,7 +179,14 @@ class BadgeDetailStorageService {
         }
         
         print("✅ Loaded badge detail from Realm: \(key)")
-        return realmDetail.toBadgeDetail()
+        
+        // Convert and return immediately
+        guard let detail = realmDetail.toBadgeDetail() else {
+            print("❌ Failed to convert Realm object")
+            return nil
+        }
+        
+        return detail
     }
     
     // MARK: - Delete Detail (Simple dispatcher)
@@ -259,7 +280,7 @@ class BadgeDetailStorageService {
     // MARK: - Debug
     
     func debugStorage(badgeId: String, userId: String) {
-        Task {
+        realmQueue.async {
             do {
                 let config = Realm.Configuration(
                     schemaVersion: 2,
@@ -270,21 +291,19 @@ class BadgeDetailStorageService {
                     }
                 )
                 
-                // Crear Realm en el contexto actual del task
-                let threadRealm = try await Task.detached {
-                    try Realm(configuration: config)
-                }.value
-                
+                let threadRealm = try Realm(configuration: config)
                 let key = "\(userId)_\(badgeId)"
                 
                 if let detail = threadRealm.object(ofType: RealmBadgeDetail.self, forPrimaryKey: key) {
-                    let age = Date().timeIntervalSince(detail.cachedAt)
+                    // Extraer datos dentro del mismo queue
+                    let cachedAt = detail.cachedAt
+                    let age = Date().timeIntervalSince(cachedAt)
                     print("🔍 Storage status for \(key): exists, cached \(age)s ago")
                 } else {
                     print("🔍 Storage status for \(key): not found")
                 }
             } catch {
-                print("🔍 Realm not available: \(error.localizedDescription)")
+                print("🔍 Realm error: \(error.localizedDescription)")
             }
         }
     }

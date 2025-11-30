@@ -2,7 +2,7 @@
 //  BadgesViewModel.swift
 //  Swifties
 //
-//  ViewModel con Estrategias de Multithreading Distribuidas
+//  ViewModel with Distributed Multithreading Strategies
 //
 
 import Foundation

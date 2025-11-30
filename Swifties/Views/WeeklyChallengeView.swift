@@ -272,22 +272,55 @@ struct WeeklyChallengeView: View {
                                         }
                                         .padding(.vertical, 8)
                                         
-                                        // Attend Button
+                                        // Attend Button - ACTUALIZADO CON REACTIVIDAD
                                         Button(action: {
+                                            // Si no hay internet, mostrar alerta
+                                            if !networkMonitor.isConnected {
+                                                offlineAlertMessage = "You need an internet connection to register your attendance"
+                                                showOfflineAlert = true
+                                                return
+                                            }
                                             viewModel.markAsAttending()
                                         }) {
                                             HStack {
-                                                Image(systemName: viewModel.hasAttended ? "checkmark.circle.fill" : "hand.raised.fill")
-                                                Text(viewModel.hasAttended ? "Challenge Accepted!" : "I'm Going to Attend")
-                                                    .fontWeight(.semibold)
+                                                if !networkMonitor.isConnected && !viewModel.hasAttended {
+                                                    Image(systemName: "wifi.slash")
+                                                } else {
+                                                    Image(systemName: viewModel.hasAttended ? "checkmark.circle.fill" : "hand.raised.fill")
+                                                }
+                                                Text(
+                                                    viewModel.hasAttended ? "Challenge Accepted!" :
+                                                    !networkMonitor.isConnected ? "No Internet Connection" :
+                                                    "I'm Going to Attend"
+                                                )
+                                                .fontWeight(.semibold)
                                             }
                                             .frame(maxWidth: .infinity)
                                             .padding()
-                                            .background(viewModel.hasAttended ? Color.green : Color.orange)
+                                            .background(
+                                                // Color según estado (reactivo a cambios de red)
+                                                viewModel.hasAttended ? Color.green :
+                                                !networkMonitor.isConnected ? Color.gray.opacity(0.5) :
+                                                Color.orange
+                                            )
                                             .foregroundColor(.white)
                                             .cornerRadius(12)
                                         }
-                                        .disabled(viewModel.hasAttended)
+                                        .disabled(viewModel.hasAttended || !networkMonitor.isConnected)
+                                        .opacity((viewModel.hasAttended || !networkMonitor.isConnected) ? 0.6 : 1.0)
+                                        .animation(.easeInOut(duration: 0.2), value: networkMonitor.isConnected)
+                                        
+                                        // Mensaje informativo cuando no hay internet
+                                        if !networkMonitor.isConnected && !viewModel.hasAttended {
+                                            HStack(spacing: 8) {
+                                                Image(systemName: "info.circle")
+                                                    .foregroundColor(.orange)
+                                                Text("Connect to internet to register attendance")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .padding(.top, 4)
+                                        }
                                     }
                                     .padding()
                                 }
@@ -506,4 +539,3 @@ extension Event: Equatable {
                lhs.description == rhs.description
     }
 }
-

@@ -17,10 +17,20 @@ class NewsViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var dataSource: DataSource = .none
     
+    // Selection/navigation state for Event detail
+    @Published var isSelectingEvent: Bool = false
+    @Published var selectedEvent: Event?
+    @Published var isPresentingEventDetail: Bool = false
+    
     private let threadManager = ThreadManager.shared
     private let networkMonitor = NetworkMonitorService.shared
     private let cacheService = NewsCacheService.shared
     private let storageService = NewsStorageService.shared
+    
+    // Event stack (reuse Event List services)
+    private let eventCacheService = EventCacheService.shared
+    private let eventStorageService = EventStorageService.shared
+    private let eventNetworkService = EventNetworkService.shared
     
     private let db = Firestore.firestore(database: "default")
     
@@ -162,11 +172,145 @@ class NewsViewModel: ObservableObject {
                     self.errorMessage = "Failed to update like: \(error.localizedDescription)"
                 }
             } else {
-                // Analytics: log only on LIKE (not unlike)
+                // Analytics: log on like
                 if !isCurrentlyLiked {
-                    // TODO: Replace with the real AnalyticsService API if different
-                    // AnalyticsService.shared.logNewsLiked(eventId: item.eventId)
+                    // Resolve the corresponding event to obtain its category, then log
+                    self.resolveEventById(item.eventId) { event in
+                        let category = event?.category ?? "unknown"
+                        let activityId = event?.id ?? item.eventId
+                        AnalyticsService.shared.logEventSelected(eventId: activityId, category: category)
+                    }
                 }
+            }
+        }
+    }
+    
+    // MARK: - Selection: Load Event by news.eventId and present detail
+    func selectNews(_ item: News) {
+        let eventId = item.eventId
+        guard !eventId.isEmpty else {
+            threadManager.executeOnMain { [weak self] in
+                self?.errorMessage = "Invalid event id"
+            }
+            return
+        }
+        
+        threadManager.executeOnMain { [weak self] in
+            self?.isSelectingEvent = true
+            self?.errorMessage = nil
+            self?.selectedEvent = nil
+        }
+        
+        // 1) Try memory cache
+        threadManager.readFromCache(operation: { [weak self] () -> Event? in
+            guard let self = self else { return nil }
+            return self.eventCacheService.getCachedEvents()?.first(where: { $0.id == eventId })
+        }, completion: { [weak self] (cached: Event?) in
+            guard let self = self else { return }
+            if let cached = cached {
+                self.finishSelection(with: cached)
+                return
+            }
+            // 2) Try local storage (load all then filter)
+            self.eventStorageService.loadEventsFromStorage { [weak self] storedList in
+                guard let self = self else { return }
+                if let event = storedList?.first(where: { $0.id == eventId }) {
+                    // refresh cache with the full list if available
+                    if let storedList = storedList {
+                        self.threadManager.writeToCache {
+                            self.eventCacheService.cacheEvents(storedList)
+                        }
+                    }
+                    self.finishSelection(with: event)
+                    return
+                }
+                // 3) Network (if connected): fetch all events and filter
+                guard self.networkMonitor.isConnected else {
+                    self.threadManager.executeOnMain {
+                        self.isSelectingEvent = false
+                        self.errorMessage = "Event not found offline"
+                    }
+                    return
+                }
+                self.eventNetworkService.fetchEvents { [weak self] result in
+                    guard let self = self else { return }
+                    switch result {
+                    case .success(let events):
+                        // Update cache
+                        self.threadManager.writeToCache {
+                            self.eventCacheService.cacheEvents(events)
+                        }
+                        self.eventStorageService.saveEventsToStorage(events, completion: nil)
+                        if let found = events.first(where: { $0.id == eventId }) {
+                            self.finishSelection(with: found)
+                        } else {
+                            self.threadManager.executeOnMain {
+                                self.isSelectingEvent = false
+                                self.errorMessage = "Event not found: id did not match any other"
+                            }
+                        }
+                    case .failure(let error):
+                        self.threadManager.executeOnMain {
+                            self.isSelectingEvent = false
+                            self.errorMessage = "Failed to load event: \(error.localizedDescription)"
+                        }
+                    }
+                }
+            }
+        })
+    }
+    
+    private func finishSelection(with event: Event) {
+        threadManager.executeOnMain { [weak self] in
+            self?.selectedEvent = event
+            self?.isSelectingEvent = false
+            self?.isPresentingEventDetail = true
+        }
+    }
+    
+    // Helper: resolve an Event by id using cache -> storage -> network, then call completion on main
+    private func resolveEventById(_ eventId: String, completion: @escaping (Event?) -> Void) {
+        // Cache first
+        threadManager.readFromCache(operation: { [weak self] () -> Event? in
+            guard let self = self else { return nil }
+            return self.eventCacheService.getCachedEvents()?.first(where: { $0.id == eventId })
+        }, completion: { [weak self] (cached: Event?) in
+            guard let self = self else { return }
+            if let cached = cached {
+                self.threadManager.executeOnMain { completion(cached) }
+                return
+            }
+        })
+        // Local storage
+        self.eventStorageService.loadEventsFromStorage { [weak self] stored in
+            guard let self = self else { return }
+            if let event = stored?.first(where: { $0.id == eventId }) {
+                if let stored = stored {
+                    self.threadManager.writeToCache {
+                        self.eventCacheService.cacheEvents(stored)
+                    }
+                }
+                self.threadManager.executeOnMain { completion(event) }
+                return
+            }
+        }
+        // Network if connected
+        guard self.networkMonitor.isConnected else {
+            self.threadManager.executeOnMain { completion(nil) }
+            return
+        }
+        self.eventNetworkService.fetchEvents { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let events):
+                self.threadManager.writeToCache {
+                    self.eventCacheService.cacheEvents(events)
+                }
+                self.eventStorageService.saveEventsToStorage(events, completion: nil)
+                let found = events.first(where: { $0.id == eventId })
+                self.threadManager.executeOnMain { completion(found) }
+            case .failure:
+                self.threadManager.executeOnMain { completion(nil) }
             }
         }
     }

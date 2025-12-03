@@ -94,7 +94,7 @@ class BadgesViewModel: ObservableObject {
                     guard let self = self else { return nil }
                     print("🧵 [NIVEL 3 - BACKGROUND] Checking Realm storage...")
                     
-                    // Usar withCheckedContinuation para convertir callback a async
+                    // Use withCheckedContinuation to convert callback to async
                     return await withCheckedContinuation { continuation in
                         self.storageService.loadBadges(userId: userId) { result in
                             continuation.resume(returning: result)

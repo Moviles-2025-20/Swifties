@@ -15,7 +15,7 @@ class EventDatabaseManager {
     private let threadManager = ThreadManager.shared
     
     private init() {
-        // Asegurar que las tablas existan al inicializar
+        // Ensure tables exist on initialization
         DatabaseTableManager.setupAllTables()
     }
     

@@ -17,24 +17,35 @@ class RecommendationStorageService {
     
     private init() {}
     
-    func saveRecommendationsToStorage(_ recommendations: [Event], userId: String) {
-        databaseManager.saveRecommendations(recommendations, userId: userId)
-        
-        let key = "\(timestampKey)_\(userId)"
-        userDefaults.set(Date(), forKey: key)
-        
-        #if DEBUG
-        print("\(recommendations.count) recommendations saved to storage")
-        #endif
+    func saveRecommendationsToStorage(_ recommendations: [Event], userId: String, completion: (() -> Void)? = nil) {
+        databaseManager.saveRecommendations(recommendations, userId: userId) { [weak self] success in
+            guard let self = self else { return }
+            
+            if success {
+                let key = "\(self.timestampKey)_\(userId)"
+                self.userDefaults.set(Date(), forKey: key)
+                
+                #if DEBUG
+                print("\(recommendations.count) recommendations saved to storage")
+                #endif
+            } else {
+                #if DEBUG
+                print("❌ Error saving recommendations")
+                #endif
+            }
+            
+            completion?()
+        }
     }
     
-    func loadRecommendationsFromStorage(userId: String) -> [Event]? {
+    func loadRecommendationsFromStorage(userId: String, completion: @escaping ([Event]?) -> Void) {
         let key = "\(timestampKey)_\(userId)"
         guard let timestamp = userDefaults.object(forKey: key) as? Date else {
             #if DEBUG
             print("No timestamp found for recommendations")
             #endif
-            return nil
+            completion(nil)
+            return
         }
         
         let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
@@ -43,30 +54,47 @@ class RecommendationStorageService {
         #endif
         
         if hoursElapsed > storageExpirationHours {
-            clearStorage(userId: userId)
-            return nil
+            clearStorage(userId: userId) {
+                completion(nil)
+            }
+            return
         }
         
-        guard let recommendations = databaseManager.loadRecommendations(userId: userId) else {
+        databaseManager.loadRecommendations(userId: userId) { recommendations in
+            guard let recommendations = recommendations else {
+                #if DEBUG
+                print("No recommendations found in storage")
+                #endif
+                completion(nil)
+                return
+            }
+            
             #if DEBUG
-            print("No recommendations found in storage")
+            print("\(recommendations.count) recommendations loaded from storage")
             #endif
-            return nil
+            completion(recommendations)
         }
-        
-        #if DEBUG
-        print("\(recommendations.count) recommendations loaded from storage")
-        #endif
-        return recommendations
     }
     
-    func clearStorage(userId: String) {
-        databaseManager.deleteRecommendations(userId: userId)
-        let key = "\(timestampKey)_\(userId)"
-        userDefaults.removeObject(forKey: key)
-        #if DEBUG
-        print("Recommendations storage cleared for user: \(userId)")
-        #endif
+    func clearStorage(userId: String, completion: (() -> Void)? = nil) {
+        databaseManager.deleteRecommendations(userId: userId) { [weak self] success in
+            guard let self = self else { return }
+            
+            if success {
+                let key = "\(self.timestampKey)_\(userId)"
+                self.userDefaults.removeObject(forKey: key)
+                
+                #if DEBUG
+                print("Recommendations storage cleared for user: \(userId)")
+                #endif
+            } else {
+                #if DEBUG
+                print("❌ Error clearing recommendations")
+                #endif
+            }
+            
+            completion?()
+        }
     }
     
     func debugStorage(userId: String) {
@@ -82,37 +110,45 @@ class RecommendationStorageService {
             print("No timestamp")
         }
         
-        let count = databaseManager.getRecommendationCount(userId: userId)
-        print("Recommendations in database: \(count)")
-        
-        if let lastUpdate = databaseManager.getLastUpdateTimestamp(userId: userId) {
-            print("Last database update: \(lastUpdate)")
+        databaseManager.getRecommendationCount(userId: userId) { count in
+            print("Recommendations in database: \(count)")
+            
+            self.databaseManager.getLastUpdateTimestamp(userId: userId) { lastUpdate in
+                if let lastUpdate = lastUpdate {
+                    print("Last database update: \(lastUpdate)")
+                }
+                
+                print("====================================\n")
+                
+                self.databaseManager.debugDatabase(userId: userId)
+            }
         }
-        
-        print("====================================\n")
-        
-        databaseManager.debugDatabase(userId: userId)
         #endif
     }
     
-    func getStorageInfo(userId: String) -> RecommendationStorageInfo {
-        let count = databaseManager.getRecommendationCount(userId: userId)
-        let key = "\(timestampKey)_\(userId)"
-        let timestamp = userDefaults.object(forKey: key) as? Date
-        let isExpired: Bool
-        
-        if let timestamp = timestamp {
-            let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
-            isExpired = hoursElapsed > storageExpirationHours
-        } else {
-            isExpired = true
+    func getStorageInfo(userId: String, completion: @escaping (RecommendationStorageInfo) -> Void) {
+        databaseManager.getRecommendationCount(userId: userId) { [weak self] count in
+            guard let self = self else { return }
+            
+            let key = "\(self.timestampKey)_\(userId)"
+            let timestamp = self.userDefaults.object(forKey: key) as? Date
+            let isExpired: Bool
+            
+            if let timestamp = timestamp {
+                let hoursElapsed = Date().timeIntervalSince(timestamp) / 3600
+                isExpired = hoursElapsed > self.storageExpirationHours
+            } else {
+                isExpired = true
+            }
+            
+            let info = RecommendationStorageInfo(
+                recommendationCount: count,
+                lastUpdate: timestamp,
+                isExpired: isExpired
+            )
+            
+            completion(info)
         }
-        
-        return RecommendationStorageInfo(
-            recommendationCount: count,
-            lastUpdate: timestamp,
-            isExpired: isExpired
-        )
     }
 }
 
@@ -128,4 +164,3 @@ struct RecommendationStorageInfo {
         return Date().timeIntervalSince(lastUpdate) / 3600
     }
 }
-

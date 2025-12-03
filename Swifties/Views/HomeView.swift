@@ -355,7 +355,7 @@ struct HomeView: View {
             
             // Debug and load recommendations
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
-                homeViewModel.debugCache()
+                await homeViewModel.debugCache()
                 await homeViewModel.getRecommendations()
             }
         }

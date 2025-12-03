@@ -93,10 +93,13 @@ class BadgesViewModel: ObservableObject {
                 let storageResult = await Task.detached(priority: .utility) { [weak self] () -> (badges: [Badge], userBadges: [UserBadge])? in
                     guard let self = self else { return nil }
                     print("🧵 [NIVEL 3 - BACKGROUND] Checking Realm storage...")
-                    if let stored = self.storageService.loadBadges(userId: userId) {
-                        return (stored.badges, stored.userBadges)
+                    
+                    // Usar withCheckedContinuation para convertir callback a async
+                    return await withCheckedContinuation { continuation in
+                        self.storageService.loadBadges(userId: userId) { result in
+                            continuation.resume(returning: result)
+                        }
                     }
-                    return nil
                 }.value
                 
                 return storageResult

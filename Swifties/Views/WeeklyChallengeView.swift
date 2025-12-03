@@ -20,8 +20,10 @@ struct WeeklyChallengeView: View {
         case .realmStorage: return "internaldrive"
         case .network: return "wifi"
         case .none: return "questionmark"
+        @unknown default: return "questionmark"
         }
     }
+
     
     private var dataSourceText: String {
         switch viewModel.dataSource {
@@ -29,8 +31,10 @@ struct WeeklyChallengeView: View {
         case .realmStorage: return "Realm Storage"
         case .network: return "Updated from Network"
         case .none: return ""
+        @unknown default: return ""
         }
     }
+
     
     var body: some View {
         ZStack {

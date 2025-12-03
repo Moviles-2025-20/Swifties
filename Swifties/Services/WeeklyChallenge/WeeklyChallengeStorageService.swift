@@ -235,7 +235,7 @@ class WeeklyChallengeStorageService {
         } else {
             print("Found: NO")
             
-            // Mostrar todos los datos del usuario
+            // Show all user data
             let allUserData = realm.objects(RealmWeeklyChallengeData.self).filter("userId == %@", userId)
             print("Total records for user: \(allUserData.count)")
             for data in allUserData {

@@ -40,7 +40,7 @@ class DatabaseManager {
             print("📦 Database initialized at: \(dbPath)")
             #endif
             
-            // Configuraciones de optimización
+            // Optimization settings
             try db?.execute("PRAGMA foreign_keys = ON")
             try db?.execute("PRAGMA journal_mode = WAL")
             

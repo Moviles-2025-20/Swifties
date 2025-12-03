@@ -22,7 +22,7 @@ class WeeklyChallengeViewModel: ObservableObject {
     }
     
     private let cacheService = WeeklyChallengeCacheService.shared
-    private let userDefaultsService = WeeklyChallengeUserDefaultsService.shared  // ← NUEVO
+    private let userDefaultsService = WeeklyChallengeUserDefaultsService.shared  // New Layer 2A cache
     private let storageService = WeeklyChallengeStorageService.shared
     private let networkService = WeeklyChallengeNetworkService.shared
     private let networkMonitor = NetworkMonitorService.shared

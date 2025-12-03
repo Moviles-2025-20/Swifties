@@ -2,7 +2,7 @@
 //  DatabaseManager.swift
 //  Swifties
 //
-//  Singleton centralizado para gestionar todas las conexiones SQLite
+//  Centralized singleton to manage all SQLite connections
 //
 
 import Foundation

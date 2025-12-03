@@ -14,7 +14,7 @@ class RecommendationDatabaseManager {
     private let dbManager = DatabaseManager.shared
     
     private init() {
-        // Las tablas ya están configuradas por DatabaseTableManager
+        // Tables are already configured by DatabaseTableManager
     }
     
     // MARK: - CRUD Operations

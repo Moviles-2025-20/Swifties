@@ -202,7 +202,7 @@ class EventDatabaseManager {
     
     // MARK: - Query Methods
     
-    /// Filtra eventos por categoría
+    /// Filters events by category
     func getEventsByCategory(_ category: String, completion: @escaping ([Event]?) -> Void) {
         dbManager.executeRead { db in
             let query = EventsTable.table.filter(EventsTable.category == category)

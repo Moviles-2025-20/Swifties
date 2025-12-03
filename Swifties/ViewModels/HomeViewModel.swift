@@ -68,7 +68,8 @@ final class HomeViewModel: ObservableObject {
         }
         
         // Layer 2: Try local storage (SQLite)
-        if let stored = storageService.loadRecommendationsFromStorage(userId: userId), !stored.isEmpty {
+        let stored = await loadFromStorage(userId: userId)
+        if let stored = stored, !stored.isEmpty {
             publishIfChanged(events: stored, source: .localStorage)
             cacheService.cacheRecommendations(stored)
             triggerBackgroundRefreshIfNeeded(userId: userId)
@@ -87,6 +88,40 @@ final class HomeViewModel: ObservableObject {
             #if DEBUG
             print("❌ No connection and no local recommendations")
             #endif
+        }
+    }
+    
+    // MARK: - Storage Helper
+    
+    private func loadFromStorage(userId: String) async -> [Event]? {
+        await withCheckedContinuation { continuation in
+            storageService.loadRecommendationsFromStorage(userId: userId) { events in
+                continuation.resume(returning: events)
+            }
+        }
+    }
+    
+    private func saveToStorage(events: [Event], userId: String) async {
+        await withCheckedContinuation { continuation in
+            storageService.saveRecommendationsToStorage(events, userId: userId) {
+                continuation.resume()
+            }
+        }
+    }
+    
+    private func clearStorageAsync(userId: String) async {
+        await withCheckedContinuation { continuation in
+            storageService.clearStorage(userId: userId) {
+                continuation.resume()
+            }
+        }
+    }
+    
+    private func getStorageInfoAsync(userId: String) async -> RecommendationStorageInfo {
+        await withCheckedContinuation { continuation in
+            storageService.getStorageInfo(userId: userId) { info in
+                continuation.resume(returning: info)
+            }
         }
     }
     
@@ -118,7 +153,7 @@ final class HomeViewModel: ObservableObject {
             } else {
                 publishIfChanged(events: events, source: .network)
                 cacheService.cacheRecommendations(events)
-                storageService.saveRecommendationsToStorage(events, userId: userId)
+                await saveToStorage(events: events, userId: userId)
                 #if DEBUG
                 print("✅ \(events.count) recommendations loaded from network and cached")
                 #endif
@@ -160,15 +195,22 @@ final class HomeViewModel: ObservableObject {
                 if !events.isEmpty {
                     publishIfChanged(events: events, source: .network)
                     cacheService.cacheRecommendations(events)
-                    storageService.saveRecommendationsToStorage(events, userId: userId)
-                    #if DEBUG
-                    print("✅ Recommendations updated in background (\(events.count) items)")
-                    #endif
-                } else {
-                    #if DEBUG
-                    print("⚠️ Background refresh returned 0 recommendations - keeping existing data")
-                    #endif
                 }
+            }
+            
+            if !events.isEmpty {
+                await saveToStorage(events: events, userId: userId)
+                #if DEBUG
+                await MainActor.run {
+                    print("✅ Recommendations updated in background (\(events.count) items)")
+                }
+                #endif
+            } else {
+                #if DEBUG
+                await MainActor.run {
+                    print("⚠️ Background refresh returned 0 recommendations - keeping existing data")
+                }
+                #endif
             }
         } catch {
             await MainActor.run {
@@ -194,7 +236,8 @@ final class HomeViewModel: ObservableObject {
         if networkMonitor.isConnected {
             await fetchFromNetwork(userId: userId)
         } else {
-            if let stored = storageService.loadRecommendationsFromStorage(userId: userId), !stored.isEmpty {
+            let stored = await loadFromStorage(userId: userId)
+            if let stored = stored, !stored.isEmpty {
                 publishIfChanged(events: stored, source: .localStorage)
             } else {
                 errorMessage = "No internet connection and no saved recommendations available"
@@ -202,10 +245,10 @@ final class HomeViewModel: ObservableObject {
         }
     }
     
-    func clearAllCache() {
+    func clearAllCache() async {
         guard let userId = Auth.auth().currentUser?.uid else { return }
         cacheService.clearCache()
-        storageService.clearStorage(userId: userId)
+        await clearStorageAsync(userId: userId)
         recommendations = []
         dataSource = .none
         errorMessage = nil
@@ -214,7 +257,7 @@ final class HomeViewModel: ObservableObject {
         #endif
     }
     
-    func debugCache() {
+    func debugCache() async {
         guard let userId = Auth.auth().currentUser?.uid else {
             #if DEBUG
             print("❌ No authenticated user for cache debug")
@@ -234,7 +277,7 @@ final class HomeViewModel: ObservableObject {
             print("📱 Memory Cache: Empty")
         }
         
-        let storageInfo = storageService.getStorageInfo(userId: userId)
+        let storageInfo = await getStorageInfoAsync(userId: userId)
         print("💾 Local Storage: \(storageInfo.recommendationCount) recommendations")
         if let age = storageInfo.ageInHours {
             print("   Age: \(String(format: "%.1f", age)) hours")
@@ -295,4 +338,3 @@ final class HomeViewModel: ObservableObject {
         backgroundRefreshTask = nil
     }
 }
-

@@ -2,7 +2,7 @@
 //  DatabaseTables.swift
 //  Swifties
 //
-//  Definiciones centralizadas de todas las tablas SQLite
+//  Centralized definitions for all SQLite tables
 //
 
 import Foundation

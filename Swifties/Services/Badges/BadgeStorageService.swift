@@ -3,7 +3,7 @@
 //  Swifties
 //
 //  Layer 2: Hybrid Storage (UserDefaults + SQLite via DatabaseManager)
-//  ESTRATEGIA HÍBRIDA:
+//  HYBRID STRATEGY:
 //  - UserDefaults: Metadata, timestamps, quick access data
 //  - SQLite (via DatabaseManager): Full badge data, relationships, complex queries
 //

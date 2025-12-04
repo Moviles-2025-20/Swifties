@@ -2,7 +2,7 @@
 //  DatabaseManager.swift
 //  Swifties
 //
-//  Singleton centralizado para gestionar todas las conexiones SQLite
+//  Centralized singleton to manage all SQLite connections
 //
 
 import Foundation
@@ -40,7 +40,7 @@ class DatabaseManager {
             print("📦 Database initialized at: \(dbPath)")
             #endif
             
-            // Configuraciones de optimización
+            // Optimization settings
             try db?.execute("PRAGMA foreign_keys = ON")
             try db?.execute("PRAGMA journal_mode = WAL")
             

@@ -76,7 +76,7 @@ class WeeklyChallengeStorageService {
                     
                     print("💾 Updated in Realm: \(userId) for week \(weekId)")
                 } else {
-                    // Crear nuevo
+                    // Create new record
                     let realmData = RealmWeeklyChallengeData()
                     realmData.userId = userId
                     realmData.weekIdentifier = weekId

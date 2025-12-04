@@ -2,7 +2,7 @@
 //  RecommendationDatabaseManager.swift
 //  Swifties
 //
-//  Refactorizado para usar DatabaseManager singleton
+//  Refactored to use DatabaseManager singleton
 //
 
 import Foundation

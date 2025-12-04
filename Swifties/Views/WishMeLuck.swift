@@ -4,6 +4,7 @@ import CoreMotion
 import FirebaseFirestore
 import FirebaseAnalytics
 import Network
+import CoreNFC
 
 struct WishMeLuckView: View {
     @StateObject private var viewModel = WishMeLuckViewModel()
@@ -14,6 +15,12 @@ struct WishMeLuckView: View {
     @State private var fullEventForDetail: Event?
     @State private var isLoadingFullEvent = false
     @State private var showNoConnectionAlert = false
+    
+    // NFC Properties
+    private let nfcService = NFCWishMeLuckService.shared
+    @State private var showNFCButton = NFCNDEFReaderSession.readingAvailable
+    @State private var showNFCError = false
+    @State private var nfcErrorMessage = ""
     
     @StateObject private var networkMonitor = NetworkMonitorService.shared
     private let offlineMessage = "No network connection - Couldn't fetch events"
@@ -75,7 +82,6 @@ struct WishMeLuckView: View {
                         .padding(.top, 4)
                     }
                     
-
                     // Data Source Indicator
                     if !viewModel.isLoading && viewModel.dataSource != .none {
                         HStack {
@@ -180,7 +186,7 @@ struct WishMeLuckView: View {
                                     if viewModel.dataSource == .none && networkMonitor.isConnected {
                                         Button {
                                             Task {
-                                                await triggerWish()
+                                                await triggerWish(triggeredBy: "Retry Button")
                                             }
                                         } label: {
                                             HStack {
@@ -228,14 +234,41 @@ struct WishMeLuckView: View {
                             ) {
                                 if networkMonitor.isConnected {
                                     Task {
-                                        await triggerWish()
+                                        await triggerWish(triggeredBy: "Button")
                                     }
                                 } else {
                                     showNoConnectionAlert = true
                                 }
                             }
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            .padding(.bottom, 8)
+                            
+                            // MARK: - NFC Scan Button
+                            if showNFCButton {
+                                Button {
+                                    nfcService.startNFCSession()
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "wave.3.right")
+                                            .font(.title3)
+                                        Text("Scan NFC Tag")
+                                            .fontWeight(.semibold)
+                                    }
+                                    .foregroundColor(Color("appBlue"))
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.white)
+                                    .cornerRadius(16)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color("appBlue"), lineWidth: 2)
+                                    )
+                                }
+                                .disabled(viewModel.isLoading || !networkMonitor.isConnected)
+                                .opacity((viewModel.isLoading || !networkMonitor.isConnected) ? 0.5 : 1.0)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
+                            }
                         }
                         .padding(.top, 10)
                     }
@@ -252,23 +285,40 @@ struct WishMeLuckView: View {
             } message: {
                 Text("Please check your internet connection and try again.")
             }
+            .alert("NFC Error", isPresented: $showNFCError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(nfcErrorMessage)
+            }
             .task {
+                // Setup NFC callbacks
+                nfcService.onNFCTagRead = {
+                    Task { @MainActor in
+                        await triggerWish(triggeredBy: "NFC")
+                    }
+                }
+                
+                nfcService.onError = { error in
+                    nfcErrorMessage = error
+                    showNFCError = true
+                }
+                
+                // Load data
                 if networkMonitor.isConnected {
                     await viewModel.calculateDaysSinceLastWished()
-                    // Sync pending updates if any
                     await viewModel.syncPendingUpdates()
                 } else {
-                    // Try to load from cache
                     await viewModel.calculateDaysSinceLastWished()
                 }
+                
                 startAccelerometerUpdates()
             }
             .onDisappear {
                 stopAccelerometerUpdates()
+                nfcService.stopNFCSession()
             }
             .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
                 if newValue && !oldValue {
-                    // Network just came back online
                     print("🌐 Network restored - syncing pending updates")
                     Task {
                         await viewModel.syncPendingUpdates()
@@ -446,14 +496,22 @@ struct WishMeLuckView: View {
         return event
     }
     
-    // MARK: - Trigger Wish
-    private func triggerWish() async {
+    // MARK: - Trigger Wish (with source tracking)
+    private func triggerWish(triggeredBy source: String = "Button") async {
         guard networkMonitor.isConnected else {
             showNoConnectionAlert = true
             return
         }
         
+        print("🎯 Wish triggered by: \(source)")
         AnalyticsService.shared.logWishMeLuckUsed()
+        
+        // Log NFC-specific analytics if triggered by NFC
+        if source == "NFC" {
+            Analytics.logEvent("wish_me_luck_nfc", parameters: [
+                "method": "nfc_tag"
+            ])
+        }
         
         withAnimation(.easeInOut(duration: 0.5)) {
             animateBall = true
@@ -502,7 +560,6 @@ struct WishMeLuckView: View {
         
         guard !viewModel.isLoading else { return }
         
-        // Check connection before allowing shake
         guard networkMonitor.isConnected else {
             showNoConnectionAlert = true
             return
@@ -514,7 +571,7 @@ struct WishMeLuckView: View {
         generator.impactOccurred()
         
         Task {
-            await triggerWish()
+            await triggerWish(triggeredBy: "Shake")
         }
     }
 }
@@ -552,7 +609,7 @@ struct Magic8BallCard: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            Text("Shake your phone or tap the button")
+            Text("Shake your phone, scan NFC, or tap the button")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -673,7 +730,7 @@ struct EmptyStateCard: View {
                 .font(.system(size: 50))
                 .foregroundColor(Color("appBlue").opacity(0.6))
             
-            Text("Shake or tap the button below")
+            Text("Shake, scan NFC, or tap the button below")
                 .font(.headline)
                 .foregroundColor(.primary)
             

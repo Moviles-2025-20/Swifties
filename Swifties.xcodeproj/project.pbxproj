@@ -481,6 +481,7 @@
 				INFOPLIST_FILE = Swifties/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Parchandes;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NFCReaderUsageDescription = "We need NFC access to trigger Wish Me Luck when you scan your tag";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The camera is used to upload photos directly when making a comment";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "When location is active, the app will be able to show you a map view and the closest activities to you; including those in a 1km radius.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "The photo library is accessed in case you want to upload a photo to a comment you make";
@@ -537,6 +538,7 @@
 				INFOPLIST_FILE = Swifties/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Parchandes;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NFCReaderUsageDescription = "We need NFC access to trigger Wish Me Luck when you scan your tag";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The camera is used to upload photos directly when making a comment";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "When location is active, the app will be able to show you a map view and the closest activities to you; including those in a 1km radius.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "The photo library is accessed in case you want to upload a photo to a comment you make";

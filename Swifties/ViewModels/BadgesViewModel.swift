@@ -1,8 +1,8 @@
 //
-//  BadgesViewModel.swift
+//  BadgesViewModel.swift (COMPLETE FIX - NOW MATCHES UserInfoViewModel PATTERN)
 //  Swifties
 //
-//  ViewModel with Distributed Multithreading Strategies
+//  ✅ AHORA SÍ USA loadStaleData() correctamente cuando offline
 //
 
 import Foundation
@@ -21,6 +21,7 @@ class BadgesViewModel: ObservableObject {
         case none
         case memoryCache
         case localStorage
+        case localStorageStale  // Para indicar datos antiguos
         case network
     }
     
@@ -56,8 +57,7 @@ class BadgesViewModel: ObservableObject {
         return (unlockedCount * 100) / totalBadges
     }
     
-    // MARK: - LOAD BADGES (Usa ESTRATEGIA 2: Nested Coroutines - 10 puntos)
-    // Carga principal usa corrutinas anidadas para el three-layer cache
+    // MARK: - LOAD BADGES (Three-Layer Cache)
     
     func loadBadges() {
         isLoading = true
@@ -69,84 +69,125 @@ class BadgesViewModel: ObservableObject {
             return
         }
         
-        print("🚀 [NESTED] Loading badges with nested coroutines strategy...")
+        print("\n🚀 ========================================")
+        print("🚀 LOADING BADGES WITH THREE-LAYER CACHE")
+        print("🚀 ========================================")
+        print("User ID: \(userId)")
+        print("Connected: \(networkMonitor.isConnected ? "YES ✅" : "NO ❌")")
         
-        Task {
-            // NIVEL 1: Task en background para cache
-            let cacheResult = await Task.detached(priority: .userInitiated) { [weak self] () -> (badges: [Badge], userBadges: [UserBadge])? in
-                guard let self = self else { return nil }
-                print("🧵 [NIVEL 1 - BACKGROUND] Checking memory cache...")
-                
-                // NIVEL 2: Task anidado para validación de cache
-                let isValid = await Task.detached(priority: .utility) { () -> Bool in
-                    print("🧵 [NIVEL 2 - BACKGROUND] Validating cache...")
-                    try? await Task.sleep(nanoseconds: 50_000_000)
-                    return true
-                }.value
-                
-                if isValid, let cached = self.cacheService.getCachedBadges(userId: userId) {
-                    print("✅ [NIVEL 1] Valid cache found")
-                    return (cached.badges, cached.userBadges)
-                }
-                
-                // NIVEL 3: Si no hay cache, buscar en storage (nested)
-                let storageResult = await Task.detached(priority: .utility) { [weak self] () -> (badges: [Badge], userBadges: [UserBadge])? in
-                    guard let self = self else { return nil }
-                    print("🧵 [NIVEL 3 - BACKGROUND] Checking Realm storage...")
-                    
-                    // Use withCheckedContinuation to convert callback to async
-                    return await withCheckedContinuation { continuation in
-                        self.storageService.loadBadges(userId: userId) { result in
-                            continuation.resume(returning: result)
-                        }
-                    }
-                }.value
-                
-                return storageResult
-            }.value
+        // ============================================
+        // LAYER 1: Memory Cache
+        // ============================================
+        if let cached = cacheService.getCachedBadges(userId: userId) {
+            self.combineBadgesWithProgress(badges: cached.badges, userBadges: cached.userBadges)
+            self.dataSource = .memoryCache
+            self.isLoading = false
+            print("✅ [LAYER 1] Loaded from memory cache")
+            print("========================================\n")
+            return
+        }
+        
+        print("⏭️ [LAYER 1] Memory cache empty, trying Layer 2...")
+        
+        // ============================================
+        // LAYER 2: Local Storage (UserDefaults + SQLite)
+        // ============================================
+        
+        // 🔧 CORRECCIÓN: Usar el método apropiado según conexión
+        let loadMethod: (String, @escaping ((badges: [Badge], userBadges: [UserBadge])?) -> Void) -> Void
+        
+        if networkMonitor.isConnected {
+            // Online: Respetar expiración (24 horas)
+            print("📦 [LAYER 2-ONLINE] Loading with expiration check...")
+            loadMethod = storageService.loadBadges
+        } else {
+            // Offline: Ignorar expiración inicial
+            print("📦 [LAYER 2-OFFLINE] Loading ignoring expiration...")
+            loadMethod = storageService.loadBadgesIgnoringExpiration
+        }
+        
+        loadMethod(userId) { [weak self] result in
+            guard let self = self else { return }
             
-            // NIVEL 4: Actualizar UI en main thread
-            await MainActor.run {
-                if let result = cacheResult {
-                    self.combineBadgesWithProgress(badges: result.badges, userBadges: result.userBadges)
-                    self.dataSource = .localStorage
-                    self.isLoading = false
-                    print("✅ [MAIN] UI updated with data")
-                    
-                    // Refresh en background después de mostrar datos
+            if let data = result {
+                // Tenemos datos en storage
+                self.combineBadgesWithProgress(badges: data.badges, userBadges: data.userBadges)
+                self.dataSource = .localStorage
+                self.isLoading = false
+                
+                // Cache in memory for next time
+                self.cacheService.cacheBadges(userId: userId, badges: data.badges, userBadges: data.userBadges)
+                
+                print("✅ [LAYER 2] Loaded from local storage")
+                
+                // Refresh in background if connected
+                if self.networkMonitor.isConnected {
+                    print("🔄 [LAYER 2] Starting background refresh...")
                     Task {
                         await self.refreshFromNetwork(userId: userId)
                     }
-                    return
+                } else {
+                    print("⚠️ [LAYER 2-OFFLINE] Showing cached data, no refresh available")
                 }
                 
-                // Si no hay datos locales, ir directo a network
-                self.isLoading = false
+                print("========================================\n")
+                return
             }
             
-            // Layer 3: Network si no hay datos locales
-            if networkMonitor.isConnected {
-                await fetchFromNetwork(userId: userId)
+            // No hay datos en Layer 2
+            print("⏭️ [LAYER 2] Local storage empty, trying Layer 3...")
+            
+            // ============================================
+            // LAYER 3: Network o Stale Data (ÚLTIMO RECURSO)
+            // ============================================
+            if self.networkMonitor.isConnected {
+                // Tenemos internet: Fetch normal
+                print("\n📦 [LAYER 3-NETWORK] Fetching from network...")
+                Task {
+                    await self.fetchFromNetwork(userId: userId)
+                }
             } else {
-                await MainActor.run {
-                    self.errorMessage = "No internet connection and no cached data available"
-                    print("❌ No connection and no local data")
+                // 🆕 SIN INTERNET: Intentar cargar datos antiguos (STALE DATA)
+                print("\n📦 [LAYER 3-STALE] No internet - attempting STALE DATA mode...")
+                
+                self.storageService.loadStaleData(userId: userId) { staleResult in
+                    if let staleData = staleResult {
+                        // ✅ Encontramos datos antiguos
+                        print("✅ [STALE-MODE] Successfully loaded old data")
+                        print("   - Badges: \(staleData.badges.count)")
+                        print("   - User Badges: \(staleData.userBadges.count)")
+                        
+                        self.combineBadgesWithProgress(badges: staleData.badges, userBadges: staleData.userBadges)
+                        self.dataSource = .localStorageStale
+                        self.isLoading = false
+                        
+                        // ⚠️ Mostrar warning al usuario sobre datos antiguos
+                        self.errorMessage = "⚠️ Showing cached data. Connect to internet to refresh."
+                        
+                        print("⚠️ [STALE-MODE] Displayed warning about outdated data")
+                        print("========================================\n")
+                    } else {
+                        // ❌ No hay datos ni siquiera antiguos
+                        print("❌ [STALE-MODE] No stale data available either")
+                        self.errorMessage = "No internet connection and no cached data available"
+                        self.isLoading = false
+                        print("========================================\n")
+                    }
                 }
             }
         }
     }
     
-    // MARK: - FETCH FROM NETWORK (Usa ESTRATEGIA 3: I/O + Main - 10 puntos)
-    // Operaciones de red usan I/O background + Main thread
+    // MARK: - FETCH FROM NETWORK
     
     private func fetchFromNetwork(userId: String) async {
-        print("🌐 [I/O+MAIN] Fetching from network...")
+        print("🌐 [NETWORK] Fetching from Firestore...")
         
         await MainActor.run {
             self.isLoading = true
         }
         
-        // FASE I/O: Operación de red en background
+        // Operación de red en background
         let networkData: (badges: [Badge], userBadges: [UserBadge])? = await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let self = self else {
@@ -160,37 +201,44 @@ class BadgesViewModel: ObservableObject {
                     switch result {
                     case .success(let data):
                         continuation.resume(returning: (data.badges, data.userBadges))
-                    case .failure:
+                    case .failure(let error):
+                        print("❌ [NETWORK] Error: \(error.localizedDescription)")
                         continuation.resume(returning: nil)
                     }
                 }
             }
         }
         
-        // FASE MAIN: Actualizar UI en main thread
+        // Actualizar UI en main thread
         await MainActor.run {
             self.isLoading = false
             
             if let data = networkData {
                 self.combineBadgesWithProgress(badges: data.badges, userBadges: data.userBadges)
                 self.dataSource = .network
-                print("✅ [MAIN] Network data loaded")
+                self.errorMessage = nil  // Limpiar cualquier warning anterior
+                print("✅ [NETWORK] Data loaded successfully")
+                print("========================================\n")
                 
-                // Guardar en cache (background)
+                // Guardar en ambas capas de cache (background)
                 Task.detached(priority: .background) { [weak self] in
                     guard let self = self else { return }
+                    
                     self.cacheService.cacheBadges(userId: userId, badges: data.badges, userBadges: data.userBadges)
-                    self.storageService.saveBadges(userId: userId, badges: data.badges, userBadges: data.userBadges)
-                    print("💾 [BACKGROUND] Saved to caches")
+                    
+                    self.storageService.saveBadges(userId: userId, badges: data.badges, userBadges: data.userBadges) {
+                        print("💾 [BACKGROUND] Saved to both caches")
+                    }
                 }
             } else {
                 self.errorMessage = "Failed to load badges from network"
+                print("❌ [NETWORK] Fetch failed")
+                print("========================================\n")
             }
         }
     }
     
-    // MARK: - REFRESH FROM NETWORK (Usa ESTRATEGIA 4: Parallel Tasks - 10 puntos)
-    // Refresh en background usa tasks paralelos
+    // MARK: - REFRESH FROM NETWORK (Background)
     
     private func refreshFromNetwork(userId: String) async {
         guard networkMonitor.isConnected else { return }
@@ -199,52 +247,27 @@ class BadgesViewModel: ObservableObject {
             self.isRefreshing = true
         }
         
-        print("🔄 [PARALLEL] Starting parallel refresh tasks...")
+        print("🔄 [REFRESH] Starting background refresh...")
         
-        // Ejecutar 3 tasks en paralelo
-        async let networkTask = Task.detached(priority: .background) { [weak self] () -> (source: String, data: (badges: [Badge], userBadges: [UserBadge])?) in
-            guard let self = self else { return ("network", nil) }
-            print("🧵 [TASK 1] Fetching from network...")
-            
-            let result: (badges: [Badge], userBadges: [UserBadge])? = await withCheckedContinuation { continuation in
-                self.networkService.fetchBadgesData(userId: userId) { result in
-                    switch result {
-                    case .success(let data):
-                        continuation.resume(returning: (data.badges, data.userBadges))
-                    case .failure:
-                        continuation.resume(returning: nil)
-                    }
+        let networkData: (badges: [Badge], userBadges: [UserBadge])? = await withCheckedContinuation { continuation in
+            networkService.fetchBadgesData(userId: userId) { result in
+                switch result {
+                case .success(let data):
+                    continuation.resume(returning: (data.badges, data.userBadges))
+                case .failure:
+                    continuation.resume(returning: nil)
                 }
             }
-            return ("network", result)
-        }.value
+        }
         
-        async let cacheTask = Task.detached(priority: .utility) { () -> (source: String, timestamp: Date) in
-            print("🧵 [TASK 2] Preparing cache update...")
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            return ("cache", Date())
-        }.value
-        
-        async let validationTask = Task.detached(priority: .utility) { () -> (source: String, valid: Bool) in
-            print("🧵 [TASK 3] Validating data...")
-            try? await Task.sleep(nanoseconds: 80_000_000)
-            return ("validation", true)
-        }.value
-        
-        // Esperar TODOS los resultados
-        let results = await (networkTask, cacheTask, validationTask)
-        
-        print("✅ [PARALLEL] All tasks completed:")
-        print("   - Network: \(results.0.data != nil ? "✓" : "✗")")
-        print("   - Cache prep: \(results.1.source)")
-        print("   - Validation: \(results.2.valid ? "✓" : "✗")")
-        
-        if let data = results.0.data, results.2.valid {
+        if let data = networkData {
             await MainActor.run {
+                // Actualizar UI
                 self.combineBadgesWithProgress(badges: data.badges, userBadges: data.userBadges)
                 self.dataSource = .network
+                self.errorMessage = nil  // Limpiar warning de stale data
                 self.isRefreshing = false
-                print("✅ [MAIN] Refresh completed")
+                print("✅ [REFRESH] Background refresh completed")
             }
             
             // Guardar en caches
@@ -260,89 +283,35 @@ class BadgesViewModel: ObservableObject {
         }
     }
     
-    // MARK: - COMBINE BADGES (Usa ESTRATEGIA 5: TaskGroup - 10 puntos)
-    // Procesar y combinar badges usa TaskGroup para procesamiento paralelo
+    // MARK: - COMBINE BADGES
     
     private func combineBadgesWithProgress(badges: [Badge], userBadges: [UserBadge]) {
-        print("🔄 [TASKGROUP] Processing badges with TaskGroup...")
-        
-        // Si hay pocos badges, procesar normalmente
-        if badges.count < 10 {
-            self.badgesWithProgress = badges.compactMap { badge in
-                if let userBadge = userBadges.first(where: { $0.badgeId == badge.id }) {
-                    return BadgeWithProgress(badge: badge, userBadge: userBadge)
-                }
-                return nil
-            }.sorted { $0.badge.rarity.rawValue > $1.badge.rarity.rawValue }
-            return
-        }
-        
-        // Para muchos badges, usar TaskGroup para procesamiento paralelo
-        Task {
-            let processed = await withTaskGroup(of: BadgeWithProgress?.self) { group -> [BadgeWithProgress] in
-                
-                // Dividir en chunks para procesamiento paralelo
-                let chunkSize = max(badges.count / 4, 1)
-                for startIndex in stride(from: 0, to: badges.count, by: chunkSize) {
-                    let endIndex = min(startIndex + chunkSize, badges.count)
-                    let chunk = Array(badges[startIndex..<endIndex])
-                    
-                    group.addTask(priority: .userInitiated) {
-                        print("🧵 [GROUP] Processing chunk \(startIndex)-\(endIndex)...")
-                        var results: [BadgeWithProgress] = []
-                        
-                        for badge in chunk {
-                            if let userBadge = userBadges.first(where: { $0.badgeId == badge.id }) {
-                                results.append(BadgeWithProgress(badge: badge, userBadge: userBadge))
-                            }
-                        }
-                        
-                        return results.isEmpty ? nil : results.first
-                    }
-                }
-                
-                // Recolectar resultados
-                var allResults: [BadgeWithProgress] = []
-                for await result in group {
-                    if let badge = result {
-                        allResults.append(badge)
-                    }
-                }
-                
-                print("✅ [TASKGROUP] Processed \(allResults.count) badges")
-                return allResults.sorted { $0.badge.rarity.rawValue > $1.badge.rarity.rawValue }
+        self.badgesWithProgress = badges.compactMap { badge in
+            if let userBadge = userBadges.first(where: { $0.badgeId == badge.id }) {
+                return BadgeWithProgress(badge: badge, userBadge: userBadge)
             }
-            
-            await MainActor.run {
-                self.badgesWithProgress = processed
-            }
-        }
+            return nil
+        }.sorted { $0.badge.rarity.rawValue > $1.badge.rarity.rawValue }
     }
     
-    // MARK: - CACHE MANAGEMENT (Usa ESTRATEGIA 1: Dispatcher - 5 puntos)
-    // Operaciones de limpieza de cache usan dispatcher simple
+    // MARK: - CACHE MANAGEMENT
     
     func forceRefresh() {
         guard let userId = currentUserId else { return }
         
-        print("🗑️ [DISPATCHER] Clearing caches...")
+        print("🗑️ [FORCE REFRESH] Clearing caches...")
         
-        // Task simple con dispatcher para limpieza
         Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
             
-            print("🧵 [BACKGROUND] Clearing memory cache...")
             self.cacheService.clearCache(userId: userId)
-            
-            print("🧵 [BACKGROUND] Clearing Realm storage...")
             self.storageService.deleteBadges(userId: userId)
             
             await MainActor.run {
-                print("✅ [MAIN] Caches cleared, reloading...")
+                print("✅ [FORCE REFRESH] Caches cleared, reloading...")
             }
         }
         
-        // Esperar un momento y recargar
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.loadBadges()
         }
@@ -353,13 +322,13 @@ class BadgesViewModel: ObservableObject {
         
         Task.detached(priority: .background) { [weak self] in
             guard let self = self else { return }
-            print("🧵 [DISPATCHER] Clearing all caches...")
             self.cacheService.clearCache(userId: userId)
             self.storageService.deleteBadges(userId: userId)
         }
         
         badgesWithProgress = []
         dataSource = .none
+        errorMessage = nil
     }
     
     func debugCache() {
@@ -367,7 +336,6 @@ class BadgesViewModel: ObservableObject {
         
         Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
-            print("🧵 [DISPATCHER] Debugging caches...")
             self.cacheService.debugCache(userId: userId)
             self.storageService.debugStorage(userId: userId)
         }

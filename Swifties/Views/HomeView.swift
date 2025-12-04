@@ -141,16 +141,15 @@ struct HomeView: View {
                                 .buttonStyle(.borderedProminent)
                                 .tint(Color("appRed"))
 
-                                Button {
-                                    print("Future feature")
-                                } label: {
-                                    Text("Coming soon...")
+                                NavigationLink(destination: BadgesView().navigationBarHidden(true)) {
+                                    Text("My Badges")
                                         .frame(width: 120, height: 80)
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.white)
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(Color("appBlue"))
+
                             }
                             
                             HStack {

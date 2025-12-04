@@ -12,7 +12,7 @@ struct Metadata: Codable {
     enum CodingKeys: String, CodingKey {
         case imageURL = "image_url"
         case title
-        case text
+        case text 
     }
 }
 

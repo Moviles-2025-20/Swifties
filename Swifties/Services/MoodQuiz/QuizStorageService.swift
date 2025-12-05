@@ -32,7 +32,7 @@ class QuizStorageService {
     
     private init() {
         setupRealm()
-        // Table setup is now handled by DatabaseTableManager
+        // Table setup is now handled by DatabaseManager.setupAllTables()
     }
     
     // MARK: - SQLite Operations (Questions)

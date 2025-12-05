@@ -158,8 +158,6 @@ class MoodQuizViewModel: ObservableObject {
     
     // MARK: - Load Quiz Questions
     
-    // Replace the loadQuizQuestions() method in MoodQuizViewModel with this:
-
     private func loadQuizQuestions() async {
         print("\n--- LOADING QUIZ QUESTIONS ---")
         

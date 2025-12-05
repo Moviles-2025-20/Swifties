@@ -14,7 +14,6 @@ struct EventListView: View {
     @State private var offlineAlertMessage = ""
     @State private var showNews: Bool = false
 
-    // Filter events by search
     var filteredEvents: [Event] {
         if searchText.isEmpty {
             return viewModel.events
@@ -27,7 +26,6 @@ struct EventListView: View {
         }
     }
     
-    // MARK: - Computed Properties for Data Source
     private var dataSourceIcon: String {
         switch viewModel.dataSource {
         case .memoryCache: return "memorychip"
@@ -56,7 +54,6 @@ struct EventListView: View {
                         print("Notification tapped")
                     })
                     
-                    // Connection status banner
                     if !networkMonitor.isConnected {
                         HStack(spacing: 8) {
                             Image(systemName: "wifi.slash")
@@ -73,7 +70,6 @@ struct EventListView: View {
                         .padding(.top, 4)
                     }
                     
-                    // Data Source Indicator (minimalist gray style)
                     if !viewModel.isLoading && !viewModel.events.isEmpty && !isMapView {
                         HStack {
                             Spacer()
@@ -100,9 +96,7 @@ struct EventListView: View {
                         .padding(.top, 8)
                     }
 
-                    // MARK: - Main Content Area
                     if viewModel.isLoading {
-                        // Loading state
                         Spacer()
                         VStack(spacing: 16) {
                             ProgressView()
@@ -114,7 +108,6 @@ struct EventListView: View {
                         Spacer()
                         
                     } else if !networkMonitor.isConnected && viewModel.events.isEmpty {
-                        // Offline state with no cached data
                         Spacer()
                         VStack(spacing: 20) {
                             Image(systemName: "wifi.slash")
@@ -163,7 +156,6 @@ struct EventListView: View {
                         Spacer()
                         
                     } else if let error = viewModel.errorMessage {
-                        // Error state
                         Spacer()
                         VStack(spacing: 20) {
                             Image(systemName: getErrorIcon(for: error))
@@ -206,19 +198,14 @@ struct EventListView: View {
                         Spacer()
                         
                     } else {
-                        // Success state - show content
                         VStack(spacing: 0) {
-                            // Keep scroll for list mode only, but show search + toggle above map as well
                             VStack(spacing: 16) {
                                 SearchBar(searchText: $searchText)
                                     .padding(.top, 16)
-
-                                // Filters and switch to map view
                                 FilterToggle(isMapView: $isMapView)
                             }
 
                             if isMapView {
-                                // Map occupies remaining space under bars
                                 EventMapContainerView(events: filteredEvents)
                             } else {
                                 ScrollView {
@@ -281,14 +268,12 @@ struct EventListView: View {
             }
             .onChange(of: isMapView) { oldValue, newValue in
                 if newValue {
-                    // Map view opened
                     mapOpenedTime = Date()
                     AnalyticsService.shared.logMapViewOpened(
                         source: .eventList,
                         eventCount: filteredEvents.count
                     )
                 } else if let openedTime = mapOpenedTime {
-                    // Map view closed - calculate duration
                     let duration = Date().timeIntervalSince(openedTime)
                     AnalyticsService.shared.logMapViewClosed(durationSeconds: duration)
                     mapOpenedTime = nil
@@ -296,9 +281,7 @@ struct EventListView: View {
             }
             .onAppear {
                 if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
-                    // Debug storage
                     EventStorageService.shared.debugStorage()
-                    
                     viewModel.loadEvents()
                     AnalyticsService.shared.logDiscoveryMethod(.manualBrowse)
                 }
@@ -309,7 +292,6 @@ struct EventListView: View {
         }
     }
 
-    // MARK: - Helper Functions
     private func getErrorIcon(for error: String) -> String {
         if error.contains("network") || error.contains("connection") {
             return "wifi.slash"
@@ -320,7 +302,6 @@ struct EventListView: View {
         }
     }
 
-    // Helper container to manage selection and actions from map
     @ViewBuilder
     func EventMapContainerView(events: [Event]) -> some View {
         EventMapContent(events: events, viewModel: viewModel)
@@ -331,27 +312,15 @@ struct EventMapContent: View {
     let events: [Event]
     let viewModel: EventListViewModel
     @State private var selectedEvent: Event?
-    @State private var showActionSheet = false
     @State private var showDetailsSheet = false
 
     var body: some View {
         ZStack {
             EventMapView(events: events, selectedEvent: $selectedEvent) { event in
                 selectedEvent = event
-                showActionSheet = true
-            }
-            .ignoresSafeArea(edges: .bottom)
-        }
-        .confirmationDialog(selectedEvent?.name ?? "Event", isPresented: $showActionSheet, titleVisibility: .visible) {
-            Button("View Details") {
                 showDetailsSheet = true
             }
-            Button("Get Directions") {
-                if let event = selectedEvent { openDirections(for: event) }
-            }
-            Button("Cancel", role: .cancel) {
-                selectedEvent = nil
-            }
+            .ignoresSafeArea(edges: .bottom)
         }
         .sheet(isPresented: $showDetailsSheet, onDismiss: { selectedEvent = nil }) {
             NavigationStack {
@@ -363,41 +332,11 @@ struct EventMapContent: View {
             }
         }
     }
-
-    private func openDirections(for event: Event) {
-        guard let coords = event.location?.coordinates, coords.count == 2 else { return }
-        
-        let lat = coords[0]
-        let lon = coords[1]
-        let name = event.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Selected event"
-
-        // Try Google Maps application, then Google Maps web and fallback to Apple Maps
-        if let url = URL(string: "comgooglemaps://?daddr=\(lat),\(lon)&directionsmode=walking"), UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url)
-        } else if let web = URL(string: "https://www.google.com/maps/dir/?api=1&destination=\(lat),\(lon)&travelmode=walking&destination_place_id=&destination_name=\(name)") {
-            UIApplication.shared.open(web)
-        } else {
-            let mapItem: MKMapItem
-            if #available(iOS 18.0, *) {
-                let coordinate = CLLocation(latitude: lat, longitude: lon)
-                let address = MKAddress(fullAddress: "", shortAddress: event.location?.address ?? "")
-                mapItem = MKMapItem(location: coordinate, address: address)
-            } else {
-                let coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-                let placemark = MKPlacemark(coordinate: coordinate)
-                mapItem = MKMapItem(placemark: placemark)
-            }
-            mapItem.name = event.name
-            mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
-        }
-    }
 }
 
-// MARK: - Helper formater function for incluiding date
 private func formatEventTime(event: Event) -> String {
     let day = event.schedule.days.first ?? ""
     let time = event.schedule.times.first ?? "Time TBD"
-    
     if day.isEmpty {
         return time
     } else {
@@ -421,4 +360,3 @@ private struct EventListView_PreviewContainer: View {
 #Preview {
     EventListView_PreviewContainer()
 }
-

@@ -106,8 +106,8 @@ struct NewsView: View {
                         VStack(spacing: 20) {
                             Image(systemName: "wifi.slash")
                                 .font(.system(size: 60))
-                                .foregroundColor(.orange)
-                                
+                                .foregroundColor(.gray.opacity(0.6))
+
                             Text("No Internet Connection")
                                 .font(.title3)
                                 .fontWeight(.semibold)
@@ -139,7 +139,7 @@ struct NewsView: View {
                                 }
                                 .padding(.horizontal, 32)
                                 .padding(.vertical, 12)
-                                .background(Color.orange)
+                                .background(Color.gray.opacity(0.6))
                                 .foregroundColor(.white)
                                 .cornerRadius(10)
                             }

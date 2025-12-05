@@ -2,7 +2,7 @@
 //  MoodQuizViewModel.swift
 //  Swifties
 //
-//  Fixed version with proper "Take Again" functionality
+//  Created by Natalia Villegas Calderón on 26/11/25.
 //
 
 import Foundation
@@ -221,7 +221,7 @@ class MoodQuizViewModel: ObservableObject {
     }
     
     private func fetchQuestionsFromNetwork() async {
-        print("🌐 [NETWORK] Fetching questions from Firestore...")
+        print("[NETWORK] Fetching questions from Firestore...")
         
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             networkService.fetchQuizQuestions { [weak self] result in
@@ -267,7 +267,7 @@ class MoodQuizViewModel: ObservableObject {
 
     func selectAnswer(_ option: QuizOption) {
         guard let questionId = questions[currentQuestionIndex].id else {
-            print("⚠️ Cannot select answer - question has no ID")
+            print("!!!!! Cannot select answer - question has no ID")
             return
         }
         

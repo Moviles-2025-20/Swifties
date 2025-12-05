@@ -222,7 +222,7 @@ struct EventMapView: View {
                             }
                             .padding(.bottom, 80)
                             .disabled(!networkMonitor.isConnected)
-                            .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
+                            .opacity(networkMonitor.isConnected ? 1.0 : 0)
                         }
                     }
                     .overlay {

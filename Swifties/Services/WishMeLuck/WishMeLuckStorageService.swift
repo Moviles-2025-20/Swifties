@@ -28,7 +28,7 @@ class WishMeLuckStorageService {
                 schemaVersion: 1,
                 migrationBlock: { migration, oldSchemaVersion in
                     if oldSchemaVersion < 1 {
-                        // Handle migrations if needed
+                        // Handle migrations if needed (FUTURE)
                     }
                 }
             )
@@ -97,10 +97,10 @@ class WishMeLuckStorageService {
                 
                 // Check expiration on background thread
                 let hoursElapsed = Date().timeIntervalSince(realmData.lastUpdated) / 3600
-                print("📦 Realm data age: \(String(format: "%.1f", hoursElapsed)) hours")
+                print("---->>>> Realm data age: \(String(format: "%.1f", hoursElapsed)) hours")
                 
                 if hoursElapsed > self.storageExpirationHours {
-                    print("⏰ Realm data expired")
+                    print("!!!!!!!!! Realm data expired")
                     self.deleteDaysSinceLastWishedInternal(userId: userId, realm: realm)
                     continuation.resume(returning: nil)
                     return
@@ -130,7 +130,7 @@ class WishMeLuckStorageService {
                 try realm.write {
                     realm.delete(object)
                 }
-                print("🗑️ Deleted from Realm: \(userId)")
+                print("XXXXXXXX Deleted from Realm: \(userId)")
             } catch {
                 print("❌ Error deleting from Realm: \(error.localizedDescription)")
             }

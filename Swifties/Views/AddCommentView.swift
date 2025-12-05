@@ -1,5 +1,5 @@
 // AddCommentView.swift
-// New screen to compose a comment with title, description (500-word limit), rating, emotion, and photo attachment.
+// Swifties
 
 import SwiftUI
 import PhotosUI
@@ -10,6 +10,7 @@ struct AddCommentView: View {
     var event: Event
     @Environment(\.dismiss) private var dismiss
     @StateObject private var commentViewModel = CommentViewModel()
+    @ObservedObject private var networkMonitor = NetworkMonitorService.shared
     
     init(event: Event) {
         self.event = event
@@ -28,6 +29,9 @@ struct AddCommentView: View {
     @State private var showCameraUnavailableAlert: Bool = false
     @State private var isSubmitting: Bool = false
     @State private var submitError: String? = nil
+    
+    // Offline submission alert
+    @State private var showOfflineSubmitAlert: Bool = false
 
     // Character limits
     private let titleCharLimit: Int = 50
@@ -46,6 +50,23 @@ struct AddCommentView: View {
                     onNotificationTap: {},
                     onBackTap: { dismiss() }
                 )
+                
+                // Connection status banner (matching your other views)
+                if !networkMonitor.isConnected {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.slash")
+                            .foregroundColor(.red)
+                        Text("No Internet Connection")
+                            .font(.callout)
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+                }
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -179,7 +200,13 @@ struct AddCommentView: View {
                         // Submit button
                         Button {
                             guard !isSubmitting else { return }
-                            Task { await submit() }
+                            
+                            // Show alert if offline before submitting
+                            if !networkMonitor.isConnected {
+                                showOfflineSubmitAlert = true
+                            } else {
+                                Task { await submit() }
+                            }
                         } label: {
                             HStack {
                                 if isSubmitting {
@@ -211,6 +238,14 @@ struct AddCommentView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("This device does not support the camera.")
+        }
+        .alert("Offline Submission", isPresented: $showOfflineSubmitAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Submit Offline") {
+                Task { await submit() }
+            }
+        } message: {
+            Text("You're currently offline. Your review will be saved locally and submitted automatically when you reconnect to the internet.")
         }
         .alert("Failed to Submit", isPresented: .constant(submitError != nil), presenting: submitError) { _ in
             Button("OK", role: .cancel) { submitError = nil }

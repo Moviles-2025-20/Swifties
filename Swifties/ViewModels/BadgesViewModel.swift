@@ -2,7 +2,7 @@
 //  BadgesViewModel.swift (COMPLETE FIX - NOW MATCHES UserInfoViewModel PATTERN)
 //  Swifties
 //
-//  ✅ AHORA SÍ USA loadStaleData() correctamente cuando offline
+//  Created by Imac on 24/11/25.
 //
 
 import Foundation
@@ -69,9 +69,9 @@ class BadgesViewModel: ObservableObject {
             return
         }
         
-        print("\n🚀 ========================================")
-        print("🚀 LOADING BADGES WITH THREE-LAYER CACHE")
-        print("🚀 ========================================")
+        print("\n ========================================")
+        print(" LOADING BADGES WITH THREE-LAYER CACHE")
+        print(" ========================================")
         print("User ID: \(userId)")
         print("Connected: \(networkMonitor.isConnected ? "YES ✅" : "NO ❌")")
         
@@ -87,7 +87,7 @@ class BadgesViewModel: ObservableObject {
             return
         }
         
-        print("⏭️ [LAYER 1] Memory cache empty, trying Layer 2...")
+        print("[LAYER 1] Memory cache empty, trying Layer 2...")
         
         // ============================================
         // LAYER 2: Local Storage (UserDefaults + SQLite)
@@ -98,11 +98,11 @@ class BadgesViewModel: ObservableObject {
         
         if networkMonitor.isConnected {
             // Online: Respetar expiración (24 horas)
-            print("📦 [LAYER 2-ONLINE] Loading with expiration check...")
+            print("[LAYER 2-ONLINE] Loading with expiration check...")
             loadMethod = storageService.loadBadges
         } else {
             // Offline: Ignorar expiración inicial
-            print("📦 [LAYER 2-OFFLINE] Loading ignoring expiration...")
+            print("[LAYER 2-OFFLINE] Loading ignoring expiration...")
             loadMethod = storageService.loadBadgesIgnoringExpiration
         }
         
@@ -122,7 +122,7 @@ class BadgesViewModel: ObservableObject {
                 
                 // Refresh in background if connected
                 if self.networkMonitor.isConnected {
-                    print("🔄 [LAYER 2] Starting background refresh...")
+                    print("[LAYER 2] Starting background refresh...")
                     Task {
                         await self.refreshFromNetwork(userId: userId)
                     }
@@ -135,24 +135,24 @@ class BadgesViewModel: ObservableObject {
             }
             
             // No hay datos en Layer 2
-            print("⏭️ [LAYER 2] Local storage empty, trying Layer 3...")
+            print("[LAYER 2] Local storage empty, trying Layer 3...")
             
             // ============================================
             // LAYER 3: Network o Stale Data (ÚLTIMO RECURSO)
             // ============================================
             if self.networkMonitor.isConnected {
                 // Tenemos internet: Fetch normal
-                print("\n📦 [LAYER 3-NETWORK] Fetching from network...")
+                print("\n [LAYER 3-NETWORK] Fetching from network...")
                 Task {
                     await self.fetchFromNetwork(userId: userId)
                 }
             } else {
-                // 🆕 SIN INTERNET: Intentar cargar datos antiguos (STALE DATA)
-                print("\n📦 [LAYER 3-STALE] No internet - attempting STALE DATA mode...")
+                // SIN INTERNET: Intentar cargar datos antiguos (STALE DATA)
+                print("\n [LAYER 3-STALE] No internet - attempting STALE DATA mode...")
                 
                 self.storageService.loadStaleData(userId: userId) { staleResult in
                     if let staleData = staleResult {
-                        // ✅ Encontramos datos antiguos
+                        // Se encontro datos antiguos
                         print("✅ [STALE-MODE] Successfully loaded old data")
                         print("   - Badges: \(staleData.badges.count)")
                         print("   - User Badges: \(staleData.userBadges.count)")
@@ -181,7 +181,7 @@ class BadgesViewModel: ObservableObject {
     // MARK: - FETCH FROM NETWORK
     
     private func fetchFromNetwork(userId: String) async {
-        print("🌐 [NETWORK] Fetching from Firestore...")
+        print("[NETWORK] Fetching from Firestore...")
         
         await MainActor.run {
             self.isLoading = true
@@ -195,7 +195,7 @@ class BadgesViewModel: ObservableObject {
                     return
                 }
                 
-                print("🧵 [I/O THREAD] Downloading from Firestore...")
+                print("[I/O THREAD] Downloading from Firestore...")
                 
                 self.networkService.fetchBadgesData(userId: userId) { result in
                     switch result {
@@ -227,7 +227,7 @@ class BadgesViewModel: ObservableObject {
                     self.cacheService.cacheBadges(userId: userId, badges: data.badges, userBadges: data.userBadges)
                     
                     self.storageService.saveBadges(userId: userId, badges: data.badges, userBadges: data.userBadges) {
-                        print("💾 [BACKGROUND] Saved to both caches")
+                        print("[BACKGROUND] Saved to both caches")
                     }
                 }
             } else {
@@ -247,7 +247,7 @@ class BadgesViewModel: ObservableObject {
             self.isRefreshing = true
         }
         
-        print("🔄 [REFRESH] Starting background refresh...")
+        print("[REFRESH] Starting background refresh...")
         
         let networkData: (badges: [Badge], userBadges: [UserBadge])? = await withCheckedContinuation { continuation in
             networkService.fetchBadgesData(userId: userId) { result in
@@ -299,7 +299,7 @@ class BadgesViewModel: ObservableObject {
     func forceRefresh() {
         guard let userId = currentUserId else { return }
         
-        print("🗑️ [FORCE REFRESH] Clearing caches...")
+        print("[FORCE REFRESH] Clearing caches...")
         
         Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }

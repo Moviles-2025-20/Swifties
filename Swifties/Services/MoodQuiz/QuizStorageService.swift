@@ -96,7 +96,7 @@ class QuizStorageService {
                 
                 for question in questions {
                     guard let questionId = question.id else {
-                        print("⚠️ Skipping question without ID")
+                        print("!!!!!! Skipping question without ID")
                         continue
                     }
                     
@@ -133,7 +133,7 @@ class QuizStorageService {
             
             for row in try db.prepare(questionsTable) {
                 guard let optionsData = row[optionsJson].data(using: .utf8) else {
-                    print("⚠️ Failed to decode options for question \(row[id])")
+                    print("!!!!!! Failed to decode options for question \(row[id])")
                     continue
                 }
                 
@@ -176,7 +176,7 @@ class QuizStorageService {
                 schemaVersion: 2,
                 migrationBlock: { migration, oldSchemaVersion in
                     if oldSchemaVersion < 2 {
-                        // Handle migrations if needed
+                        // Handle migrations if needed (LATER FUTURE)
                     }
                 }
             )
@@ -192,7 +192,7 @@ class QuizStorageService {
     // MARK: - Realm Operations (Results) - FIXED!
     
     func saveQuizResult(userId: String, result: QuizResult, userQuizResult: UserQuizResult) {
-        // CRITICAL FIX: Use main thread for Realm writes when already on main actor
+        // FIX: Use main thread for Realm writes when already on main actor
         do {
             let realm = try Realm()
             

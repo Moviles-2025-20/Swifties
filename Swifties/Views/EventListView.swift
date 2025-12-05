@@ -283,6 +283,13 @@ struct EventListView: View {
                 if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
                     EventStorageService.shared.debugStorage()
                     viewModel.loadEvents()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        guard !viewModel.events.isEmpty else {
+                            return
+                        }
+                        logRatingsForCurrentEventsInBackground()
+                    }
+                    
                     AnalyticsService.shared.logDiscoveryMethod(.manualBrowse)
                 }
             }
@@ -305,6 +312,46 @@ struct EventListView: View {
     @ViewBuilder
     func EventMapContainerView(events: [Event]) -> some View {
         EventMapContent(events: events, viewModel: viewModel)
+    }
+    
+    // MARK: - Ratings analytics (background)
+    private func logRatingsForCurrentEventsInBackground() {
+        let eventsSnapshot = viewModel.events // capture once
+        guard !eventsSnapshot.isEmpty else { return }
+        
+        Task.detached(priority: .background) {
+            for event in eventsSnapshot {
+                // Extract valid ratings 1...5 from stats.ratingList (ignore nils and out-of-range)
+                let validRatings: [Int] = event.stats.ratingList.compactMap { value in
+                    guard let v = value, (1...5).contains(v) else { return nil }
+                    return v
+                }
+                guard !validRatings.isEmpty else { continue } // only with at least 1 rating
+                
+                // Counts for 1..5
+                var counts = [0, 0, 0, 0, 0]
+                for r in validRatings { counts[r - 1] += 1 }
+                
+                let total = counts.reduce(0, +)
+                let avg: Double
+                if total > 0 {
+                    let sum = counts.enumerated().reduce(0) { partial, pair in
+                        let (index, count) = pair
+                        return partial + (index + 1) * count
+                    }
+                    avg = Double(sum) / Double(total)
+                } else {
+                    avg = 0.0
+                }
+                
+                await AnalyticsService.shared.logEventRatingsSnapshot(
+                    eventId: event.id ?? "unknown_event",
+                    eventName: event.name,
+                    average: avg,
+                    total: total
+                )
+            }
+        }
     }
 }
 

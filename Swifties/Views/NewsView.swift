@@ -204,7 +204,7 @@ struct NewsView: View {
                                         .frame(maxWidth: .infinity)
                                         .padding()
                                 } else {
-                                    // Apply one horizontal padding here to keep cards within screen
+                                    // Like EventList: each row navigates to EventDetailView
                                     VStack(spacing: 12) {
                                         ForEach(viewModel.news, id: \.id) { item in
                                             CompactNewsCard(
@@ -212,7 +212,10 @@ struct NewsView: View {
                                                 isLiked: isLiked(item),
                                                 onToggleLike: { viewModel.toggleLike(item) }
                                             )
-                                            .frame(maxWidth: .infinity) // card fills available width
+                                            .frame(maxWidth: .infinity)
+                                            .onTapGesture {
+                                                viewModel.selectNews(item)
+                                            }
                                         }
                                     }
                                     .padding(.horizontal, 16)
@@ -223,6 +226,20 @@ struct NewsView: View {
                         .background(Color("appPrimary"))
                     }
                 }
+                
+                // Hidden NavigationLink driving navigation when selection resolves (mirrors list item NavigationLink behavior)
+                NavigationLink(
+                    destination: Group {
+                        if let event = viewModel.selectedEvent {
+                            EventDetailView(event: event)
+                        } else {
+                            EmptyView()
+                        }
+                    },
+                    isActive: $viewModel.isPresentingEventDetail,
+                    label: { EmptyView() }
+                )
+                .hidden()
             }
         }
         .onAppear {
@@ -317,3 +334,4 @@ private struct CompactNewsCard: View {
         .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
     }
 }
+

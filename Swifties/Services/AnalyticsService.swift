@@ -21,7 +21,7 @@ enum MapViewSource: String {
 
 class AnalyticsService {
     static let shared = AnalyticsService()
-    private init() {}
+    private init() {activarFirebase()}
     
     func logDiscoveryMethod(_ method: DiscoveryMethod) {
         Analytics.logEvent("activity_discovery_method", parameters: [
@@ -137,7 +137,27 @@ class AnalyticsService {
         ])
     }
     
+    /// Called when a News item is liked
+    func logEventSelected(eventId: String, category: String) {
+        Analytics.logEvent("event_category_liked", parameters: [
+            "event_id": eventId,
+            "category": category,
+            "timestamp": Date().timeIntervalSince1970
+        ])
+    }
+    
+    /// Called when event ratings are sent to Firebase to be compared
+    func logEventRatingsSnapshot(eventId: String, eventName: String, average: Double, total: Int) async {
+        Analytics.logEvent("event_ratings_snapshot", parameters: [
+            "event_id": eventId,
+            "event_name": eventName,
+            "average_rating": average,
+            "ratings_total": total,
+            "timestamp": Date().timeIntervalSince1970
+        ])
+    }
 }
+
 func activarFirebase() {
     Analytics.setAnalyticsCollectionEnabled(true)
 }

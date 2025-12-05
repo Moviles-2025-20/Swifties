@@ -33,23 +33,9 @@ struct BadgesView: View {
         }
     }
     
-    private var dataSourceIcon: String {
-        switch viewModel.dataSource {
-        case .memoryCache: return "memorychip"
-        case .localStorage: return "internaldrive"
-        case .network: return "wifi"
-        case .none: return "questionmark"
-        }
-    }
-    
-    private var dataSourceText: String {
-        switch viewModel.dataSource {
-        case .memoryCache: return "Memory Cache"
-        case .localStorage: return "Local Storage"
-        case .network: return "Updated from Network"
-        case .none: return ""
-        }
-    }
+
+
+
     
     var body: some View {
         ZStack {
@@ -82,32 +68,6 @@ struct BadgesView: View {
                     .padding(.top, 4)
                 }
                 
-                // Data Source Indicator
-                if !viewModel.isLoading && !viewModel.badgesWithProgress.isEmpty {
-                    HStack {
-                        Spacer()
-                        
-                        HStack(spacing: 6) {
-                            Image(systemName: dataSourceIcon)
-                                .foregroundColor(.secondary)
-                            Text(dataSourceText)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            if viewModel.isRefreshing {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                                Text("Updating...")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                }
                 
                 // MARK: - Main Content
                 if viewModel.isLoading {

@@ -13,28 +13,6 @@ struct WeeklyChallengeView: View {
     @State private var offlineAlertMessage = ""
     @State private var showNews: Bool = false
 
-    // MARK: - Computed Properties for Data Source Indicator
-    private var dataSourceIcon: String {
-        switch viewModel.dataSource {
-        case .memoryCache: return "memorychip"
-        case .realmStorage: return "internaldrive"
-        case .network: return "wifi"
-        case .none: return "questionmark"
-        @unknown default: return "questionmark"
-        }
-    }
-
-    
-    private var dataSourceText: String {
-        switch viewModel.dataSource {
-        case .memoryCache: return "Memory Cache"
-        case .realmStorage: return "Realm Storage"
-        case .network: return "Updated from Network"
-        case .none: return ""
-        @unknown default: return ""
-        }
-    }
-
     
     var body: some View {
         ZStack {
@@ -69,32 +47,6 @@ struct WeeklyChallengeView: View {
                     .padding(.top, 4)
                 }
                 
-                // Data Source Indicator (minimalist gray style like HomeView)
-                if !viewModel.isLoading && viewModel.challengeEvent != nil {
-                    HStack {
-                        Spacer()
-                        
-                        HStack(spacing: 6) {
-                            Image(systemName: dataSourceIcon)
-                                .foregroundColor(.secondary)
-                            Text(dataSourceText)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            if viewModel.isRefreshing {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                                Text("Updating...")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                }
                 
                 // MARK: - Main Content Area
                 if viewModel.isLoading {

@@ -147,7 +147,7 @@ class AnalyticsService {
     }
     
     /// Called when event ratings are sent to Firebase to be compared
-    func logEventRatingsSnapshot(eventId: String, eventName: String, average: Double, total: Int) {
+    func logEventRatingsSnapshot(eventId: String, eventName: String, average: Double, total: Int) async {
         Analytics.logEvent("event_ratings_snapshot", parameters: [
             "event_id": eventId,
             "event_name": eventName,

@@ -207,18 +207,15 @@ struct NewsView: View {
                                     // Like EventList: each row navigates to EventDetailView
                                     VStack(spacing: 12) {
                                         ForEach(viewModel.news, id: \.id) { item in
-                                            // Tapping the card will start loading the Event, then push via a hidden NavigationLink
-                                            Button {
+                                            CompactNewsCard(
+                                                news: item,
+                                                isLiked: isLiked(item),
+                                                onToggleLike: { viewModel.toggleLike(item) }
+                                            )
+                                            .frame(maxWidth: .infinity)
+                                            .onTapGesture {
                                                 viewModel.selectNews(item)
-                                            } label: {
-                                                CompactNewsCard(
-                                                    news: item,
-                                                    isLiked: isLiked(item),
-                                                    onToggleLike: { viewModel.toggleLike(item) }
-                                                )
-                                                .frame(maxWidth: .infinity)
                                             }
-                                            .buttonStyle(.plain)
                                         }
                                     }
                                     .padding(.horizontal, 16)

@@ -300,6 +300,13 @@ struct EventListView: View {
                     EventStorageService.shared.debugStorage()
                     
                     viewModel.loadEvents()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        guard !viewModel.events.isEmpty else {
+                            return
+                        }
+                        logRatingsForCurrentEventsInBackground()
+                    }
+                    
                     AnalyticsService.shared.logDiscoveryMethod(.manualBrowse)
                 }
             }

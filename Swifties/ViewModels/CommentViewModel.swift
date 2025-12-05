@@ -1,5 +1,5 @@
 // CommentViewModel.swift
-// Handles creating comment documents and uploading optional images to Firebase Storage.
+// Swifties
 
 import Combine
 import Foundation

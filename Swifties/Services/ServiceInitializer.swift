@@ -13,7 +13,7 @@ class ServiceInitializer {
     private init() {}
     
     func initializeAllServices() {
-        print("🚀 Initializing all services...")
+        print("Initializing all services...")
         
         // Initialize Badge Detail Services
         _ = BadgeDetailCacheService.shared
@@ -31,22 +31,3 @@ class ServiceInitializer {
         print("✅ All services initialized successfully")
     }
 }
-
-// MARK: - Usage in AppDelegate or App struct
-/*
- Add this to your App struct or AppDelegate:
- 
- @main
- struct SwiftiesApp: App {
-     init() {
-         FirebaseApp.configure()
-         ServiceInitializer.shared.initializeAllServices()
-     }
-     
-     var body: some Scene {
-         WindowGroup {
-             ContentView()
-         }
-     }
- }
- */

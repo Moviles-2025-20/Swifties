@@ -26,7 +26,7 @@ class QuizSyncService: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] isConnected in
                 if isConnected {
-                    print("🌐 [BACK ONLINE] Network connection restored - checking for pending quiz results...")
+                    print("[BACK ONLINE] Network connection restored - checking for pending quiz results...")
                     Task { [weak self] in
                         await self?.syncPendingResults()
                     }
@@ -40,7 +40,7 @@ class QuizSyncService: ObservableObject {
     func syncPendingResults() async {
         // CRITICAL FIX: Always check storage, not just local state
         guard storageService.hasPendingResults() else {
-            print("ℹ️ No pending quiz results to sync")
+            print("-->> No pending quiz results to sync")
             return
         }
         
@@ -56,7 +56,7 @@ class QuizSyncService: ObservableObject {
             return
         }
         
-        print("🔄 [SYNC START] Syncing \(pendingResults.count) pending quiz result(s) to Firestore...")
+        print("[SYNC START] Syncing \(pendingResults.count) pending quiz result(s) to Firestore...")
         isSyncing = true
         
         // Use continuation for proper async/await with callback-based API
@@ -78,14 +78,14 @@ class QuizSyncService: ObservableObject {
                         
                         // Notify that sync completed successfully
                         NotificationCenter.default.post(name: .quizSyncCompleted, object: nil)
-                        print("📢 [NOTIFICATION] Posted quizSyncCompleted notification")
+                        print("[NOTIFICATION] Posted quizSyncCompleted notification")
                         
                     case .failure(let error):
                         print("❌ [SYNC FAILED] Failed to sync pending quiz results: \(error.localizedDescription)")
                         self?.lastSyncError = error
                         
                         // Results remain in storage for retry
-                        print("💾 Results remain in storage for retry")
+                        print("!!!!!! Results remain in storage for retry")
                     }
                 }
             }
@@ -95,7 +95,7 @@ class QuizSyncService: ObservableObject {
     // MARK: - Manual Sync Trigger
     
     func triggerManualSync() async {
-        print("🔄 [MANUAL] Manual quiz sync triggered...")
+        print("[MANUAL] Manual quiz sync triggered...")
         await syncPendingResults()
     }
 }

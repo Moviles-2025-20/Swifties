@@ -37,7 +37,7 @@ class RegistrationSyncService: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] isConnected in
                 if isConnected {
-                    print("🌐 Network connection restored - checking for pending registration...")
+                    print("[NETWORKKK] Network connection restored - checking for pending registration...")
                     Task { [weak self] in
                         await self?.syncPendingRegistration()
                     }
@@ -111,7 +111,7 @@ class RegistrationSyncService: ObservableObject {
     // MARK: - Sync Pending Registration (called when connection is restored)
     func syncPendingRegistration() async {
         guard userDefaultsService.hasPendingRegistration() else {
-            print("ℹ️ No pending registration to sync")
+            print("!!!!!!! No pending registration to sync")
             return
         }
         
@@ -130,7 +130,7 @@ class RegistrationSyncService: ObservableObject {
             return
         }
         
-        print("🔄 Syncing pending registration data to Firestore...")
+        print("[SYNC] Syncing pending registration data to Firestore...")
         
         do {
             try await uploadToFirestore(uid: uid, data: pendingData)
@@ -143,7 +143,7 @@ class RegistrationSyncService: ObservableObject {
     
     // MARK: - Manual Sync Trigger
     func triggerManualSync() async {
-        print("🔄 Manual sync triggered...")
+        print("[SYNC] Manual sync triggered...")
         await syncPendingRegistration()
     }
 }

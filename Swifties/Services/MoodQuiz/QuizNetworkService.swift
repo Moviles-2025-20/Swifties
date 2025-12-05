@@ -14,8 +14,8 @@ class QuizNetworkService {
     
     private let db = Firestore.firestore(database: "default")
     
-    // Your actual Firestore structure
-    private let quizDocumentId = "lOhEPYC8ci9lBEo08G47"  // The document ID from your screenshot
+    // The actual Firestore structure
+    private let quizDocumentId = "lOhEPYC8ci9lBEo08G47"  // The document ID of the loaded questions
     
     private init() {}
     

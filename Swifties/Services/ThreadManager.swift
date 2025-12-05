@@ -102,7 +102,7 @@ class ThreadManager {
         }
     }
     
-    /// Escribe al caché con barrier (operación exclusiva)
+    /// Escribe al cache con barrier (operación exclusiva)
     func writeToCache(operation: @escaping () -> Void, completion: (() -> Void)? = nil) {
         cacheQueue.async(flags: .barrier) {
             operation()

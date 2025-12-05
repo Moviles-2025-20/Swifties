@@ -107,27 +107,38 @@ struct RecommendationsTable {
     }
 }
 
-// MARK: - Table Manager
+// MARK: - Quiz Questions Table
 
-class DatabaseTableManager {
-    static func setupAllTables() {
-        guard let db = DatabaseManager.shared.connection else {
-            print("❌ Cannot setup tables: database not available")
-            return
-        }
+struct QuizQuestionsTable {
+    static let table = Table("quiz_questions")
+    
+    // Columns
+    static let id = Expression<String>("id")
+    static let text = Expression<String>("text")
+    static let imageUrl = Expression<String?>("image_url")
+    static let optionsJson = Expression<String>("options_json")
+    static let timestamp = Expression<Date>("timestamp")
+    
+    // Schema creation
+    static func createTable(in db: Connection) throws {
+        try db.run(table.create(ifNotExists: true) { t in
+            t.column(id, primaryKey: true)
+            t.column(text)
+            t.column(imageUrl)
+            t.column(optionsJson)
+            t.column(timestamp)
+        })
         
-        do {
-            try EventsTable.createTable(in: db)
-            try EventsTable.createIndexes(in: db)
-            
-            try RecommendationsTable.createTable(in: db)
-            try RecommendationsTable.createIndexes(in: db)
-            
-            #if DEBUG
-            print("✅ All database tables initialized")
-            #endif
-        } catch {
-            print("❌ Error setting up tables: \(error)")
-        }
+        #if DEBUG
+        print("✅ Quiz questions table created")
+        #endif
+    }
+    
+    static func createIndexes(in db: Connection) throws {
+        try db.run("CREATE INDEX IF NOT EXISTS idx_quiz_timestamp ON quiz_questions(timestamp)")
+        
+        #if DEBUG
+        print("✅ Quiz questions indexes created")
+        #endif
     }
 }

@@ -158,10 +158,11 @@ class MoodQuizViewModel: ObservableObject {
     
     // MARK: - Load Quiz Questions
     
+    // Replace the loadQuizQuestions() method in MoodQuizViewModel with this:
+
     private func loadQuizQuestions() async {
         print("\n--- LOADING QUIZ QUESTIONS ---")
         
-        // ALWAYS select random questions, regardless of source
         var allQuestions: [QuizQuestion]? = nil
         
         // Try memory cache first
@@ -169,37 +170,47 @@ class MoodQuizViewModel: ObservableObject {
             print("✅ [MEMORY CACHE] Found \(cached.count) cached questions")
             allQuestions = cached
             dataSource = .memoryCache
-        }
-        // Try SQLite local storage
-        else if let stored = storageService.loadQuestions() {
-            print("✅ [SQLITE STORAGE] Found \(stored.count) stored questions")
-            allQuestions = stored
-            dataSource = .localStorage
-            
-            // Cache in memory for next time
-            QuizQuestionsCache.shared.cacheQuestions(stored)
-            
-            // Try to refresh from network in background
-            if networkMonitor.isConnected {
-                Task {
-                    await refreshQuestionsFromNetwork()
-                }
-            }
-        }
-        // Must fetch from network
-        else {
-            guard networkMonitor.isConnected else {
-                errorMessage = "No internet connection and no cached quiz available"
-                return
-            }
-            
-            await fetchQuestionsFromNetwork()
-            return // fetchQuestionsFromNetwork() handles selection
+            questions = selectRandomQuestions(from: cached)
+            return
         }
         
-        // Select 5 random questions from the pool
-        if let all = allQuestions {
-            questions = selectRandomQuestions(from: all)
+        // Try SQLite local storage (now async with completion handler)
+        await withCheckedContinuation { continuation in
+            storageService.loadQuestions { [weak self] stored in
+                guard let self = self else {
+                    continuation.resume()
+                    return
+                }
+                
+                if let stored = stored {
+                    print("✅ [SQLITE STORAGE] Found \(stored.count) stored questions")
+                    allQuestions = stored
+                    self.dataSource = .localStorage
+                    self.questions = self.selectRandomQuestions(from: stored)
+                    
+                    // Cache in memory for next time
+                    QuizQuestionsCache.shared.cacheQuestions(stored)
+                    
+                    // Try to refresh from network in background
+                    if self.networkMonitor.isConnected {
+                        Task {
+                            await self.refreshQuestionsFromNetwork()
+                        }
+                    }
+                    
+                    continuation.resume()
+                } else {
+                    // Must fetch from network
+                    Task {
+                        if self.networkMonitor.isConnected {
+                            await self.fetchQuestionsFromNetwork()
+                        } else {
+                            self.errorMessage = "No internet connection and no cached quiz available"
+                        }
+                        continuation.resume()
+                    }
+                }
+            }
         }
     }
     

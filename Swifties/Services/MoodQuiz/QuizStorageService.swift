@@ -5,6 +5,7 @@
 //  Created by Natalia Villegas Calderón on 28/11/25.
 //
 
+
 import Foundation
 import SQLite
 import RealmSwift
@@ -12,175 +13,123 @@ import RealmSwift
 class QuizStorageService {
     static let shared = QuizStorageService()
     
-    // SQLite for questions
-    private var db: Connection?
-    private let questionsTable = Table("quiz_questions")
-    private let id = Expression<String>("id")
-    private let text = Expression<String>("text")
-    private let imageUrl = Expression<String?>("image_url")
-    private let optionsJson = Expression<String>("options_json")
-    private let timestamp = Expression<Date>("timestamp")
+    // Use the singleton DatabaseManager instead of separate connection
+    private let dbManager = DatabaseManager.shared
+    private let threadManager = ThreadManager.shared
+    
+    // Table reference (using the centralized table definition)
+    private let questionsTable = QuizQuestionsTable.table
+    private let id = QuizQuestionsTable.id
+    private let text = QuizQuestionsTable.text
+    private let imageUrl = QuizQuestionsTable.imageUrl
+    private let optionsJson = QuizQuestionsTable.optionsJson
+    private let timestamp = QuizQuestionsTable.timestamp
     
     // UserDefaults keys
     private let pendingResultsKey = "pending_quiz_results"
     private let hasResultKey = "quiz_has_result_"
     private let wantsRetakeKey = "quiz_wants_retake_"
     
-    // GCD: Serial queue for thread-safe SQLite operations
-    //.utility (not .background) because database reads/writes support active user tasks like loading quiz questions
-    private let sqliteQueue = DispatchQueue(label: "com.swifties.quiz.sqlite", qos: .utility)
-    
     private init() {
-        setupSQLite()
         setupRealm()
-    }
-    
-    // MARK: - SQLite Setup
-    
-    private func setupSQLite() {
-        do {
-            let path = NSSearchPathForDirectoriesInDomains(
-                .documentDirectory, .userDomainMask, true
-            ).first!
-            
-            let dbPath = "\(path)/quiz_questions.sqlite3"
-            db = try Connection(dbPath)
-            
-            print("Quiz questions database path: \(dbPath)")
-            createQuestionsTable()
-            createIndexes()
-        } catch {
-            print("❌ Error setting up quiz questions database: \(error)")
-        }
-    }
-    
-    private func createQuestionsTable() {
-        guard let db = db else { return }
-        
-        do {
-            try db.run(questionsTable.create(ifNotExists: true) { table in
-                table.column(id, primaryKey: true)
-                table.column(text)
-                table.column(imageUrl)
-                table.column(optionsJson)
-                table.column(timestamp)
-            })
-            
-            print("✅ Quiz questions table created")
-        } catch {
-            print("❌ Error creating questions table: \(error)")
-        }
-    }
-    
-    private func createIndexes() {
-        guard let db = db else { return }
-        
-        do {
-            try db.run("CREATE INDEX IF NOT EXISTS idx_quiz_timestamp ON quiz_questions(timestamp)")
-            print("✅ Quiz questions indexes created")
-        } catch {
-            print("❌ Error creating indexes: \(error)")
-        }
+        // Table setup is now handled by DatabaseTableManager
     }
     
     // MARK: - SQLite Operations (Questions)
     
     func saveQuestions(_ questions: [QuizQuestion]) {
-        guard let db = db else {
-            print("❌ Database connection not available")
+        guard !questions.isEmpty else {
+            print("⚠️ No questions to save")
             return
         }
         
-        // GCD: Heavy database write on background serial queue
-        sqliteQueue.async {
-            do {
-                let encoder = JSONEncoder()
-                
-                try db.transaction {
-                    // Clear existing questions
-                    try db.run(self.questionsTable.delete())
-                    
-                    for question in questions {
-                        guard let questionId = question.id else {
-                            print("!!!!!! Skipping question without ID")
-                            continue
-                        }
-                        
-                        let optionsData = try encoder.encode(question.options)
-                        let optionsString = String(data: optionsData, encoding: .utf8)!
-                        
-                        let insert = self.questionsTable.insert(
-                            self.id <- questionId,
-                            self.text <- question.text,
-                            self.imageUrl <- question.imageUrl,
-                            self.optionsJson <- optionsString,
-                            self.timestamp <- Date()
-                        )
-                        
-                        try db.run(insert)
-                    }
+        // Use DatabaseManager's transaction method with GCD handled internally
+        dbManager.executeTransaction { db in
+            let encoder = JSONEncoder()
+            
+            // Clear existing questions
+            try db.run(self.questionsTable.delete())
+            
+            for question in questions {
+                guard let questionId = question.id else {
+                    print("⚠️ Skipping question without ID")
+                    continue
                 }
                 
-                print("✅ \(questions.count) quiz questions saved to SQLite")
-            } catch {
+                let optionsData = try encoder.encode(question.options)
+                let optionsString = String(data: optionsData, encoding: .utf8)!
+                
+                let insert = self.questionsTable.insert(
+                    self.id <- questionId,
+                    self.text <- question.text,
+                    self.imageUrl <- question.imageUrl,
+                    self.optionsJson <- optionsString,
+                    self.timestamp <- Date()
+                )
+                
+                try db.run(insert)
+            }
+            
+            print("✅ \(questions.count) quiz questions saved to SQLite")
+        } completion: { result in
+            switch result {
+            case .success:
+                break
+            case .failure(let error):
                 print("❌ Error saving quiz questions: \(error)")
             }
         }
     }
     
-    func loadQuestions() -> [QuizQuestion]? {
-        guard let db = db else {
-            print("❌ Database connection not available")
-            return nil
-        }
-        
-        // GCD: Synchronous read on serial queue (safe for SQLite)
-        var result: [QuizQuestion]?
-        
-        sqliteQueue.sync {
-            do {
-                let decoder = JSONDecoder()
-                var questions: [QuizQuestion] = []
-                
-                for row in try db.prepare(self.questionsTable) {
-                    guard let optionsData = row[self.optionsJson].data(using: .utf8) else {
-                        print("!!!!!! Failed to decode options for question \(row[self.id])")
-                        continue
-                    }
-                    
-                    let options = try decoder.decode([QuizOption].self, from: optionsData)
-                    
-                    var question = QuizQuestion(
-                        text: row[self.text],
-                        imageUrl: row[self.imageUrl],
-                        options: options
-                    )
-                    question.id = row[self.id]
-                    
-                    questions.append(question)
+    func loadQuestions(completion: @escaping ([QuizQuestion]?) -> Void) {
+        // Use DatabaseManager's read method with GCD handled internally
+        dbManager.executeRead { db in
+            let decoder = JSONDecoder()
+            var questions: [QuizQuestion] = []
+            
+            for row in try db.prepare(self.questionsTable) {
+                guard let optionsData = row[self.optionsJson].data(using: .utf8) else {
+                    print("⚠️ Failed to decode options for question \(row[self.id])")
+                    continue
                 }
                 
-                print("✅ \(questions.count) quiz questions loaded from SQLite")
-                result = questions.isEmpty ? nil : questions
-            } catch {
+                let options = try decoder.decode([QuizOption].self, from: optionsData)
+                
+                var question = QuizQuestion(
+                    text: row[self.text],
+                    imageUrl: row[self.imageUrl],
+                    options: options
+                )
+                question.id = row[self.id]
+                
+                questions.append(question)
+            }
+            
+            print("✅ \(questions.count) quiz questions loaded from SQLite")
+            return questions.isEmpty ? nil : questions
+            
+        } completion: { result in
+            switch result {
+            case .success(let questions):
+                completion(questions)
+            case .failure(let error):
                 print("❌ Error loading quiz questions: \(error)")
-                result = nil
+                completion(nil)
             }
         }
-        
-        return result
     }
     
-    func deleteQuestions() {
-        guard let db = db else { return }
-        
-        // GCD: Database write on background queue
-        sqliteQueue.async {
-            do {
-                let deleted = try db.run(self.questionsTable.delete())
-                print("✅ \(deleted) quiz questions deleted from SQLite")
-            } catch {
+    func deleteQuestions(completion: ((Bool) -> Void)? = nil) {
+        dbManager.executeWrite { db in
+            let deleted = try db.run(self.questionsTable.delete())
+            print("✅ \(deleted) quiz questions deleted from SQLite")
+        } completion: { result in
+            switch result {
+            case .success:
+                completion?(true)
+            case .failure(let error):
                 print("❌ Error deleting quiz questions: \(error)")
+                completion?(false)
             }
         }
     }

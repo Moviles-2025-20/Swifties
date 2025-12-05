@@ -24,130 +24,152 @@ class QuizNetworkService {
     func fetchQuizQuestions(completion: @escaping (Result<[QuizQuestion], Error>) -> Void) {
         print("[FETCHING] Fetching quiz questions from Firestore...")
         
-        // Fetch from the single document that contains the questions array
-        db.collection("quiz_questions")
-            .document(quizDocumentId)
-            .getDocument { snapshot, error in
-                if let error = error {
-                    print("❌ Network error fetching questions: \(error.localizedDescription)")
-                    completion(.failure(error))
-                    return
-                }
-                
-                guard let document = snapshot, document.exists else {
-                    let error = NSError(
-                        domain: "QuizNetwork",
-                        code: 404,
-                        userInfo: [NSLocalizedDescriptionKey: "Quiz questions document not found"]
-                    )
-                    print("❌ Document quiz_questions/\(self.quizDocumentId) not found")
-                    completion(.failure(error))
-                    return
-                }
-                
-                guard let data = document.data(),
-                      let questionsArray = data["questions"] as? [[String: Any]] else {
-                    let error = NSError(
-                        domain: "QuizNetwork",
-                        code: 400,
-                        userInfo: [NSLocalizedDescriptionKey: "No questions array found in document"]
-                    )
-                    print("❌ No 'questions' field found in document")
-                    completion(.failure(error))
-                    return
-                }
-                
-                print("[FOUND] Found \(questionsArray.count) questions in array, parsing...")
-                
-                var questions: [QuizQuestion] = []
-                var parseErrors: [String] = []
-                
-                for (index, questionData) in questionsArray.enumerated() {
-                    // Parse question
-                    guard let id = questionData["id"] as? String,
-                          let text = questionData["text"] as? String else {
-                        parseErrors.append("Question \(index): Missing 'id' or 'text' field")
-                        continue
-                    }
-                    
-                    // imageUrl is optional
-                    let imageUrl = questionData["imageUrl"] as? String
-                    
-                    // Parse options array
-                    guard let optionsArray = questionData["options"] as? [[String: Any]] else {
-                        parseErrors.append("Question '\(id)': Missing or invalid 'options' array")
-                        continue
-                    }
-                    
-                    var options: [QuizOption] = []
-                    var hasValidOptions = true
-                    
-                    for (optIndex, optionData) in optionsArray.enumerated() {
-                        guard let optionText = optionData["text"] as? String,
-                              let category = optionData["category"] as? String,
-                              let points = optionData["points"] as? Int else {
-                            parseErrors.append("Question '\(id)' option \(optIndex): Missing text/category/points")
-                            hasValidOptions = false
-                            break
+        // GCD: .userInitiated because user actively triggered this fetch and expects immediate response (higher system priority)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            // Fetch from the single document that contains the questions array
+            self.db.collection("quiz_questions")
+                .document(self.quizDocumentId)
+                .getDocument { snapshot, error in
+                    // GCD: Process response on background queue for heavy parsing
+                    DispatchQueue.global(qos: .utility).async {
+                        if let error = error {
+                            print("❌ Network error fetching questions: \(error.localizedDescription)")
+                            // Return to main thread for completion
+                            DispatchQueue.main.async {
+                                completion(.failure(error))
+                            }
+                            return
                         }
                         
-                        // Validate category
-                        let validCategories = ["creative", "social_planner", "cultural_explorer", "chill"]
-                        guard validCategories.contains(category) else {
-                            parseErrors.append("Question '\(id)': Invalid category '\(category)'")
-                            hasValidOptions = false
-                            break
+                        guard let document = snapshot, document.exists else {
+                            let error = NSError(
+                                domain: "QuizNetwork",
+                                code: 404,
+                                userInfo: [NSLocalizedDescriptionKey: "Quiz questions document not found"]
+                            )
+                            print("❌ Document quiz_questions/\(self.quizDocumentId) not found")
+                            DispatchQueue.main.async {
+                                completion(.failure(error))
+                            }
+                            return
                         }
                         
-                        // Validate points
-                        guard points >= 0 && points <= 100 else {
-                            parseErrors.append("Question '\(id)': Invalid points value \(points)")
-                            hasValidOptions = false
-                            break
+                        guard let data = document.data(),
+                              let questionsArray = data["questions"] as? [[String: Any]] else {
+                            let error = NSError(
+                                domain: "QuizNetwork",
+                                code: 400,
+                                userInfo: [NSLocalizedDescriptionKey: "No questions array found in document"]
+                            )
+                            print("❌ No 'questions' field found in document")
+                            DispatchQueue.main.async {
+                                completion(.failure(error))
+                            }
+                            return
                         }
                         
-                        options.append(QuizOption(text: optionText, category: category, points: points))
+                        print("[FOUND] Found \(questionsArray.count) questions in array, parsing...")
+                        
+                        // GCD: Heavy parsing work on background thread
+                        var questions: [QuizQuestion] = []
+                        var parseErrors: [String] = []
+                        
+                        for (index, questionData) in questionsArray.enumerated() {
+                            // Parse question
+                            guard let id = questionData["id"] as? String,
+                                  let text = questionData["text"] as? String else {
+                                parseErrors.append("Question \(index): Missing 'id' or 'text' field")
+                                continue
+                            }
+                            
+                            // imageUrl is optional
+                            let imageUrl = questionData["imageUrl"] as? String
+                            
+                            // Parse options array
+                            guard let optionsArray = questionData["options"] as? [[String: Any]] else {
+                                parseErrors.append("Question '\(id)': Missing or invalid 'options' array")
+                                continue
+                            }
+                            
+                            var options: [QuizOption] = []
+                            var hasValidOptions = true
+                            
+                            for (optIndex, optionData) in optionsArray.enumerated() {
+                                guard let optionText = optionData["text"] as? String,
+                                      let category = optionData["category"] as? String,
+                                      let points = optionData["points"] as? Int else {
+                                    parseErrors.append("Question '\(id)' option \(optIndex): Missing text/category/points")
+                                    hasValidOptions = false
+                                    break
+                                }
+                                
+                                // Validate category
+                                let validCategories = ["creative", "social_planner", "cultural_explorer", "chill"]
+                                guard validCategories.contains(category) else {
+                                    parseErrors.append("Question '\(id)': Invalid category '\(category)'")
+                                    hasValidOptions = false
+                                    break
+                                }
+                                
+                                // Validate points
+                                guard points >= 0 && points <= 100 else {
+                                    parseErrors.append("Question '\(id)': Invalid points value \(points)")
+                                    hasValidOptions = false
+                                    break
+                                }
+                                
+                                options.append(QuizOption(text: optionText, category: category, points: points))
+                            }
+                            
+                            if !hasValidOptions || options.isEmpty {
+                                parseErrors.append("Question '\(id)': No valid options")
+                                continue
+                            }
+                            
+                            // Create question with ID
+                            var question = QuizQuestion(text: text, imageUrl: imageUrl, options: options)
+                            question.id = id
+                            
+                            questions.append(question)
+                            print("✅ Parsed question \(index + 1): \(id)")
+                        }
+                        
+                        // Report parsing results
+                        if !parseErrors.isEmpty {
+                            print("\n⚠️ PARSING ERRORS (\(parseErrors.count) issues):")
+                            parseErrors.prefix(5).forEach { print("   - \($0)") }
+                            if parseErrors.count > 5 {
+                                print("   ... and \(parseErrors.count - 5) more")
+                            }
+                        }
+                        
+                        if questions.isEmpty {
+                            let error = NSError(
+                                domain: "QuizNetwork",
+                                code: 400,
+                                userInfo: [
+                                    NSLocalizedDescriptionKey: "Failed to parse any quiz questions",
+                                    NSLocalizedFailureReasonErrorKey: parseErrors.joined(separator: "\n")
+                                ]
+                            )
+                            print("❌ Failed to parse any questions from \(questionsArray.count) items")
+                            DispatchQueue.main.async {
+                                completion(.failure(error))
+                            }
+                            return
+                        }
+                        
+                        print("✅ Successfully parsed \(questions.count) out of \(questionsArray.count) questions")
+                        
+                        // GCD: Return result on main thread
+                        DispatchQueue.main.async {
+                            completion(.success(questions))
+                        }
                     }
-                    
-                    if !hasValidOptions || options.isEmpty {
-                        parseErrors.append("Question '\(id)': No valid options")
-                        continue
-                    }
-                    
-                    // Create question with ID
-                    var question = QuizQuestion(text: text, imageUrl: imageUrl, options: options)
-                    question.id = id
-                    
-                    questions.append(question)
-                    print("✅ Parsed question \(index + 1): \(id)")
                 }
-                
-                // Report parsing results
-                if !parseErrors.isEmpty {
-                    print("\n⚠️ PARSING ERRORS (\(parseErrors.count) issues):")
-                    parseErrors.prefix(5).forEach { print("   - \($0)") }
-                    if parseErrors.count > 5 {
-                        print("   ... and \(parseErrors.count - 5) more")
-                    }
-                }
-                
-                if questions.isEmpty {
-                    let error = NSError(
-                        domain: "QuizNetwork",
-                        code: 400,
-                        userInfo: [
-                            NSLocalizedDescriptionKey: "Failed to parse any quiz questions",
-                            NSLocalizedFailureReasonErrorKey: parseErrors.joined(separator: "\n")
-                        ]
-                    )
-                    print("❌ Failed to parse any questions from \(questionsArray.count) items")
-                    completion(.failure(error))
-                    return
-                }
-                
-                print("✅ Successfully parsed \(questions.count) out of \(questionsArray.count) questions")
-                completion(.success(questions))
-            }
+        }
     }
     
     // MARK: - Upload Quiz Result
@@ -158,20 +180,28 @@ class QuizNetworkService {
         print("   Quiz Bank: \(result.quizBankId)")
         print("   Result Type: \(result.resultType)")
         
-        let resultRef = db.collection("user_quiz_results").document()
-        
-        // Use toFirestoreData() to properly convert Date to Timestamp
-        let firestoreData = result.toFirestoreData()
-        
-        resultRef.setData(firestoreData) { error in
-            if let error = error {
-                print("❌ Error uploading quiz result: \(error.localizedDescription)")
-                completion(.failure(error))
-                return
-            }
+        // GCD: Background queue for network write operation (LOW priority)
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            guard let self = self else { return }
             
-            print("✅ Quiz result uploaded successfully to document: \(resultRef.documentID)")
-            completion(.success(()))
+            let resultRef = self.db.collection("user_quiz_results").document()
+            
+            // Use toFirestoreData() to properly convert Date to Timestamp
+            let firestoreData = result.toFirestoreData()
+            
+            resultRef.setData(firestoreData) { error in
+                // GCD: Return to main thread for completion
+                DispatchQueue.main.async {
+                    if let error = error {
+                        print("❌ Error uploading quiz result: \(error.localizedDescription)")
+                        completion(.failure(error))
+                        return
+                    }
+                    
+                    print("✅ Quiz result uploaded successfully to document: \(resultRef.documentID)")
+                    completion(.success(()))
+                }
+            }
         }
     }
     
@@ -185,25 +215,33 @@ class QuizNetworkService {
             return
         }
         
-        let batch = db.batch()
-        
-        for result in results {
-            let ref = db.collection("user_quiz_results").document()
-            let firestoreData = result.toFirestoreData()
-            batch.setData(firestoreData, forDocument: ref)
+        // GCD: Background queue for batch write operation
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
             
-            print("   [+] Prepared: User \(result.userId) - \(result.resultType) result")
-        }
-        
-        batch.commit { error in
-            if let error = error {
-                print("❌ Batch sync failed: \(error.localizedDescription)")
-                completion(.failure(error))
-                return
+            let batch = self.db.batch()
+            
+            for result in results {
+                let ref = self.db.collection("user_quiz_results").document()
+                let firestoreData = result.toFirestoreData()
+                batch.setData(firestoreData, forDocument: ref)
+                
+                print("   [+] Prepared: User \(result.userId) - \(result.resultType) result")
             }
             
-            print("✅ Successfully synced \(results.count) quiz result(s) to Firestore")
-            completion(.success(()))
+            batch.commit { error in
+                // GCD: Return to main thread for completion
+                DispatchQueue.main.async {
+                    if let error = error {
+                        print("❌ Batch sync failed: \(error.localizedDescription)")
+                        completion(.failure(error))
+                        return
+                    }
+                    
+                    print("✅ Successfully synced \(results.count) quiz result(s) to Firestore")
+                    completion(.success(()))
+                }
+            }
         }
     }
 }

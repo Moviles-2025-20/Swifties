@@ -26,6 +26,10 @@ class QuizStorageService {
     private let hasResultKey = "quiz_has_result_"
     private let wantsRetakeKey = "quiz_wants_retake_"
     
+    // GCD: Serial queue for thread-safe SQLite operations
+    //.utility (not .background) because database reads/writes support active user tasks like loading quiz questions
+    private let sqliteQueue = DispatchQueue(label: "com.swifties.quiz.sqlite", qos: .utility)
+    
     private init() {
         setupSQLite()
         setupRealm()
@@ -87,37 +91,40 @@ class QuizStorageService {
             return
         }
         
-        do {
-            let encoder = JSONEncoder()
-            
-            try db.transaction {
-                // Clear existing questions
-                try db.run(questionsTable.delete())
+        // GCD: Heavy database write on background serial queue
+        sqliteQueue.async {
+            do {
+                let encoder = JSONEncoder()
                 
-                for question in questions {
-                    guard let questionId = question.id else {
-                        print("!!!!!! Skipping question without ID")
-                        continue
+                try db.transaction {
+                    // Clear existing questions
+                    try db.run(self.questionsTable.delete())
+                    
+                    for question in questions {
+                        guard let questionId = question.id else {
+                            print("!!!!!! Skipping question without ID")
+                            continue
+                        }
+                        
+                        let optionsData = try encoder.encode(question.options)
+                        let optionsString = String(data: optionsData, encoding: .utf8)!
+                        
+                        let insert = self.questionsTable.insert(
+                            self.id <- questionId,
+                            self.text <- question.text,
+                            self.imageUrl <- question.imageUrl,
+                            self.optionsJson <- optionsString,
+                            self.timestamp <- Date()
+                        )
+                        
+                        try db.run(insert)
                     }
-                    
-                    let optionsData = try encoder.encode(question.options)
-                    let optionsString = String(data: optionsData, encoding: .utf8)!
-                    
-                    let insert = questionsTable.insert(
-                        id <- questionId,
-                        text <- question.text,
-                        imageUrl <- question.imageUrl,
-                        optionsJson <- optionsString,
-                        timestamp <- Date()
-                    )
-                    
-                    try db.run(insert)
                 }
+                
+                print("✅ \(questions.count) quiz questions saved to SQLite")
+            } catch {
+                print("❌ Error saving quiz questions: \(error)")
             }
-            
-            print("✅ \(questions.count) quiz questions saved to SQLite")
-        } catch {
-            print("❌ Error saving quiz questions: \(error)")
         }
     }
     
@@ -127,44 +134,54 @@ class QuizStorageService {
             return nil
         }
         
-        do {
-            let decoder = JSONDecoder()
-            var questions: [QuizQuestion] = []
-            
-            for row in try db.prepare(questionsTable) {
-                guard let optionsData = row[optionsJson].data(using: .utf8) else {
-                    print("!!!!!! Failed to decode options for question \(row[id])")
-                    continue
+        // GCD: Synchronous read on serial queue (safe for SQLite)
+        var result: [QuizQuestion]?
+        
+        sqliteQueue.sync {
+            do {
+                let decoder = JSONDecoder()
+                var questions: [QuizQuestion] = []
+                
+                for row in try db.prepare(self.questionsTable) {
+                    guard let optionsData = row[self.optionsJson].data(using: .utf8) else {
+                        print("!!!!!! Failed to decode options for question \(row[self.id])")
+                        continue
+                    }
+                    
+                    let options = try decoder.decode([QuizOption].self, from: optionsData)
+                    
+                    var question = QuizQuestion(
+                        text: row[self.text],
+                        imageUrl: row[self.imageUrl],
+                        options: options
+                    )
+                    question.id = row[self.id]
+                    
+                    questions.append(question)
                 }
                 
-                let options = try decoder.decode([QuizOption].self, from: optionsData)
-                
-                var question = QuizQuestion(
-                    text: row[text],
-                    imageUrl: row[imageUrl],
-                    options: options
-                )
-                question.id = row[id]
-                
-                questions.append(question)
+                print("✅ \(questions.count) quiz questions loaded from SQLite")
+                result = questions.isEmpty ? nil : questions
+            } catch {
+                print("❌ Error loading quiz questions: \(error)")
+                result = nil
             }
-            
-            print("✅ \(questions.count) quiz questions loaded from SQLite")
-            return questions.isEmpty ? nil : questions
-        } catch {
-            print("❌ Error loading quiz questions: \(error)")
-            return nil
         }
+        
+        return result
     }
     
     func deleteQuestions() {
         guard let db = db else { return }
         
-        do {
-            let deleted = try db.run(questionsTable.delete())
-            print("✅ \(deleted) quiz questions deleted from SQLite")
-        } catch {
-            print("❌ Error deleting quiz questions: \(error)")
+        // GCD: Database write on background queue
+        sqliteQueue.async {
+            do {
+                let deleted = try db.run(self.questionsTable.delete())
+                print("✅ \(deleted) quiz questions deleted from SQLite")
+            } catch {
+                print("❌ Error deleting quiz questions: \(error)")
+            }
         }
     }
     
@@ -189,10 +206,9 @@ class QuizStorageService {
         }
     }
     
-    // MARK: - Realm Operations (Results) - FIXED!
+    // MARK: - Realm Operations (Results)
     
     func saveQuizResult(userId: String, result: QuizResult, userQuizResult: UserQuizResult) {
-        // FIX: Use main thread for Realm writes when already on main actor
         do {
             let realm = try Realm()
             
@@ -215,7 +231,6 @@ class QuizStorageService {
     }
     
     func loadQuizResult(userId: String) async -> (result: QuizResult, userQuizResult: UserQuizResult)? {
-        // FIX: Simplified Realm read on main thread
         do {
             let realm = try await Realm()
             
@@ -224,7 +239,6 @@ class QuizStorageService {
                 return nil
             }
             
-            // CRITICAL: Validate the stored data BEFORE converting
             print("✅ [REALM READ] Found result for user: \(userId)")
             print("   Category: \(realmResult.moodCategory)")
             print("   Raw category: \(realmResult.rawCategory)")
@@ -235,7 +249,6 @@ class QuizStorageService {
             let result = realmResult.toQuizResult()
             let userQuizResult = realmResult.toUserQuizResult()
             
-            // Validate UserQuizResult reconstruction
             print("   Reconstructed scores: \(userQuizResult.scores)")
             print("   Reconstructed categories: \(userQuizResult.resultCategory)")
             
@@ -435,7 +448,6 @@ class RealmQuizResult: Object {
             print("   JSON length: \(userQuizResultJson.count)")
             print("   JSON preview: \(String(userQuizResultJson.prefix(100)))")
             
-            // Fatal error with diagnostic info
             fatalError("Failed to decode UserQuizResult from Realm for user: \(userId)")
         }
         

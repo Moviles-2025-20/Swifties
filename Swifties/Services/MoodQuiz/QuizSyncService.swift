@@ -38,7 +38,7 @@ class QuizSyncService: ObservableObject {
     // MARK: - Sync Pending Results
     
     func syncPendingResults() async {
-        // CRITICAL FIX: Always check storage, not just local state
+        // IMPORTANT FIX: Always check storage, not just local state
         guard storageService.hasPendingResults() else {
             print("-->> No pending quiz results to sync")
             return
@@ -59,7 +59,7 @@ class QuizSyncService: ObservableObject {
         print("[SYNC START] Syncing \(pendingResults.count) pending quiz result(s) to Firestore...")
         isSyncing = true
         
-        // Use continuation for proper async/await with callback-based API
+        // Continuation for proper async/await with callback-based API
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             networkService.syncPendingResults(results: pendingResults) { [weak self] result in
                 Task { @MainActor in

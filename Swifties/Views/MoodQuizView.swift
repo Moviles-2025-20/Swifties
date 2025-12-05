@@ -15,6 +15,9 @@ struct MoodQuizView: View {
     @State private var offlineAlertMessage = ""
     @State private var showNews: Bool = false
     
+    //Offline submission alert
+    @State private var showOfflineSubmitAlert: Bool = false
+    
     // MARK: - Computed Properties for Data Source Indicator
     
     private var dataSourceIcon: String {
@@ -67,13 +70,22 @@ struct MoodQuizView: View {
             } message: {
                 Text(offlineAlertMessage)
             }
+            // Offline submission alert
+            .alert("Offline Submission", isPresented: $showOfflineSubmitAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Submit Offline") {
+                    viewModel.calculateResult()
+                }
+            } message: {
+                Text("You're currently offline. Your quiz result will be saved locally and submitted automatically when you reconnect to the internet.")
+            }
             .task {
                 await viewModel.loadQuiz()
             }
             .onAppear {
-                        // !!!! LOG WHEN USER OPENS THE QUIZ SCREEN
-                        AnalyticsService.shared.logMoodQuizOpened(source: "home")
-                    }
+                // !!!! LOG WHEN USER OPENS THE QUIZ SCREEN
+                AnalyticsService.shared.logMoodQuizOpened(source: "home")
+            }
             .navigationDestination(isPresented: $showNews) {
                 NewsView()
             }
@@ -95,7 +107,7 @@ struct MoodQuizView: View {
                 buildPendingUploadBanner()
             }
             
-            // Saving indicator banner (NEW!)
+            // Saving indicator banner
             if viewModel.isSavingResult {
                 buildSavingBanner()
             }
@@ -455,8 +467,12 @@ struct MoodQuizView: View {
     private func buildNextButton() -> some View {
         Button {
             if viewModel.isLastQuestion {
-                // Auto-save happens in calculateResult()
-                viewModel.calculateResult()
+                //Check for offline connection and show warning
+                if !networkMonitor.isConnected {
+                    showOfflineSubmitAlert = true
+                } else {
+                    viewModel.calculateResult()
+                }
             } else {
                 withAnimation {
                     viewModel.currentQuestionIndex += 1
@@ -571,7 +587,6 @@ struct MoodQuizView: View {
     private func buildActionButtons() -> some View {
         VStack(spacing: 12) {
             buildRetakeButton()
-            // REMOVED: buildDoneButton() - auto-save handles everything!
         }
     }
     

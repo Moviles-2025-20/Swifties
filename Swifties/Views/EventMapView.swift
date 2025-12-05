@@ -143,13 +143,11 @@ struct EventMapView: View {
                                         menuCoordinate = coordinate
                                         
                                         let point = proxy.convert(coordinate, to: .local) ?? .zero
-                                        menuPoint = point
                                         let clamped = clampedMenuPosition(from: point, containerSize: geo.size)
+                                        menuPoint = clamped
+                                        
                                         withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
                                             showMenu = true
-                                        }
-                                        DispatchQueue.main.async {
-                                            menuPoint = clamped
                                         }
                                     } label: {
                                         Image(systemName: "mappin.circle.fill")
@@ -180,14 +178,6 @@ struct EventMapView: View {
                                 region.center = userLocation
                                 region.span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                             }
-                        } else {
-                            print(offlineMessage)
-                        }
-                    }
-                    .onReceive(locationManager.$lastLocation) { location in
-                        guard networkMonitor.isConnected, let coord = location?.coordinate else { return }
-                        withAnimation {
-                            region.center = coord
                         }
                     }
                     .overlay(alignment: .topLeading) {
@@ -212,42 +202,33 @@ struct EventMapView: View {
                             backgroundDismissOverlay
                         }
                     }
-                    .overlay(alignment: .topLeading) {
-                        VStack {
-                            Spacer()
-                            if locationManager.lastLocation != nil {
-                                HStack {
-                                    Spacer()
-                                    Button(action: {
-                                        showNearbyEvents = true
-                                    }) {
-                                        HStack(spacing: 8) {
-                                            Image(systemName: "location.fill")
-                                                .font(.system(size: 16))
-                                            Text("Close Events")
-                                                .font(.system(size: 16, weight: .semibold))
-                                        }
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 20)
-                                        .padding(.vertical, 14)
-                                        .background(Color.pink)
-                                        .cornerRadius(25)
-                                        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-                                    }
-                                    .padding(.bottom, 100)
-                                    .padding(.trailing, 16)
-                                    .disabled(!networkMonitor.isConnected)
-                                    .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
-                                    
-                                    Spacer()
+                    .overlay(alignment: .bottom) {
+                        if locationManager.lastLocation != nil {
+                            Button(action: {
+                                showNearbyEvents = true
+                            }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "location.fill")
+                                        .font(.system(size: 16))
+                                    Text("Close Events")
+                                        .font(.system(size: 16, weight: .semibold))
                                 }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 14)
+                                .background(Color.pink)
+                                .cornerRadius(25)
+                                .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
                             }
+                            .padding(.bottom, 80)
+                            .disabled(!networkMonitor.isConnected)
+                            .opacity(networkMonitor.isConnected ? 1.0 : 0.5)
                         }
                     }
                     .overlay {
                         if showMenu, let event = menuEvent {
                             ContextualEventMenu(
-                                title: event.name,
+                                title: event.title,
                                 isDirectionsEnabled: networkMonitor.isConnected,
                                 onDirections: {
                                     if networkMonitor.isConnected {

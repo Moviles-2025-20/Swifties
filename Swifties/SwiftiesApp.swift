@@ -42,14 +42,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 }
             }
         } else {
-            print("⚠️ Starting app in offline mode")
+            print("!!!! Starting app in offline mode")
         }
 
         print("✅ Firebase Analytics initialized successfully")
         
         // Check for pending registration data and log status
         if UserDefaultsService.shared.hasPendingRegistration() {
-            print("⚠️ App started with pending registration data - will sync when connection available")
+            print("!!!! App started with pending registration data - will sync when connection available")
         }
         
         if UserDefaultsService.shared.hasCompletedRegistrationLocally() {
@@ -69,7 +69,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct SwiftiesApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var authViewModel = AuthViewModel()
-    
+    @State private var deepLinkURL: URL?
+
     init() {
         NetworkMonitorService.shared.startMonitoring()
     }
@@ -111,6 +112,9 @@ struct SwiftiesApp: App {
                     } else {
                         MainView()
                             .environmentObject(authViewModel)
+                            .onOpenURL{url in
+                                handleDeepLink(url)
+                            }
                     }
                 } else {
                     StartView()
@@ -119,5 +123,25 @@ struct SwiftiesApp: App {
             }
             .environmentObject(authViewModel)
         }
+    }
+    
+    private func handleDeepLink(_ url: URL) {
+        print("!!!!!!!!! Deep link received: \(url)")
+        
+        // Check if it's a scavenger hunt deep link
+        guard url.scheme == "swifties",
+              url.host == "scavenger" else {
+            print("❌ Not a scavenger hunt link")
+            return
+        }
+        
+        print("✅ Scavenger hunt link detected!")
+        deepLinkURL = url
+        
+        // Post notification to trigger navigation
+        NotificationCenter.default.post(
+            name: NSNotification.Name("ShowNFCScavengerHunt"),
+            object: url
+        )
     }
 }

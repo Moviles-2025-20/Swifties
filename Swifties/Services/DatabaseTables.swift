@@ -107,7 +107,6 @@ struct RecommendationsTable {
     }
 }
 
-
 // MARK: - Quiz Questions Table
 
 struct QuizQuestionsTable {
@@ -141,35 +140,5 @@ struct QuizQuestionsTable {
         #if DEBUG
         print("✅ Quiz questions indexes created")
         #endif
-    }
-}
-
-// MARK: - Update DatabaseTableManager
-
-// Update the setupAllTables() function to include quiz tables:
-class DatabaseTableManager {
-    static func setupAllTables() {
-        guard let db = DatabaseManager.shared.connection else {
-            print("❌ Cannot setup tables: database not available")
-            return
-        }
-        
-        do {
-            try EventsTable.createTable(in: db)
-            try EventsTable.createIndexes(in: db)
-            
-            try RecommendationsTable.createTable(in: db)
-            try RecommendationsTable.createIndexes(in: db)
-            
-            // Quiz tables
-            try QuizQuestionsTable.createTable(in: db)
-            try QuizQuestionsTable.createIndexes(in: db)
-            
-            #if DEBUG
-            print("✅ All database tables initialized")
-            #endif
-        } catch {
-            print("❌ Error setting up tables: \(error)")
-        }
     }
 }

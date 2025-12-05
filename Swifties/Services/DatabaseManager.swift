@@ -24,6 +24,7 @@ class DatabaseManager {
     
     private init() {
         setupDatabase()
+        setupAllTables() // Create all tables at initialization
     }
     
     private func setupDatabase() {
@@ -37,7 +38,7 @@ class DatabaseManager {
             db = try Connection(dbPath)
             
             #if DEBUG
-            print("📦 Database initialized at: \(dbPath)")
+            print("!!!!! !!!!! Database initialized at: \(dbPath)")
             #endif
             
             // Optimization settings
@@ -46,6 +47,38 @@ class DatabaseManager {
             
         } catch {
             print("❌ Error setting up database: \(error)")
+        }
+    }
+    
+    // MARK: - Table Setup
+    
+    private func setupAllTables() {
+        guard let db = db else {
+            print("❌ Cannot setup tables: database connection not available")
+            return
+        }
+        
+        do {
+            // Events table (for events feature)
+            try EventsTable.createTable(in: db)
+            try EventsTable.createIndexes(in: db)
+            
+            // Recommendations table (for home recommendations)
+            try RecommendationsTable.createTable(in: db)
+            try RecommendationsTable.createIndexes(in: db)
+            
+            // Quiz questions table (for mood quiz)
+            try QuizQuestionsTable.createTable(in: db)
+            try QuizQuestionsTable.createIndexes(in: db)
+            
+            #if DEBUG
+            print("✅ All database tables initialized successfully")
+            print("   - events")
+            print("   - recommendations")
+            print("   - quiz_questions")
+            #endif
+        } catch {
+            print("❌ Error setting up tables: \(error)")
         }
     }
     

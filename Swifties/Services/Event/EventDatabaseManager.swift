@@ -15,8 +15,7 @@ class EventDatabaseManager {
     private let threadManager = ThreadManager.shared
     
     private init() {
-        // Ensure tables exist on initialization
-        DatabaseTableManager.setupAllTables()
+        // Tables are automatically created by DatabaseManager.shared
     }
     
     // MARK: - CRUD Operations
@@ -211,8 +210,45 @@ class EventDatabaseManager {
             let decoder = JSONDecoder()
             
             for row in try db.prepare(query) {
-                // Decodificar evento (mismo código que loadEvents)
-                // ... (código de decodificación)
+                let locationObj: EventLocation? = try {
+                    guard let locationJSON = row[EventsTable.locationData] else { return nil }
+                    guard let data = locationJSON.data(using: .utf8) else { return nil }
+                    return try decoder.decode(EventLocation.self, from: data)
+                }()
+                
+                let metadataObj: EventMetadata = try {
+                    let data = row[EventsTable.metadataData].data(using: .utf8)!
+                    return try decoder.decode(EventMetadata.self, from: data)
+                }()
+                
+                let scheduleObj: EventSchedule = try {
+                    let data = row[EventsTable.scheduleData].data(using: .utf8)!
+                    return try decoder.decode(EventSchedule.self, from: data)
+                }()
+                
+                let statsObj: EventStats = try {
+                    let data = row[EventsTable.statsData].data(using: .utf8)!
+                    return try decoder.decode(EventStats.self, from: data)
+                }()
+                
+                let event = Event(
+                    id: row[EventsTable.id],
+                    activetrue: row[EventsTable.activetrue],
+                    category: row[EventsTable.category],
+                    created: row[EventsTable.created],
+                    description: row[EventsTable.description],
+                    eventType: row[EventsTable.eventType],
+                    location: locationObj,
+                    metadata: metadataObj,
+                    name: row[EventsTable.name],
+                    schedule: scheduleObj,
+                    stats: statsObj,
+                    title: row[EventsTable.title],
+                    type: row[EventsTable.type],
+                    weatherDependent: row[EventsTable.weatherDependent]
+                )
+                
+                events.append(event)
             }
             
             return events
